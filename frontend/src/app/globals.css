@@ -1,0 +1,304 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --poker-bg: #0A0A0A;
+  --poker-felt: #0B3D0B;
+  --poker-gold: #FFD700;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--poker-bg);
+  color: #ffffff;
+  overflow-x: hidden;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #111;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Gold text gradient */
+.text-gradient-gold {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FFD700 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Felt texture overlay */
+.felt-texture {
+  background-image:
+    radial-gradient(ellipse at center, #0F5F0F 0%, #0B3D0B 50%, #082D08 100%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, 0.03) 2px,
+      rgba(0, 0, 0, 0.03) 4px
+    );
+}
+
+/* Neon glow effects */
+.glow-red {
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.6), 0 0 30px rgba(239, 68, 68, 0.3), 0 0 45px rgba(239, 68, 68, 0.1);
+}
+.glow-blue {
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.6), 0 0 30px rgba(59, 130, 246, 0.3), 0 0 45px rgba(59, 130, 246, 0.1);
+}
+.glow-purple {
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.6), 0 0 30px rgba(168, 85, 247, 0.3), 0 0 45px rgba(168, 85, 247, 0.1);
+}
+.glow-green {
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.6), 0 0 30px rgba(34, 197, 94, 0.3), 0 0 45px rgba(34, 197, 94, 0.1);
+}
+.glow-gold {
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.6), 0 0 30px rgba(255, 215, 0, 0.3), 0 0 45px rgba(255, 215, 0, 0.1);
+}
+.glow-amber {
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.6), 0 0 30px rgba(245, 158, 11, 0.3), 0 0 45px rgba(245, 158, 11, 0.1);
+}
+
+/* Table 3D perspective */
+.table-perspective {
+  perspective: 1200px;
+}
+.table-3d {
+  transform: rotateX(8deg);
+  transform-style: preserve-3d;
+}
+
+/* Card shimmer effect for encrypted cards */
+.card-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.card-shimmer::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(255, 215, 0, 0.08) 50%,
+    transparent 70%
+  );
+  animation: shimmer-move 3s ease-in-out infinite;
+}
+
+@keyframes shimmer-move {
+  0% { transform: translateX(-100%) translateY(-100%); }
+  100% { transform: translateX(100%) translateY(100%); }
+}
+
+/* Chip stack visual */
+.chip-stack {
+  position: relative;
+}
+.chip-stack::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 2px;
+  right: 2px;
+  height: 6px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.2), transparent);
+  border-radius: 50%;
+}
+
+/* Phase progress bar */
+.phase-bar {
+  background: linear-gradient(90deg, #0B3D0B 0%, #22C55E 100%);
+}
+
+/* Action badge animations */
+.action-badge-enter {
+  animation: badge-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes badge-pop {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Dealer chip */
+.dealer-chip {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: #000;
+  font-weight: 900;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+}
+
+/* Pot glow animation */
+@keyframes pot-glow {
+  0%, 100% { text-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+  50% { text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.3); }
+}
+.pot-glow {
+  animation: pot-glow 2s ease-in-out infinite;
+}
+
+/* ---- NEW: Enhanced animations ---- */
+
+/* Poker table felt texture with noise */
+.felt-surface {
+  background:
+    radial-gradient(ellipse at 50% 40%, #0F5F0F 0%, #0B3D0B 40%, #082D08 80%, #051F05 100%);
+  position: relative;
+}
+.felt-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 1px,
+      rgba(0, 0, 0, 0.015) 1px,
+      rgba(0, 0, 0, 0.015) 2px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 1px,
+      rgba(0, 0, 0, 0.015) 1px,
+      rgba(0, 0, 0, 0.015) 2px
+    );
+  pointer-events: none;
+}
+
+/* Wood rail border effect */
+.wood-rail {
+  background: linear-gradient(
+    145deg,
+    #3d2b1f 0%,
+    #5c3d2e 15%,
+    #3d2b1f 30%,
+    #6b4433 50%,
+    #3d2b1f 70%,
+    #5c3d2e 85%,
+    #3d2b1f 100%
+  );
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.08),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(0, 0, 0, 0.7),
+    0 8px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Card face design */
+.card-face {
+  background: linear-gradient(145deg, #FEFEFE 0%, #F5F5F0 50%, #EDEDE8 100%);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+/* Confetti burst */
+@keyframes confetti-burst {
+  0% { transform: scale(0) rotate(0deg); opacity: 1; }
+  50% { opacity: 1; }
+  100% { transform: scale(1.5) rotate(180deg); opacity: 0; }
+}
+.confetti-particle {
+  animation: confetti-burst 0.8s ease-out forwards;
+}
+
+/* Sparkle effect for winners */
+@keyframes sparkle {
+  0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(180deg); }
+}
+
+/* Thinking dots */
+@keyframes thinking-dot {
+  0%, 20% { opacity: 0.2; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+  80%, 100% { opacity: 0.2; transform: translateY(0); }
+}
+
+/* Slide-in from right */
+@keyframes slide-in-right {
+  0% { transform: translateX(100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* Success flash */
+@keyframes success-flash {
+  0% { background-color: rgba(34, 197, 94, 0.3); }
+  100% { background-color: transparent; }
+}
+.success-flash {
+  animation: success-flash 0.6s ease-out;
+}
+
+/* Phase indicator glow line */
+@keyframes phase-line {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.phase-glow-line {
+  background: linear-gradient(90deg, transparent, #FFD700, transparent);
+  background-size: 200% 100%;
+  animation: phase-line 2s linear infinite;
+}
+
+/* Toast animation */
+@keyframes toast-in {
+  0% { transform: translateY(-100%) scale(0.9); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.toast-enter {
+  animation: toast-in 0.3s ease-out;
+}
+
+/* Chip bounce */
+@keyframes chip-bounce {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.15); }
+  60% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+.chip-bounce {
+  animation: chip-bounce 0.4s ease-out;
+}
+
+/* Floating particles for poker table */
+@keyframes float-particle {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0;
+  }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% {
+    transform: translateY(-40px) translateX(20px);
+    opacity: 0;
+  }
+}
+
+/* Heart burst animation for tips */
+@keyframes heart-rise {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-30px) scale(0.5); opacity: 0; }
+}
