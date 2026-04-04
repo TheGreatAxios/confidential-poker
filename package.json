@@ -1,18 +1,24 @@
 {
   "name": "ai-poker-night",
   "version": "1.0.0",
+  "description": "🃏 Live Texas Hold'em with AI agents on SKALE — Confidential Poker",
   "private": true,
-  "description": "AI Poker Night — Texas Hold'em with AI agents, encrypted cards, and real USDC on SKALE",
   "scripts": {
     "install:all": "npm install && cd server && npm install && cd ../frontend && npm install",
+    "dev:server": "cd server && npx tsx src/index.ts",
+    "dev:frontend": "cd frontend && npx next dev -p 3000",
+    "dev": "npm run dev:server & npm run dev:frontend",
+    "build:server": "cd server && npx tsc --noEmit",
+    "build:frontend": "cd frontend && npx next build",
     "build:contracts": "cd contracts && forge build",
+    "build": "npm run build:contracts && npm run build:server && npm run build:frontend",
     "test:contracts": "cd contracts && forge test -vvv",
-    "build:server": "cd server && npm run build",
-    "dev:server": "cd server && npm run dev",
-    "dev:frontend": "cd frontend && npm run dev",
-    "dev": "echo 'Run dev:server and dev:frontend in separate terminals'",
-    "clean": "rm -rf server/node_modules server/dist frontend/node_modules frontend/.next"
+    "test": "npm run build && npm run test:contracts",
+    "clean": "cd contracts && forge clean && cd ../frontend && rm -rf .next && cd ../server && rm -rf dist",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up",
+    "docker:down": "docker-compose down"
   },
-  "keywords": ["poker", "ai", "skale", "bite", "x402", "ows", "texas-holdem", "blockchain"],
+  "keywords": ["skale", "poker", "ai", "blockchain", "confidential"],
   "license": "MIT"
 }

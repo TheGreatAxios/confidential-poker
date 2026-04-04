@@ -1,0 +1,10 @@
+# AI Poker Night — Confidential Poker on SKALE
+User-agent: *
+Allow: /
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://ai-poker-night.vercel.app/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 1

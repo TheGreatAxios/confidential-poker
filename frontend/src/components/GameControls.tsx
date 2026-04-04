@@ -10,6 +10,7 @@ interface GameControlsProps {
   phase: Phase;
   handNumber: number;
   ante: number;
+  busy?: boolean;
   onStart: () => void;
   onNewHand: () => void;
   onStop: () => void;
@@ -20,6 +21,7 @@ export default function GameControls({
   phase,
   handNumber,
   ante,
+  busy = false,
   onStart,
   onNewHand,
   onStop,
@@ -73,14 +75,15 @@ export default function GameControls({
           {/* Start Game */}
           {!isRunning && (
             <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ scale: busy ? 1 : 1.03 }}
+              whileTap={{ scale: busy ? 1 : 0.97 }}
               onClick={onStart}
+              disabled={busy}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm
                 bg-gradient-to-r from-green-600 to-green-500 text-white
                 shadow-lg shadow-green-500/20
                 hover:shadow-green-500/40 hover:from-green-500 hover:to-green-400
-                transition-all duration-200"
+                transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Play className="w-4 h-4" />
               Start Game
@@ -107,14 +110,15 @@ export default function GameControls({
           {/* Stop Game */}
           {isRunning && (
             <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ scale: busy ? 1 : 1.03 }}
+              whileTap={{ scale: busy ? 1 : 0.97 }}
               onClick={onStop}
+              disabled={busy}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm
                 bg-gradient-to-r from-red-600 to-red-500 text-white
                 shadow-lg shadow-red-500/20
                 hover:shadow-red-500/40 hover:from-red-500 hover:to-red-400
-                transition-all duration-200"
+                transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Square className="w-4 h-4" />
               Stop

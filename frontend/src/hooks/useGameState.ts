@@ -1,105 +1,134 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { api } from "@/lib/api";
-import { AGENTS } from "@/lib/constants";
-import type { Phase } from "@/lib/types";
+import { useEffect, useState, useCallback } from "react";
+import { useReadContracts, useAccount } from "wagmi";
+import { parseEther, formatEther } from "viem";
+import { POKER_TABLE_ABI } from "@/lib/abis";
+import { CONTRACTS } from "@/lib/wagmi";
+import type { GameState, PlayerState, RawPlayer, Phase } from "@/lib/types";
+import { PHASE_MAP } from "@/lib/types";
 
-export interface CardData {
-  rank: number;
-  suit: number;
-  encrypted: boolean;
-}
+/** Polling interval in ms */
+const POLL_INTERVAL = 2_000;
 
-export interface AgentState {
-  id: number;
-  name: string;
-  emoji: string;
-  color: string;
-  personality: string;
-  stack: number;
-  currentBet: number;
-  cards: CardData[];
-  action: string;
-  folded: boolean;
-  allIn: boolean;
-  isDealer: boolean;
-  isSB: boolean;
-  isBB: boolean;
-  isActive: boolean;
-  isWinner: boolean;
-}
-
-export interface GameState {
-  id: string;
-  handNumber: number;
-  phase: Phase;
-  pot: number;
-  communityCards: CardData[];
-  agents: AgentState[];
-  deckCount: number;
-  isRunning: boolean;
-  ante: number;
-}
-
-const DEMO_STATE: GameState = {
-  id: "demo-001",
-  handNumber: 1,
-  phase: "Pre-Flop" as Phase,
-  pot: 450,
-  communityCards: [],
-  agents: AGENTS.map((agent, i) => ({
-    id: agent.id,
-    name: agent.name,
-    emoji: agent.emoji,
-    color: agent.color,
-    personality: agent.personality,
-    stack: [9200, 9800, 8550, 10000][i],
-    currentBet: [100, 50, 200, 0][i],
-    cards: [
-      { rank: 14 - i, suit: i, encrypted: true },
-      { rank: 13 - i, suit: (i + 1) % 4, encrypted: true },
-    ],
-    action: ["Raise", "Call", "Raise", "Wait"][i] as string,
-    folded: false,
-    allIn: false,
-    isDealer: i === 0,
-    isSB: i === 1,
-    isBB: i === 2,
-    isActive: i === 3,
-    isWinner: false,
-  })),
-  deckCount: 44,
-  isRunning: true,
-  ante: 50,
-};
-
-export function useGameState(gameId: string = "current") {
+export function useGameState() {
+  const { address: connectedAddress } = useAccount();
   const [game, setGame] = useState<GameState | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isDemo, setIsDemo] = useState(false);
+  const [refetchKey, setRefetchKey] = useState(0);
 
-  const fetchGame = useCallback(async () => {
-    try {
-      const data = await api.getGame(gameId);
-      setGame(data);
-      setIsDemo(false);
-    } catch {
-      // Use demo state when server is not available
-      if (!game) {
-        setGame(DEMO_STATE);
-        setIsDemo(true);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [gameId, game]);
+  const contractAddress = CONTRACTS.pokerTable;
+  const enabled = contractAddress !== "0x0000000000000000000000000000000000000000";
 
+  // Batch all contract reads into a single multicall
+  const { data, isLoading, isError, refetch } = useReadContracts({
+    contracts: [
+      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "phase" },
+      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "pot" },
+      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "handCount" },
+      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "dealerIndex" },
+      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "activePlayerIndex" },
+      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "smallBlind" },
+      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "bigBlind" },
+      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "maxPlayers" },
+      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "minBuyIn" },
+      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "currentMaxBet" },
+      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "getPlayers" },
+      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "getCommunityCards" },
+      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "getPlayerCount" },
+      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "getActivePlayerCount" },
+    ] as const,
+    query: {
+      enabled,
+      refetchInterval: POLL_INTERVAL,
+    },
+  });
+
+  // Map contract data → GameState whenever data changes
   useEffect(() => {
-    fetchGame();
-    const interval = setInterval(fetchGame, 2000);
-    return () => clearInterval(interval);
-  }, [fetchGame]);
+    if (!data || !enabled) return;
 
-  return { game, loading, isDemo, refetch: fetchGame };
+    const results = data.map((r) => (r.status === "success" ? r.result : null));
+    const [
+      phaseNum, pot, handCount, dealerIndex, activePlayerIndex,
+      smallBlind, bigBlind, maxPlayers, minBuyIn, currentMaxBet,
+      rawPlayers, rawCommunityCards, seatedCount, activeCount,
+    ] = results;
+
+    if (phaseNum === null || !rawPlayers) return;
+
+    const phase: Phase = PHASE_MAP[Number(phaseNum)] ?? "Waiting";
+    const players: RawPlayer[] = (rawPlayers as unknown as RawPlayer[]) || [];
+
+    // Filter to only seated players
+    const seatedPlayers = players.filter((p) => p.isSeated);
+    const dealerIdx = Number(dealerIndex ?? 0n);
+    const activeIdx = Number(activePlayerIndex ?? 0n);
+
+    const dealerAddr = players[dealerIdx]?.addr ?? "0x" as `0x${string}`;
+    const activeAddr = players[activeIdx]?.addr ?? "0x" as `0x${string}`;
+
+    // Build PlayerState array
+    const playerStates: PlayerState[] = players.map((p, idx) => ({
+      address: p.addr,
+      stack: p.stack,
+      currentBet: p.currentBet,
+      folded: p.folded,
+      hasActed: p.hasActed,
+      holeCards: p.holeCards,
+      cardsRevealed: p.cardsRevealed,
+      isSeated: p.isSeated,
+      isDealer: idx === dealerIdx,
+      isActive: idx === activeIdx,
+      isWinner: false, // determined by events, not state
+    }));
+
+    // Community cards (uint8 encoded values)
+    const communityCards = Array.isArray(rawCommunityCards)
+      ? (rawCommunityCards as bigint[]).map(Number)
+      : [];
+
+    // Connected wallet checks
+    const isConnectedSeated = connectedAddress
+      ? seatedPlayers.some((p) => p.addr.toLowerCase() === connectedAddress.toLowerCase())
+      : false;
+
+    const isMyTurn = connectedAddress && activeAddr
+      ? activeAddr.toLowerCase() === connectedAddress.toLowerCase()
+      : false;
+
+    setGame({
+      phase,
+      pot: BigInt(pot ?? 0n),
+      handNumber: BigInt(handCount ?? 0n),
+      communityCards,
+      players: playerStates,
+      activePlayerAddress: activeAddr,
+      dealerAddress: dealerAddr,
+      smallBlind: BigInt(smallBlind ?? 0n),
+      bigBlind: BigInt(bigBlind ?? 0n),
+      maxPlayers: BigInt(maxPlayers ?? 0n),
+      minBuyIn: BigInt(minBuyIn ?? 0n),
+      currentMaxBet: BigInt(currentMaxBet ?? 0n),
+      seatedPlayerCount: Number(seatedCount ?? seatedPlayers.length),
+      activePlayerCount: Number(activeCount ?? 0),
+      isConnectedSeated,
+      isMyTurn,
+    });
+
+    if (loading) setLoading(false);
+  }, [data, enabled, connectedAddress, loading]);
+
+  // External refetch trigger
+  useEffect(() => {
+    if (refetchKey > 0) {
+      refetch();
+    }
+  }, [refetchKey, refetch]);
+
+  const triggerRefetch = useCallback(() => {
+    setRefetchKey((k) => k + 1);
+  }, []);
+
+  return { game, loading: isLoading || loading, isError, refetch: triggerRefetch };
 }

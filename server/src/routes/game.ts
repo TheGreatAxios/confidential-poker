@@ -436,6 +436,40 @@ game.get("/api/game/tables", async (c) => {
   });
 });
 
+// ── POST /api/game/start-game — Start autonomous game loop ──
+
+game.post("/api/game/start-game", async (c) => {
+  try {
+    const result = await orchestrator.startGame();
+    return c.json(result);
+  } catch (error) {
+    return c.json(
+      {
+        error: "Failed to start game",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      500,
+    );
+  }
+});
+
+// ── POST /api/game/stop-game — Stop autonomous game loop ──
+
+game.post("/api/game/stop-game", async (c) => {
+  try {
+    const result = orchestrator.stopGame();
+    return c.json(result);
+  } catch (error) {
+    return c.json(
+      {
+        error: "Failed to stop game",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      500,
+    );
+  }
+});
+
 // ── Helpers ──
 
 function getDemoGameState(gameId: string): GameState {

@@ -15,7 +15,7 @@
   <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License" />
 </p>
 
-<img src="docs/demo.gif" alt="AI Poker Night Demo" width="720" />
+> 🎬 **Live Demo**: Open the frontend in demo mode — it auto-cycles through full poker hands showing Pre-Flop → Flop → Turn → River → Showdown with 4 AI agents making decisions every 3 seconds.
 
 <p>
   <a href="#-features">✨ Features</a> •
@@ -202,18 +202,21 @@ cd contracts && forge install OpenZeppelin/openzeppelin-contracts && cd ..
 # 3. Install all dependencies
 npm run install:all
 
-# 3. Build smart contracts
+# 4. Build smart contracts
 npm run build:contracts
 
 # 4. Run contract tests (37/37 should pass ✅)
 npm run test:contracts
 
-# 5. Start the server (terminal 1)
+# 5. Run contract tests (37/37 should pass ✅)
+npm run test:contracts
+
+# 6. Start the server (terminal 1)
 cp server/.env.example server/.env
 # Edit server/.env with your private key and deployed contract addresses
 npm run dev:server
 
-# 6. Start the frontend (terminal 2)
+# 7. Start the frontend (terminal 2)
 npm run dev:frontend
 ```
 

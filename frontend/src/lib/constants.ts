@@ -1,47 +1,6 @@
-// Agent definitions
-export interface Agent {
-  id: number;
-  name: string;
-  emoji: string;
-  color: string;
-  personality: string;
-  description: string;
-}
-
-export const AGENTS: Agent[] = [
-  {
-    id: 1,
-    name: "Rage Bot",
-    emoji: "🤬",
-    color: "#EF4444",
-    personality: "Aggressive",
-    description: "Always aggressive. Never backs down.",
-  },
-  {
-    id: 2,
-    name: "Caution",
-    emoji: "🧐",
-    color: "#3B82F6",
-    personality: "Conservative",
-    description: "Plays it safe. Never bluffs.",
-  },
-  {
-    id: 3,
-    name: "Bluffer",
-    emoji: "🎭",
-    color: "#A855F7",
-    personality: "Deceptive",
-    description: "Lies with every hand. Unpredictable.",
-  },
-  {
-    id: 4,
-    name: "Calculus",
-    emoji: "🧮",
-    color: "#22C55E",
-    personality: "Mathematical",
-    description: "Calculates odds perfectly. Cold logic.",
-  },
-];
+// ============================================================
+// Game Constants
+// ============================================================
 
 // Card suits
 export const SUITS = ["♠", "♥", "♦", "♣"] as const;
@@ -52,14 +11,15 @@ export const RANKS = [
   "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A",
 ] as const;
 
-// Game phases
+// Game phases — matches PokerTable.sol GamePhase enum
 export const PHASES = [
   "Waiting",
-  "Pre-Flop",
+  "Preflop",
   "Flop",
   "Turn",
   "River",
   "Showdown",
+  "Finished",
 ] as const;
 
 export type Phase = (typeof PHASES)[number];
@@ -76,7 +36,7 @@ export const ACTION_COLORS: Record<ActionType, string> = {
   wait: "bg-white/5 text-gray-500 border-white/10",
 };
 
-// Seat positions around the table (6 seats)
+// Seat positions
 export const SEAT_POSITIONS = [
   { id: 0, label: "top", gridArea: "top" },
   { id: 1, label: "top-right", gridArea: "topRight" },
@@ -85,3 +45,6 @@ export const SEAT_POSITIONS = [
   { id: 4, label: "bottom-left", gridArea: "bottomLeft" },
   { id: 5, label: "top-left", gridArea: "topLeft" },
 ] as const;
+
+// Default gas limit for write calls (BITE precompiles need headroom)
+export const DEFAULT_GAS_LIMIT = 500_000n;

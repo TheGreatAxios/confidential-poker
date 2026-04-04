@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useGameState } from "@/hooks/useGameState";
 import { useFaucet } from "@/hooks/useFaucet";
+import { api } from "@/lib/api";
 import PokerTable from "@/components/PokerTable";
 import GameStats from "@/components/GameStats";
 import FaucetPanel from "@/components/FaucetPanel";
@@ -16,12 +17,40 @@ import {
   Lock,
   BarChart3,
   Droplets,
+  Trophy,
+  ChevronRight,
 } from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
-  const { game, loading, isDemo } = useGameState("current");
+  const { game, loading, isDemo, refetch } = useGameState("current");
   const faucet = useFaucet();
   const [showFaucet, setShowFaucet] = useState(false);
+  const [gameAction, setGameAction] = useState<string | null>(null);
+
+  const handleStartGame = useCallback(async () => {
+    setGameAction("starting");
+    try {
+      await api.startGame();
+      setTimeout(refetch, 1000);
+    } catch {
+      // Demo mode — just trigger a refetch
+    } finally {
+      setGameAction(null);
+    }
+  }, [refetch]);
+
+  const handleStopGame = useCallback(async () => {
+    setGameAction("stopping");
+    try {
+      await api.stopGame();
+      setTimeout(refetch, 1000);
+    } catch {
+      // Demo mode
+    } finally {
+      setGameAction(null);
+    }
+  }, [refetch]);
 
   return (
     <main className="min-h-screen">
@@ -108,9 +137,10 @@ export default function Home() {
                 phase={game.phase}
                 handNumber={game.handNumber}
                 ante={game.ante}
-                onStart={() => {}}
-                onNewHand={() => {}}
-                onStop={() => {}}
+                busy={gameAction !== null}
+                onStart={handleStartGame}
+                onNewHand={refetch}
+                onStop={handleStopGame}
               />
 
               {/* Info strip */}
@@ -139,6 +169,18 @@ export default function Home() {
             <div className="space-y-4">
               <GameStats game={game} />
               <TipButton />
+              <Link
+                href="/stats"
+                className="block rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm p-4 hover:border-white/[0.12] transition-colors group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-poker-gold group-hover:scale-110 transition-transform" />
+                    <span className="text-sm font-semibold text-white">Agent Leaderboard</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-gray-500 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </Link>
             </div>
           </div>
         ) : null}
