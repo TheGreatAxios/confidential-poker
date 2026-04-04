@@ -4,7 +4,6 @@ import { config } from "./config.js";
 
 /**
  * Custom chain definition for SKALE Base Sepolia (chain ID 324705682).
- * Not yet in viem's chain definitions, so we define it locally.
  */
 export const skaleBaseSepolia = defineChain({
   id: config.chainId,
@@ -22,7 +21,7 @@ export const skaleBaseSepolia = defineChain({
   blockExplorers: {
     default: {
       name: "SKALE Explorer",
-      url: "https://base-sepolia-testnet.explorer.skale.network",
+      url: "https://base-sepolia-testnet-explorer.skalenodes.com",
     },
   },
 });
