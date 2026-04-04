@@ -35,7 +35,7 @@ export function useGameState() {
       { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "currentMaxBet" },
       { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "getPlayers" },
       { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "getCommunityCards" },
-      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "getPlayerCount" },
+      { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "getSeatedPlayerCount" },
       { address: contractAddress, abi: POKER_TABLE_ABI, functionName: "getActivePlayerCount" },
     ] as const,
     query: {
@@ -60,13 +60,20 @@ export function useGameState() {
     const phase: Phase = PHASE_MAP[Number(phaseNum)] ?? "Waiting";
     const players: RawPlayer[] = (rawPlayers as unknown as RawPlayer[]) || [];
 
+    // Validate rawPlayers have expected fields before processing
+    if (players.length > 0 && typeof players[0].addr === "undefined") return;
+
     // Filter to only seated players
     const seatedPlayers = players.filter((p) => p.isSeated);
     const dealerIdx = Number(dealerIndex ?? 0n);
     const activeIdx = Number(activePlayerIndex ?? 0n);
 
-    const dealerAddr = players[dealerIdx]?.addr ?? "0x" as `0x${string}`;
-    const activeAddr = players[activeIdx]?.addr ?? "0x" as `0x${string}`;
+    const dealerAddr = (players.length > 0 && players[dealerIdx])
+      ? players[dealerIdx].addr
+      : ("0x0000000000000000000000000000000000000000" as `0x${string}`);
+    const activeAddr = (players.length > 0 && players[activeIdx])
+      ? players[activeIdx].addr
+      : ("0x0000000000000000000000000000000000000000" as `0x${string}`);
 
     // Build PlayerState array
     const playerStates: PlayerState[] = players.map((p, idx) => ({
@@ -76,7 +83,6 @@ export function useGameState() {
       folded: p.folded,
       hasActed: p.hasActed,
       holeCards: p.holeCards,
-      cardsRevealed: p.cardsRevealed,
       isSeated: p.isSeated,
       isDealer: idx === dealerIdx,
       isActive: idx === activeIdx,

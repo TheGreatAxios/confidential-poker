@@ -8,7 +8,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 /// @notice ERC20 token with a faucet that mints 100 tokens per call (60s cooldown)
 contract MockSKL is ERC20, Ownable {
     mapping(address => uint256) public lastFaucetTime;
-    uint256 public constant FAUCET_COOLDOWN = 60 seconds;
+    uint256 public constant FAUCET_COOLDOWN = 5 minutes;
     uint256 public constant FAUCET_AMOUNT = 100 * 10 ** 18;
 
     constructor() ERC20("Mock SKL", "mSKL") Ownable(msg.sender) {}
@@ -18,7 +18,7 @@ contract MockSKL is ERC20, Ownable {
         _mint(to, amount);
     }
 
-    /// @notice Faucet: mints 100 mSKL to caller, 60s cooldown
+    /// @notice Faucet: mints 100 mSKL to caller, 5 min cooldown
     function faucet() external {
         require(
             block.timestamp >= lastFaucetTime[msg.sender] + FAUCET_COOLDOWN,

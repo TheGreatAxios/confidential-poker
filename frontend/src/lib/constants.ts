@@ -48,3 +48,11 @@ export const SEAT_POSITIONS = [
 
 // Default gas limit for write calls (BITE precompiles need headroom)
 export const DEFAULT_GAS_LIMIT = 500_000n;
+
+// Agent definitions for the tipping UI
+export const AGENTS = [
+  { id: 1, name: "Rage Bot", emoji: "🔥", color: "#ef4444" },
+  { id: 2, name: "Caution Bot", emoji: "🛡️", color: "#3b82f6" },
+  { id: 3, name: "Bluffer", emoji: "🎭", color: "#a855f7" },
+  { id: 4, name: "Math Genius", emoji: "🧮", color: "#22c55e" },
+] as const;

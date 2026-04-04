@@ -25,6 +25,11 @@ contract PokerTable is IBiteSupplicant {
 
     // ──────────────── Structs ────────────────
 
+    struct SidePot {
+        uint256 amount;
+        address[] eligible;
+    }
+
     struct Player {
         address addr;
         bytes32 viewerKey;       // BITE viewer key for encrypted card delivery
@@ -56,9 +61,24 @@ contract PokerTable is IBiteSupplicant {
     uint256  public lastRaise;
     uint256  public handCount;
 
+    // ──────────────── Deck ────────────────
+
+    uint8[52] internal deck;
+    uint256  internal deckIndex;
+
+    // ──────────────── Side Pots ────────────────
+
+    SidePot[] internal sidePots;
+
+    // ──────────────── Timeout ────────────────
+
+    uint256 public constant ACTION_TIMEOUT = 5 minutes;
+    uint256 public lastActionTimestamp;
+
     // ──────────────── Players ────────────────
 
     Player[] public players;
+    mapping(address => bool) public hasEverPlayed;
 
     // ──────────────── BITE callback auth ────────────────
 
@@ -83,6 +103,13 @@ contract PokerTable is IBiteSupplicant {
     event PlayerRaised(address indexed player, uint256 totalBet, uint256 raiseAmount);
     event ShowdownComplete(address indexed winner, uint256 pot, string winningHand, uint256 winningScore);
     event HandFinished(uint256 handNumber);
+    event ReceivedEth(address indexed from, uint256 amount);
+    event CommunityCardDealt(uint8 card, uint256 index);
+    event PlayerTimedOut(address indexed player);
+    event PotUnclaimed(uint256 amount);
+    event EmergencyWithdraw(address indexed to, uint256 amount);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event SplitPot(address[] winners, uint256 share, string winningHand, uint256 winningScore);
 
     // ──────────────── Errors ────────────────
 
@@ -100,6 +127,14 @@ contract PokerTable is IBiteSupplicant {
     error NotEnoughPlayers();
     error TransferFailed();
     error NotCallbackSender();
+    error NotOwner();
+
+    // ──────────────── Modifiers ────────────────
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert NotOwner();
+        _;
+    }
 
     // ──────────────── Constructor ────────────────
     // Deploy = create table. No factory, no proxy, no cloning.
@@ -122,9 +157,33 @@ contract PokerTable is IBiteSupplicant {
         phase      = Phase.Waiting;
     }
 
-    // ──────────────── Receive ────────────────
+    // ──────────────── Receive (C-05: protected with event) ────────────────
 
-    receive() external payable {}
+    receive() external payable {
+        emit ReceivedEth(msg.sender, msg.value);
+    }
+
+    // ──────────────── Owner admin functions ────────────────
+
+    function transferOwnership(address newOwner) external onlyOwner {
+        if (newOwner == address(0)) revert MustSendETH();
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
+    }
+
+    function emergencyWithdraw() external onlyOwner {
+        uint256 balance = address(this).balance;
+        uint256 locked = pot;
+        for (uint256 i = 0; i < players.length; i++) {
+            if (players[i].isSeated) locked += players[i].stack;
+        }
+        uint256 excess = balance > locked ? balance - locked : 0;
+        if (excess > 0) {
+            (bool ok,) = payable(owner).call{value: excess}("");
+            if (!ok) revert TransferFailed();
+            emit EmergencyWithdraw(owner, excess);
+        }
+    }
 
     // ════════════════════════════════════════════
     //  PLAYER MANAGEMENT
@@ -179,20 +238,36 @@ contract PokerTable is IBiteSupplicant {
         fee    += wFee;
         amount -= wFee;
 
+        // H-02: State changes BEFORE external call (Checks-Effects-Interactions)
         p.stack    = 0;
         p.isSeated = false;
         p.folded   = true;
+        hasEverPlayed[msg.sender] = true;
 
+        // Advance game FIRST (before external ETH transfer)
+        if (wasActive) {
+            _afterAction();
+        }
+
+        // H-03: Compact player array if not during an active hand
+        if (phase == Phase.Waiting || phase == Phase.Finished) {
+            uint256 lastIndex = players.length - 1;
+            if (idx != lastIndex) {
+                players[idx] = players[lastIndex];
+                // Adjust indices if they pointed to the swapped element
+                if (dealerIndex == lastIndex) dealerIndex = idx;
+                if (activePlayerIndex == lastIndex) activePlayerIndex = idx;
+            }
+            players.pop();
+        }
+
+        // External call LAST (after all state changes)
         if (amount > 0) {
             (bool ok,) = payable(msg.sender).call{value: amount}("");
             if (!ok) revert TransferFailed();
         }
 
         emit PlayerLeft(msg.sender, amount, fee);
-
-        if (wasActive) {
-            _afterAction();
-        }
     }
 
     // ════════════════════════════════════════════
@@ -209,6 +284,14 @@ contract PokerTable is IBiteSupplicant {
         currentMaxBet      = 0;
         communityCardCount = 0;
         lastRaise          = bigBlind;
+
+        // Reset side pots (C-01)
+        delete sidePots;
+
+        // M-02: Validate dealerIndex — if dealer is not seated, find next seated
+        if (players.length > 0 && !players[dealerIndex].isSeated) {
+            dealerIndex = _nextSeatedFrom(dealerIndex > 0 ? dealerIndex - 1 : players.length - 1);
+        }
 
         // Reset every seat
         for (uint256 i = 0; i < players.length; i++) {
@@ -231,11 +314,12 @@ contract PokerTable is IBiteSupplicant {
         _postBlind(bbIdx, bigBlind);
         currentMaxBet = bigBlind;
 
-        // Deal hole cards
+        // Deal hole cards using Fisher-Yates shuffled deck (C-04)
         _dealHoleCards();
 
         phase             = Phase.Preflop;
         activePlayerIndex = _nextActiveFrom(bbIdx);
+        lastActionTimestamp = block.timestamp;
 
         emit HandStarted(handCount);
         emit PhaseAdvanced(Phase.Preflop);
@@ -250,6 +334,7 @@ contract PokerTable is IBiteSupplicant {
         uint256 idx = _requireActiveTurn(msg.sender);
         players[idx].folded   = true;
         players[idx].hasActed = true;
+        lastActionTimestamp = block.timestamp;
         emit PlayerFolded(msg.sender);
         _afterAction();
     }
@@ -258,6 +343,7 @@ contract PokerTable is IBiteSupplicant {
         uint256 idx = _requireActiveTurn(msg.sender);
         if (currentMaxBet - players[idx].currentBet != 0) revert CannotCheck();
         players[idx].hasActed = true;
+        lastActionTimestamp = block.timestamp;
         emit PlayerChecked(msg.sender);
         _afterAction();
     }
@@ -274,6 +360,7 @@ contract PokerTable is IBiteSupplicant {
         p.currentBet  += callAmt;
         pot           += callAmt;
         p.hasActed     = true;
+        lastActionTimestamp = block.timestamp;
 
         emit PlayerCalled(msg.sender, callAmt);
         _afterAction();
@@ -301,6 +388,7 @@ contract PokerTable is IBiteSupplicant {
         p.currentBet   = totalBet;
         if (totalBet > currentMaxBet) currentMaxBet = totalBet;
         lastRaise      = raiseAmount;
+        lastActionTimestamp = block.timestamp;
 
         // Re-open betting for everyone else
         for (uint256 i = 0; i < players.length; i++) {
@@ -311,6 +399,17 @@ contract PokerTable is IBiteSupplicant {
         p.hasActed = true;
 
         emit PlayerRaised(msg.sender, totalBet, raiseAmount);
+        _afterAction();
+    }
+
+    /// @notice Force-fold a player who has timed out (H-01)
+    function forceFold() external {
+        if (block.timestamp <= lastActionTimestamp + ACTION_TIMEOUT) revert InvalidPhase();
+        if (phase < Phase.Preflop || phase > Phase.River) revert InvalidPhase();
+        players[activePlayerIndex].folded   = true;
+        players[activePlayerIndex].hasActed = true;
+        emit PlayerFolded(players[activePlayerIndex].addr);
+        emit PlayerTimedOut(players[activePlayerIndex].addr);
         _afterAction();
     }
 

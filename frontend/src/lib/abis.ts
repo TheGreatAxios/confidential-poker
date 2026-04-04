@@ -1,10 +1,23 @@
 // ============================================================
-// Contract ABIs — Single PokerTable contract + FaucetDrip
+// Contract ABIs — PokerTable + FaucetDrip
 // ============================================================
 
 // ---------- PokerTable ----------
-// One contract = one table instance. Constructor sets blinds/maxPlayers.
-// All game state is read via public getters or view functions.
+// Matches PokerTable.sol exactly — Player struct field order:
+// addr, viewerKey, stack, currentBet, folded, hasActed, isSeated, holeCards
+
+const PLAYER_STRUCT = {
+  components: [
+    { name: "addr", type: "address" },
+    { name: "viewerKey", type: "bytes32" },
+    { name: "stack", type: "uint256" },
+    { name: "currentBet", type: "uint256" },
+    { name: "folded", type: "bool" },
+    { name: "hasActed", type: "bool" },
+    { name: "isSeated", type: "bool" },
+    { name: "holeCards", type: "uint8[2]" },
+  ],
+} as const;
 
 export const POKER_TABLE_ABI = [
   // ---- Public state variable getters ----
@@ -21,7 +34,10 @@ export const POKER_TABLE_ABI = [
   { type: "function", name: "minBuyIn", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
   { type: "function", name: "maxPlayers", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
   { type: "function", name: "owner", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "address" }] },
-  { type: "function", name: "playerCount", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
+  { type: "function", name: "lastActionTimestamp", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
+  { type: "function", name: "ACTION_TIMEOUT", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
+  { type: "function", name: "communityCards", stateMutability: "view", inputs: [{ name: "", type: "uint256" }], outputs: [{ name: "", type: "uint8" }] },
+  { type: "function", name: "hasEverPlayed", stateMutability: "view", inputs: [{ name: "", type: "address" }], outputs: [{ name: "", type: "bool" }] },
 
   // ---- Array accessors ----
   { type: "function", name: "players", stateMutability: "view", inputs: [{ name: "", type: "uint256" }], outputs: [
@@ -31,27 +47,19 @@ export const POKER_TABLE_ABI = [
     { name: "currentBet", type: "uint256" },
     { name: "folded", type: "bool" },
     { name: "hasActed", type: "bool" },
-    { name: "holeCards", type: "uint8[2]" },
-    { name: "cardsRevealed", type: "bool" },
     { name: "isSeated", type: "bool" },
+    { name: "holeCards", type: "uint8[2]" },
   ]},
 
   // ---- View functions ----
-  { type: "function", name: "getPlayerCount", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
+  { type: "function", name: "getSeatedPlayerCount", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
   { type: "function", name: "getActivePlayerCount", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint256" }] },
-  { type: "function", name: "getPlayers", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "tuple[]", components: [
-    { name: "addr", type: "address" },
-    { name: "viewerKey", type: "bytes32" },
-    { name: "stack", type: "uint256" },
-    { name: "currentBet", type: "uint256" },
-    { name: "folded", type: "bool" },
-    { name: "hasActed", type: "bool" },
-    { name: "holeCards", type: "uint8[2]" },
-    { name: "cardsRevealed", type: "bool" },
-    { name: "isSeated", type: "bool" },
-  ]}]},
+  { type: "function", name: "getPlayers", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "tuple[]", components: PLAYER_STRUCT.components }] },
   { type: "function", name: "getCommunityCards", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "uint8[]" }] },
-  { type: "function", name: "isAgent", stateMutability: "view", inputs: [{ name: "addr", type: "address" }], outputs: [{ name: "", type: "bool" }] },
+  { type: "function", name: "getActivePlayer", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "address" }] },
+  { type: "function", name: "getDealer", stateMutability: "view", inputs: [], outputs: [{ name: "", type: "address" }] },
+  { type: "function", name: "isPlayerSeated", stateMutability: "view", inputs: [{ name: "who", type: "address" }], outputs: [{ name: "", type: "bool" }] },
+  { type: "function", name: "isPlayerFolded", stateMutability: "view", inputs: [{ name: "who", type: "address" }], outputs: [{ name: "", type: "bool" }] },
 
   // ---- Write functions ----
   { type: "function", name: "sitDown", stateMutability: "payable", inputs: [{ name: "viewerKey", type: "bytes32" }], outputs: [] },
@@ -63,20 +71,18 @@ export const POKER_TABLE_ABI = [
   { type: "function", name: "raise", stateMutability: "nonpayable", inputs: [{ name: "raiseAmount", type: "uint256" }], outputs: [] },
   { type: "function", name: "revealCards", stateMutability: "nonpayable", inputs: [], outputs: [] },
   { type: "function", name: "resolveHand", stateMutability: "nonpayable", inputs: [], outputs: [] },
+  { type: "function", name: "forceFold", stateMutability: "nonpayable", inputs: [], outputs: [] },
+  { type: "function", name: "emergencyWithdraw", stateMutability: "nonpayable", inputs: [], outputs: [] },
+  { type: "function", name: "transferOwnership", stateMutability: "nonpayable", inputs: [{ name: "newOwner", type: "address" }], outputs: [] },
 
   // ---- Events ----
-  { type: "event", name: "TableCreated", inputs: [
-    { name: "smallBlind", type: "uint256", indexed: false },
-    { name: "bigBlind", type: "uint256", indexed: false },
-    { name: "maxPlayers", type: "uint256", indexed: false },
-  ]},
   { type: "event", name: "PlayerSatDown", inputs: [
     { name: "player", type: "address", indexed: true },
     { name: "buyIn", type: "uint256", indexed: false },
   ]},
   { type: "event", name: "PlayerLeft", inputs: [
     { name: "player", type: "address", indexed: true },
-    { name: "withdrawal", type: "uint256", indexed: false },
+    { name: "cashout", type: "uint256", indexed: false },
     { name: "fee", type: "uint256", indexed: false },
   ]},
   { type: "event", name: "HandStarted", inputs: [
@@ -112,10 +118,33 @@ export const POKER_TABLE_ABI = [
   { type: "event", name: "HandFinished", inputs: [
     { name: "handNumber", type: "uint256", indexed: false },
   ]},
-  { type: "event", name: "AgentRegistered", inputs: [
-    { name: "agent", type: "address", indexed: true },
-    { name: "name", type: "string", indexed: false },
-    { name: "emoji", type: "string", indexed: false },
+  { type: "event", name: "ReceivedEth", inputs: [
+    { name: "from", type: "address", indexed: true },
+    { name: "amount", type: "uint256", indexed: false },
+  ]},
+  { type: "event", name: "CommunityCardDealt", inputs: [
+    { name: "card", type: "uint8", indexed: false },
+    { name: "index", type: "uint256", indexed: false },
+  ]},
+  { type: "event", name: "PlayerTimedOut", inputs: [
+    { name: "player", type: "address", indexed: true },
+  ]},
+  { type: "event", name: "PotUnclaimed", inputs: [
+    { name: "amount", type: "uint256", indexed: false },
+  ]},
+  { type: "event", name: "EmergencyWithdraw", inputs: [
+    { name: "to", type: "address", indexed: true },
+    { name: "amount", type: "uint256", indexed: false },
+  ]},
+  { type: "event", name: "OwnershipTransferred", inputs: [
+    { name: "previousOwner", type: "address", indexed: true },
+    { name: "newOwner", type: "address", indexed: true },
+  ]},
+  { type: "event", name: "SplitPot", inputs: [
+    { name: "winners", type: "address[]", indexed: false },
+    { name: "share", type: "uint256", indexed: false },
+    { name: "winningHand", type: "string", indexed: false },
+    { name: "winningScore", type: "uint256", indexed: false },
   ]},
 ] as const;
 
@@ -169,6 +198,14 @@ export const FAUCET_ABI = [
     name: "Dripped",
     inputs: [
       { name: "to", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event",
+    name: "FaucetFunded",
+    inputs: [
+      { name: "from", type: "address", indexed: true },
       { name: "amount", type: "uint256", indexed: false },
     ],
   },

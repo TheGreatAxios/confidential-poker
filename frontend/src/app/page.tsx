@@ -2,9 +2,10 @@
 
 import { useState, useCallback } from "react";
 import { motion } from "framer-motion";
+import { useAccount } from "wagmi";
 import { useGameState } from "@/hooks/useGameState";
 import { useFaucet } from "@/hooks/useFaucet";
-import { api } from "@/lib/api";
+import { isContractReady, CONTRACTS } from "@/lib/wagmi";
 import PokerTable from "@/components/PokerTable";
 import GameStats from "@/components/GameStats";
 import FaucetPanel from "@/components/FaucetPanel";
@@ -23,18 +24,17 @@ import {
 import Link from "next/link";
 
 export default function Home() {
-  const { game, loading, isDemo, refetch } = useGameState("current");
-  const faucet = useFaucet();
+  const { address } = useAccount();
+  const { game, loading, isError, refetch } = useGameState();
+  const faucet = useFaucet(address ?? "");
   const [showFaucet, setShowFaucet] = useState(false);
   const [gameAction, setGameAction] = useState<string | null>(null);
+  const isDemo = !game || !isContractReady(CONTRACTS.pokerTable) || isError;
 
   const handleStartGame = useCallback(async () => {
     setGameAction("starting");
     try {
-      await api.startGame();
-      setTimeout(refetch, 1000);
-    } catch {
-      // Demo mode — just trigger a refetch
+      await refetch();
     } finally {
       setGameAction(null);
     }
@@ -43,10 +43,7 @@ export default function Home() {
   const handleStopGame = useCallback(async () => {
     setGameAction("stopping");
     try {
-      await api.stopGame();
-      setTimeout(refetch, 1000);
-    } catch {
-      // Demo mode
+      await refetch();
     } finally {
       setGameAction(null);
     }
@@ -133,10 +130,10 @@ export default function Home() {
 
               {/* Game Controls */}
               <GameControls
-                isRunning={game.isRunning}
+                isRunning={game.phase !== "Waiting" && game.phase !== "Finished"}
                 phase={game.phase}
-                handNumber={game.handNumber}
-                ante={game.ante}
+                handNumber={Number(game.handNumber)}
+                ante={Number(game.smallBlind)}
                 busy={gameAction !== null}
                 onStart={handleStartGame}
                 onNewHand={refetch}

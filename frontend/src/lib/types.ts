@@ -38,7 +38,6 @@ export interface PlayerState {
   folded: boolean;
   hasActed: boolean;
   holeCards: [number, number]; // encoded cards (suit<<4)|rank
-  cardsRevealed: boolean;
   isSeated: boolean;
   // Derived flags
   isDealer: boolean;
@@ -90,6 +89,5 @@ export interface RawPlayer {
   folded: boolean;
   hasActed: boolean;
   holeCards: [number, number];
-  cardsRevealed: boolean;
   isSeated: boolean;
 }

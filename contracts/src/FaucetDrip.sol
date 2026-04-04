@@ -9,9 +9,12 @@ contract FaucetDrip {
     uint256 public constant COOLDOWN = 1 hours;
 
     event Dripped(address indexed to, uint256 amount);
+    event FaucetFunded(address indexed from, uint256 amount);
 
     /// @notice Anyone can fund the faucet
-    function fund() external payable {}
+    function fund() external payable {
+        emit FaucetFunded(msg.sender, msg.value);
+    }
 
     function drip() external {
         require(block.timestamp >= lastClaim[msg.sender] + COOLDOWN, "Cooldown active");

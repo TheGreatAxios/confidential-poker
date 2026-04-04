@@ -71,7 +71,7 @@ export function useTips() {
       };
       setTips((prev) => [newTip, ...prev]);
     } catch {
-      // Simulate tip in demo mode
+      // Simulate tip in demo mode — mark as demo, not a real tx
       const agent = AGENTS.find((a) => a.id === agentId);
       const newTip: TipRecord = {
         id: Date.now().toString(),
@@ -79,7 +79,7 @@ export function useTips() {
         agentName: agent?.name ?? "Unknown",
         amount,
         timestamp: new Date().toISOString(),
-        txHash: "0x" + Math.random().toString(16).slice(2, 10) + "...",
+        isDemo: true,
       };
       setTips((prev) => [newTip, ...prev]);
     } finally {

@@ -168,16 +168,16 @@ library HandEvaluator {
             tiebreaker = uint256(isWheel ? 5 : ranks[0]) << 192;
         } else if (maxCount == 3) {
             // Three of a kind - collect kickers
-            uint8 kicker1 = 0;
-            uint8 kicker2 = 0;
+            uint8[2] memory kickers;
+            uint kIdx = 0;
             for (uint i = 0; i < 5; i++) {
-                if (ranks[i] != maxRank) {
-                    if (kicker1 == 0) kicker1 = ranks[i];
-                    else kicker2 = ranks[i];
+                if (ranks[i] != maxRank && kIdx < 2) {
+                    kickers[kIdx] = ranks[i];
+                    kIdx++;
                 }
             }
             handRank = THREE_OF_A_KIND;
-            tiebreaker = (uint256(maxRank) << 192) | (uint256(kicker1) << 184) | (uint256(kicker2) << 176);
+            tiebreaker = (uint256(maxRank) << 192) | (uint256(kickers[0]) << 184) | (uint256(kickers[1]) << 176);
         } else if (maxCount == 2 && secondCount == 2) {
             // Two pair
             uint8 kicker = 0;

@@ -13,6 +13,7 @@ export interface FaucetState {
   lastAxusdClaim: string | null;
   claimingMskl: boolean;
   claimingAxusd: boolean;
+  error: string | null;
 }
 
 const DEFAULT_STATE: FaucetState = {
@@ -24,6 +25,7 @@ const DEFAULT_STATE: FaucetState = {
   lastAxusdClaim: null,
   claimingMskl: false,
   claimingAxusd: false,
+  error: null,
 };
 
 export function useFaucet(address: string = "") {
@@ -62,7 +64,7 @@ export function useFaucet(address: string = "") {
   }, [fetchBalances]);
 
   const claimMskl = async () => {
-    setState((prev) => ({ ...prev, claimingMskl: true }));
+    setState((prev) => ({ ...prev, claimingMskl: true, error: null }));
     try {
       await api.claimMskl(address);
       setState((prev) => ({
@@ -71,19 +73,18 @@ export function useFaucet(address: string = "") {
         claimingMskl: false,
       }));
       await fetchBalances();
-    } catch {
-      // Demo: simulate cooldown
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Claim failed";
       setState((prev) => ({
         ...prev,
-        msklCooldown: 60,
         claimingMskl: false,
-        msklBalance: prev.msklBalance + 100,
+        error: msg,
       }));
     }
   };
 
   const claimAxusd = async () => {
-    setState((prev) => ({ ...prev, claimingAxusd: true }));
+    setState((prev) => ({ ...prev, claimingAxusd: true, error: null }));
     try {
       await api.claimAxusd(address);
       setState((prev) => ({
@@ -92,12 +93,12 @@ export function useFaucet(address: string = "") {
         claimingAxusd: false,
       }));
       await fetchBalances();
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Claim failed";
       setState((prev) => ({
         ...prev,
-        axusdCooldown: 60,
         claimingAxusd: false,
-        axusdBalance: prev.axusdBalance + 1000,
+        error: msg,
       }));
     }
   };
