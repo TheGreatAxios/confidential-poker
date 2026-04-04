@@ -64,63 +64,92 @@ export default function Card({
   if (hidden) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: -30, rotate: -5 }}
-        animate={{ opacity: 1, y: 0, rotate: 0 }}
-        transition={{ delay: index * 0.1, duration: 0.4, ease: "easeOut" }}
+        initial={{ opacity: 0, y: -50, rotate: -8, scale: 0.6 }}
+        animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
+        transition={{
+          delay: index * 0.12,
+          duration: 0.45,
+          ease: [0.175, 0.885, 0.32, 1.275],
+        }}
         className={clsx(
           "relative inline-flex items-center justify-center rounded-xl overflow-hidden",
           cardSize,
-          "bg-gradient-to-br from-gray-800 via-gray-900 to-gray-800",
-          "border border-gray-700/50 shadow-card card-shimmer",
-          highlighted && "ring-2 ring-poker-gold/50",
+          "card-back-pattern",
+          "border border-poker-gold/15 shadow-card card-shimmer",
+          highlighted && "ring-2 ring-poker-gold/60 shadow-gold",
           className
         )}
+        style={{
+          boxShadow: highlighted
+            ? "0 0 16px rgba(212, 175, 55, 0.3), 0 0 32px rgba(212, 175, 55, 0.1), 0 2px 8px rgba(0,0,0,0.4)"
+            : "0 2px 8px rgba(0,0,0,0.5), 0 4px 16px rgba(0,0,0,0.2)",
+        }}
       >
-        <Lock className={`${isSmall ? "w-3 h-3" : "w-5 h-5"} text-poker-gold/70 animate-shimmer`} />
-        <div className="absolute top-0.5 left-0.5 text-[6px] text-poker-gold/30 font-bold">🔒</div>
-        <div className="absolute bottom-0.5 right-0.5 text-[6px] text-poker-gold/30 font-bold">🔒</div>
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-poker-gold/5 to-transparent animate-shimmer" />
+        <Lock className={`${isSmall ? "w-3 h-3" : "w-5 h-5"} text-poker-gold/60`} style={{
+          filter: "drop-shadow(0 0 6px rgba(212, 175, 55, 0.4))",
+        }} />
+        <div className="absolute top-1 left-1 text-[5px] text-poker-gold/25 font-bold">✦</div>
+        <div className="absolute bottom-1 right-1 text-[5px] text-poker-gold/25 font-bold">✦</div>
+        {/* Gold shimmer sweep */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-poker-gold/[0.06] to-transparent animate-shimmer" />
+        {/* Subtle gold edge glow */}
+        <div className="absolute inset-0 rounded-xl border border-poker-gold/10 pointer-events-none" />
       </motion.div>
     );
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -30, rotate: -5, scale: 0.8 }}
+      initial={{ opacity: 0, y: -50, rotate: -8, scale: 0.7 }}
       animate={{ opacity: 1, y: 0, rotate: 0, scale: 1 }}
       transition={{
-        delay: index * 0.1,
-        duration: 0.4,
+        delay: index * 0.12,
+        duration: 0.45,
         ease: [0.175, 0.885, 0.32, 1.275],
       }}
       className={clsx(
         "relative inline-flex flex-col items-center justify-center rounded-xl overflow-hidden",
         cardSize,
-        "bg-poker-card shadow-card border border-gray-200/50",
-        highlighted && "ring-2 ring-poker-gold shadow-gold",
+        "card-face shadow-card-elevated",
+        highlighted && "ring-2 ring-poker-gold/70",
         className
       )}
+      style={{
+        boxShadow: highlighted
+          ? "0 0 20px rgba(212, 175, 55, 0.35), 0 0 40px rgba(212, 175, 55, 0.12), 0 8px 32px rgba(0,0,0,0.3)"
+          : "0 2px 8px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.1), 0 8px 24px rgba(0,0,0,0.05)",
+      }}
     >
+      {/* Subtle inner border for card refinement */}
+      <div className="absolute inset-[3px] rounded-lg border border-black/[0.04] pointer-events-none" />
+
       {/* Top-left rank + suit */}
       <div
-        className={clsx("absolute top-0.5 left-1 leading-none font-bold", isRed ? "text-red-500" : "text-gray-900", cornerSize)}
+        className={clsx("absolute top-1 left-1.5 leading-none font-bold", isRed ? "text-red-500" : "text-gray-900", cornerSize)}
       >
         <div>{rankStr}</div>
         <div className="-mt-0.5">{suitStr}</div>
       </div>
 
       {/* Center suit */}
-      <div className={clsx(isRed ? "text-red-500" : "text-gray-900", centerSize, "mt-1")}>
+      <div className={clsx(isRed ? "text-red-500" : "text-gray-900", centerSize, "mt-1")} style={{
+        filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.08))",
+      }}>
         {suitStr}
       </div>
 
       {/* Bottom-right rank + suit (rotated) */}
       <div
-        className={clsx("absolute bottom-0.5 right-1 leading-none font-bold rotate-180", isRed ? "text-red-500" : "text-gray-900", cornerSize)}
+        className={clsx("absolute bottom-1 right-1.5 leading-none font-bold rotate-180", isRed ? "text-red-500" : "text-gray-900", cornerSize)}
       >
         <div>{rankStr}</div>
         <div className="-mt-0.5">{suitStr}</div>
       </div>
+
+      {/* Highlighted gold shimmer overlay */}
+      {highlighted && (
+        <div className="absolute inset-0 bg-gradient-to-tr from-poker-gold/5 via-transparent to-poker-gold/5 rounded-xl pointer-events-none" />
+      )}
     </motion.div>
   );
 }

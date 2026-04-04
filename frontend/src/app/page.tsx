@@ -50,24 +50,28 @@ export default function Home() {
   }, [refetch]);
 
   return (
-    <main className="min-h-screen">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-poker-bg/80 backdrop-blur-lg border-b border-white/5">
+    <main className="min-h-screen relative z-10">
+      {/* Header — Sticky glass-dark with gold accents */}
+      <header className="sticky top-0 z-50 glass-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <motion.div
-              className="w-9 h-9 rounded-xl bg-gradient-to-br from-poker-gold to-amber-600 flex items-center justify-center shadow-gold"
-              animate={{ rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="w-9 h-9 rounded-xl flex items-center justify-center"
+              animate={{ rotate: [0, 3, -3, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+              style={{
+                background: "linear-gradient(135deg, #C9A84C, #D4AF37, #FFD700)",
+                boxShadow: "0 0 20px rgba(212, 175, 55, 0.25), 0 0 40px rgba(212, 175, 55, 0.08)",
+              }}
             >
               <span className="text-lg">🃏</span>
             </motion.div>
             <div>
-              <h1 className="text-lg sm:text-xl font-black text-gradient-gold leading-tight">
+              <h1 className="text-lg sm:text-xl font-black text-gradient-gold leading-tight tracking-tight">
                 AI Poker Night
               </h1>
-              <p className="text-[10px] text-gray-500 hidden sm:block">
-                Texas Hold&apos;em · Encrypted Cards · SKALE Network
+              <p className="text-[10px] text-gray-500 hidden sm:block tracking-[0.15em] uppercase">
+                Texas Hold&apos;em · Encrypted Cards · SKALE
               </p>
             </div>
           </div>
@@ -75,27 +79,50 @@ export default function Home() {
           {/* Status badges */}
           <div className="flex items-center gap-2">
             {isDemo && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                DEMO MODE
+              <span className="text-[10px] px-2.5 py-1 rounded-full font-medium tracking-wide" style={{
+                background: "linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05))",
+                color: "rgba(245, 158, 11, 0.85)",
+                border: "1px solid rgba(245, 158, 11, 0.15)",
+              }}>
+                DEMO
               </span>
             )}
             <button
               onClick={() => setShowFaucet(true)}
-              className="flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors"
+              className="flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-full font-medium transition-all duration-200"
+              style={{
+                background: "linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.05))",
+                color: "rgba(96, 165, 250, 0.9)",
+                border: "1px solid rgba(59, 130, 246, 0.15)",
+              }}
             >
               <Droplets className="w-3 h-3" />
               Faucet
             </button>
-            <span className="hidden sm:flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-gray-400 border border-white/10">
-              <Shield className="w-3 h-3 text-poker-green" />
+            <span className="hidden sm:flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-medium" style={{
+              background: "rgba(255,255,255,0.025)",
+              color: "rgba(156, 163, 175, 0.8)",
+              border: "1px solid rgba(255,255,255,0.05)",
+            }}>
+              <Shield className="w-3 h-3 text-poker-green" style={{
+                filter: "drop-shadow(0 0 3px rgba(34, 197, 94, 0.3))",
+              }} />
               BITE
             </span>
-            <span className="hidden sm:flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-gray-400 border border-white/10">
-              <Wallet className="w-3 h-3 text-poker-gold" />
+            <span className="hidden sm:flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-full font-medium" style={{
+              background: "rgba(255,255,255,0.025)",
+              color: "rgba(156, 163, 175, 0.8)",
+              border: "1px solid rgba(255,255,255,0.05)",
+            }}>
+              <Wallet className="w-3 h-3 text-poker-gold" style={{
+                filter: "drop-shadow(0 0 3px rgba(212, 175, 55, 0.3))",
+              }} />
               OWS
             </span>
           </div>
         </div>
+        {/* Subtle gold line separator */}
+        <div className="header-gold-line" />
       </header>
 
       {/* Main content */}
@@ -104,15 +131,19 @@ export default function Home() {
           /* Loading state */
           <div className="flex flex-col items-center justify-center py-32 gap-4">
             <motion.div
-              className="w-16 h-16 rounded-2xl bg-gradient-to-br from-poker-gold/20 to-poker-gold/5 flex items-center justify-center"
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
+              className="w-16 h-16 rounded-2xl flex items-center justify-center"
+              animate={{ scale: [1, 1.06, 1], rotate: [0, 2, -2, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              style={{
+                background: "linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05))",
+                boxShadow: "0 0 40px rgba(212, 175, 55, 0.1), 0 0 80px rgba(212, 175, 55, 0.04)",
+              }}
             >
               <span className="text-3xl">🃏</span>
             </motion.div>
             <div className="text-center">
-              <p className="text-sm text-gray-400">Loading table...</p>
-              <p className="text-xs text-gray-600 mt-1">Shuffling the deck</p>
+              <p className="text-sm text-gray-300/80 tracking-wide">Loading table...</p>
+              <p className="text-xs text-gray-600 mt-1 tracking-[0.2em] uppercase">Shuffling the deck</p>
             </div>
           </div>
         ) : game ? (
@@ -121,9 +152,9 @@ export default function Home() {
             <div className="space-y-6">
               {/* Poker Table */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.94 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
               >
                 <PokerTable game={game} />
               </motion.div>
@@ -140,22 +171,25 @@ export default function Home() {
                 onStop={handleStopGame}
               />
 
-              {/* Info strip */}
+              {/* Info strip — glass panels */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  { icon: Lock, label: "Encryption", value: "BITE CTX", color: "text-purple-400" },
-                  { icon: Zap, label: "Payments", value: "x402", color: "text-poker-gold" },
-                  { icon: Wallet, label: "Wallets", value: "OWS", color: "text-blue-400" },
-                  { icon: BarChart3, label: "Network", value: "SKALE", color: "text-poker-green" },
+                  { icon: Lock, label: "Encryption", value: "BITE CTX", color: "#A855F7" },
+                  { icon: Zap, label: "Payments", value: "x402", color: "#D4AF37" },
+                  { icon: Wallet, label: "Wallets", value: "OWS", color: "#3B82F6" },
+                  { icon: BarChart3, label: "Network", value: "SKALE", color: "#22C55E" },
                 ].map(({ icon: Icon, label, value, color }) => (
                   <div
                     key={label}
-                    className="flex items-center gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5"
+                    className="glass-premium flex items-center gap-2 p-2.5 rounded-xl transition-all duration-300 group cursor-default"
+                    style={{
+                      borderColor: "rgba(255,255,255,0.04)",
+                    }}
                   >
-                    <Icon className={`w-3.5 h-3.5 ${color}`} />
+                    <Icon className="w-3.5 h-3.5 opacity-60 group-hover:opacity-80 transition-opacity duration-300" style={{ color }} />
                     <div>
-                      <span className="text-[10px] text-gray-600 block">{label}</span>
-                      <span className="text-xs font-semibold text-white">{value}</span>
+                      <span className="text-[10px] text-gray-600 block tracking-[0.15em] uppercase">{label}</span>
+                      <span className="text-xs font-semibold text-white/85">{value}</span>
                     </div>
                   </div>
                 ))}
@@ -168,14 +202,19 @@ export default function Home() {
               <TipButton />
               <Link
                 href="/stats"
-                className="block rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm p-4 hover:border-white/[0.12] transition-colors group"
+                className="block rounded-xl glass-premium p-4 transition-all duration-300 group"
+                style={{
+                  borderColor: "rgba(255,255,255,0.04)",
+                }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Trophy className="w-4 h-4 text-poker-gold group-hover:scale-110 transition-transform" />
-                    <span className="text-sm font-semibold text-white">Agent Leaderboard</span>
+                    <Trophy className="w-4 h-4 text-poker-gold group-hover:scale-110 transition-transform duration-300" style={{
+                      filter: "drop-shadow(0 0 4px rgba(212, 175, 55, 0.3))",
+                    }} />
+                    <span className="text-sm font-semibold text-white/85 tracking-wide">Agent Leaderboard</span>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-gray-500 group-hover:translate-x-0.5 transition-transform" />
+                  <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-poker-gold group-hover:translate-x-0.5 transition-all duration-300" />
                 </div>
               </Link>
             </div>
@@ -183,25 +222,29 @@ export default function Home() {
         ) : null}
       </div>
 
-      {/* Footer */}
-      <footer className="border-t border-white/5 mt-12">
+      {/* Footer — minimal muted */}
+      <footer className="mt-12 relative z-10" style={{
+        borderTop: "1px solid rgba(255,255,255,0.03)",
+      }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] text-gray-600">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 tracking-wide">
               <span>Powered by</span>
               <span className="text-gray-400 font-medium">SKALE Network</span>
-              <span>·</span>
+              <span className="text-gray-700">·</span>
               <span className="text-gray-400 font-medium">BITE Protocol</span>
-              <span>·</span>
+              <span className="text-gray-700">·</span>
               <span className="text-gray-400 font-medium">Open Wallet Standard</span>
-              <span>·</span>
+              <span className="text-gray-700">·</span>
               <span className="text-gray-400 font-medium">x402</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-gray-500">
+              <span className="text-gray-600">
                 OWS Hackathon · Track 4 & 5
               </span>
-              <span className="w-1 h-1 rounded-full bg-poker-green animate-pulse" />
+              <span className="w-1 h-1 rounded-full bg-poker-green animate-pulse" style={{
+                boxShadow: "0 0 4px rgba(34, 197, 94, 0.5)",
+              }} />
             </div>
           </div>
         </div>

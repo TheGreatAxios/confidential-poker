@@ -23,7 +23,18 @@ export default function RootLayout({
         className={`${inter.variable} font-sans antialiased bg-poker-bg min-h-screen`}
       >
         <Providers>
-          <div className="min-h-screen bg-gradient-to-b from-poker-bg via-poker-bg to-[#050505]">
+          <div className="min-h-screen relative">
+            {/* Layered dark background with luxurious depth — gold & emerald glows */}
+            <div className="fixed inset-0 pointer-events-none" style={{
+              background: `
+                radial-gradient(ellipse 600px 300px at 50% -2%, rgba(212, 175, 55, 0.025) 0%, transparent 100%),
+                radial-gradient(ellipse 500px 500px at 15% 20%, rgba(13, 61, 35, 0.18) 0%, transparent 70%),
+                radial-gradient(ellipse 500px 500px at 85% 25%, rgba(13, 61, 35, 0.12) 0%, transparent 70%),
+                radial-gradient(ellipse 400px 400px at 50% 60%, rgba(10, 47, 26, 0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 300px 200px at 80% 85%, rgba(212, 175, 55, 0.012) 0%, transparent 100%),
+                linear-gradient(180deg, #080808 0%, #0A0A0A 30%, #080808 60%, #050505 100%)
+              `
+            }} />
             {children}
           </div>
         </Providers>

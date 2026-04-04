@@ -39,15 +39,18 @@ export default function CommunityCards({ cards, phase }: CommunityCardsProps) {
 
   return (
     <div className="flex flex-col items-center gap-3">
-      {/* Phase label */}
+      {/* Phase label with icon + gold text */}
       <motion.div
         key={phase}
-        initial={{ y: -10, opacity: 0 }}
+        initial={{ y: -12, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
         className="flex items-center gap-2"
       >
         <span className="text-base">{PHASE_ICONS[phase]}</span>
-        <span className="text-xs font-bold uppercase tracking-[0.2em] text-poker-gold/90">
+        <span className="text-xs font-bold uppercase tracking-[0.25em] text-poker-gold/90" style={{
+          textShadow: "0 0 12px rgba(212, 175, 55, 0.2)",
+        }}>
           {PHASE_LABELS[phase]}
         </span>
       </motion.div>
@@ -64,9 +67,13 @@ export default function CommunityCards({ cards, phase }: CommunityCardsProps) {
           return (
             <motion.div
               key={i}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 25 }}
               animate={{ opacity: 1, y: yOffset }}
-              transition={{ delay: i * 0.08, duration: 0.4, ease: "easeOut" }}
+              transition={{
+                delay: isRevealed ? i * 0.1 : 0,
+                duration: 0.45,
+                ease: "easeOut",
+              }}
             >
               {isRevealed && card ? (
                 <Card
@@ -77,20 +84,24 @@ export default function CommunityCards({ cards, phase }: CommunityCardsProps) {
                   index={i}
                 />
               ) : (
-                /* Placeholder card */
+                /* Placeholder card slot with pulsing opacity */
                 <motion.div
                   animate={{
-                    opacity: [0.15, 0.25, 0.15],
+                    opacity: [0.1, 0.2, 0.1],
                   }}
                   transition={{
-                    duration: 2,
+                    duration: 2.5,
                     repeat: Infinity,
-                    delay: i * 0.3,
+                    delay: i * 0.4,
                   }}
-                  className="w-[80px] h-[112px] rounded-xl border border-white/[0.06] bg-white/[0.02] flex items-center justify-center"
+                  className="w-[80px] h-[112px] rounded-xl flex items-center justify-center"
+                  style={{
+                    background: "linear-gradient(160deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.005) 100%)",
+                    border: "1px solid rgba(255,255,255,0.05)",
+                  }}
                 >
-                  <div className="w-[70px] h-[102px] rounded-lg border border-dashed border-white/[0.08] flex items-center justify-center">
-                    <span className="text-white/10 text-lg">?</span>
+                  <div className="w-[70px] h-[102px] rounded-lg border border-dashed border-white/[0.06] flex items-center justify-center">
+                    <span className="text-white/[0.08] text-lg">?</span>
                   </div>
                 </motion.div>
               )}
@@ -100,7 +111,7 @@ export default function CommunityCards({ cards, phase }: CommunityCardsProps) {
       </div>
 
       {/* Phase progress dots */}
-      <div className="flex items-center gap-1.5 mt-1">
+      <div className="flex items-center gap-2 mt-1">
         {(["Preflop", "Flop", "Turn", "River", "Showdown"] as Phase[]).map((p, i) => {
           const isActive = PHASE_LABELS[phase] === PHASE_LABELS[p];
           const isPast =
@@ -113,14 +124,21 @@ export default function CommunityCards({ cards, phase }: CommunityCardsProps) {
             <motion.div
               key={p}
               animate={{
-                scale: isActive ? 1.3 : 1,
+                scale: isActive ? 1.4 : 1,
+              }}
+              className="w-1.5 h-1.5 rounded-full"
+              style={{
                 backgroundColor: isActive
                   ? "#FFD700"
                   : isPast
                   ? "#22C55E"
-                  : "rgba(255,255,255,0.15)",
+                  : "rgba(255,255,255,0.12)",
+                boxShadow: isActive
+                  ? "0 0 8px rgba(255, 215, 0, 0.6), 0 0 16px rgba(255, 215, 0, 0.2)"
+                  : isPast
+                  ? "0 0 4px rgba(34, 197, 94, 0.3)"
+                  : "none",
               }}
-              className="w-1.5 h-1.5 rounded-full"
             />
           );
         })}

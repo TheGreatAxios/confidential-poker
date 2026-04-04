@@ -64,29 +64,45 @@ export default function FaucetPanel({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{
+          background: "rgba(0, 0, 0, 0.7)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+        }}
         onClick={onClose}
       >
         <motion.div
-          initial={{ scale: 0.9, y: 20 }}
+          initial={{ scale: 0.9, y: 24 }}
           animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.9, y: 20 }}
+          exit={{ scale: 0.9, y: 24 }}
           transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          className="w-full max-w-md rounded-2xl border border-white/[0.08] bg-[#111111] shadow-2xl overflow-hidden"
+          className="w-full max-w-md rounded-2xl overflow-hidden"
+          style={{
+            background: "linear-gradient(165deg, #151515 0%, #111111 50%, #0D0D0D 100%)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            boxShadow: "0 24px 64px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03)",
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+          <div className="flex items-center justify-between px-5 py-4" style={{
+            borderBottom: "1px solid rgba(255,255,255,0.05)",
+          }}>
             <div>
-              <h3 className="text-sm font-bold text-white">Faucet</h3>
-              <p className="text-[11px] text-white/40 mt-0.5">Claim tokens for playing</p>
+              <h3 className="text-sm font-bold text-white/90">Faucet</h3>
+              <p className="text-[11px] text-white/35 mt-0.5 tracking-wide">Claim tokens for playing</p>
             </div>
             {onClose && (
               <button
                 onClick={onClose}
-                className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/[0.05] hover:bg-white/[0.1] transition-colors"
+                className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-200"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                }}
               >
-                <X className="w-3.5 h-3.5 text-white/50" />
+                <X className="w-3.5 h-3.5 text-white/40" />
               </button>
             )}
           </div>
@@ -96,25 +112,40 @@ export default function FaucetPanel({
             {/* mSKL (Gas) */}
             <motion.div
               className={clsx(
-                "rounded-xl border p-4 transition-colors duration-500",
-                msklFlash ? "border-green-500/40 bg-green-500/[0.05]" : "border-white/[0.06] bg-white/[0.02]"
+                "rounded-xl border p-4 transition-all duration-500",
+                msklFlash
+                  ? "success-flash"
+                  : ""
               )}
+              style={{
+                background: msklFlash
+                  ? "rgba(34, 197, 94, 0.05)"
+                  : "linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.005))",
+                border: msklFlash
+                  ? "1px solid rgba(34, 197, 94, 0.3)"
+                  : "1px solid rgba(255,255,255,0.05)",
+              }}
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-600/20 border border-blue-500/20 flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{
+                    background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.08))",
+                    border: "1px solid rgba(59, 130, 246, 0.15)",
+                  }}>
                     <Droplets className="w-4.5 h-4.5 text-blue-400" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white">mSKL</h4>
-                    <p className="text-[10px] text-white/40">Gas token on Europa</p>
+                    <h4 className="text-sm font-bold text-white/90">mSKL</h4>
+                    <p className="text-[10px] text-white/35 tracking-wide">Gas token on Europa</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-sm font-mono font-bold text-blue-400">
+                  <span className="text-sm font-mono font-bold text-blue-400" style={{
+                    textShadow: "0 0 8px rgba(59, 130, 246, 0.2)",
+                  }}>
                     {formatBalance(msklBalance)}
                   </span>
-                  <p className="text-[10px] text-white/30">balance</p>
+                  <p className="text-[10px] text-white/25">balance</p>
                 </div>
               </div>
               <button
@@ -123,9 +154,16 @@ export default function FaucetPanel({
                 className={clsx(
                   "w-full py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-200",
                   canClaimMskl
-                    ? "bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
-                    : "bg-white/[0.04] text-white/30 cursor-not-allowed"
+                    ? "text-white"
+                    : "text-white/25 cursor-not-allowed"
                 )}
+                style={canClaimMskl ? {
+                  background: "linear-gradient(135deg, #2563EB, #3B82F6, #2563EB)",
+                  boxShadow: "0 4px 16px rgba(59, 130, 246, 0.25)",
+                } : {
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.04)",
+                }}
               >
                 {claimingMskl ? (
                   <>
@@ -154,25 +192,40 @@ export default function FaucetPanel({
             {/* axUSD (Betting) */}
             <motion.div
               className={clsx(
-                "rounded-xl border p-4 transition-colors duration-500",
-                axusdFlash ? "border-green-500/40 bg-green-500/[0.05]" : "border-white/[0.06] bg-white/[0.02]"
+                "rounded-xl border p-4 transition-all duration-500",
+                axusdFlash
+                  ? "success-flash"
+                  : ""
               )}
+              style={{
+                background: axusdFlash
+                  ? "rgba(34, 197, 94, 0.05)"
+                  : "linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.005))",
+                border: axusdFlash
+                  ? "1px solid rgba(34, 197, 94, 0.3)"
+                  : "1px solid rgba(255,255,255,0.05)",
+              }}
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/20 flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{
+                    background: "linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.08))",
+                    border: "1px solid rgba(34, 197, 94, 0.15)",
+                  }}>
                     <DollarSign className="w-4.5 h-4.5 text-green-400" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white">axUSD</h4>
-                    <p className="text-[10px] text-white/40">Betting token (BITE)</p>
+                    <h4 className="text-sm font-bold text-white/90">axUSD</h4>
+                    <p className="text-[10px] text-white/35 tracking-wide">Betting token (BITE)</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-sm font-mono font-bold text-green-400">
+                  <span className="text-sm font-mono font-bold text-green-400" style={{
+                    textShadow: "0 0 8px rgba(34, 197, 94, 0.2)",
+                  }}>
                     {formatBalance(axusdBalance)}
                   </span>
-                  <p className="text-[10px] text-white/30">balance</p>
+                  <p className="text-[10px] text-white/25">balance</p>
                 </div>
               </div>
               <button
@@ -181,9 +234,16 @@ export default function FaucetPanel({
                 className={clsx(
                   "w-full py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-all duration-200",
                   canClaimAxusd
-                    ? "bg-gradient-to-r from-green-600 to-green-500 text-white shadow-lg shadow-green-500/20 hover:shadow-green-500/40"
-                    : "bg-white/[0.04] text-white/30 cursor-not-allowed"
+                    ? "text-white"
+                    : "text-white/25 cursor-not-allowed"
                 )}
+                style={canClaimAxusd ? {
+                  background: "linear-gradient(135deg, #16A34A, #22C55E, #16A34A)",
+                  boxShadow: "0 4px 16px rgba(34, 197, 94, 0.25)",
+                } : {
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.04)",
+                }}
               >
                 {claimingAxusd ? (
                   <>

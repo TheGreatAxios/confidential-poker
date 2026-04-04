@@ -52,7 +52,7 @@ function playerToAgent(
 function decodeCommunityCards(cards: number[]): CardData[] {
   return cards.map((encoded) => ({
     rank: encoded & 0x0f,
-    suit: (encoded >> 4) & 0x03,
+    suit: (encoded >> 4) & 0x07,
     encrypted: false,
   }));
 }
@@ -77,8 +77,6 @@ export default function PokerTable({ game, showCards = false }: PokerTableProps)
     ? `Hand #${handNumber} Complete`
     : `Hand #${handNumber} — ${phase}`;
 
-  const positions: Array<"top" | "left" | "right" | "bottom"> = ["top", "left", "right", "bottom"];
-
   return (
     <div className="table-perspective w-full max-w-[900px] mx-auto">
       {/* Status Banner */}
@@ -86,36 +84,47 @@ export default function PokerTable({ game, showCards = false }: PokerTableProps)
         key={statusText}
         initial={{ y: -10, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="text-center mb-4"
+        className="text-center mb-5"
       >
-        <h2 className="text-sm sm:text-base font-semibold text-white/80 tracking-wide">
+        <h2 className="text-sm sm:text-base font-semibold text-white/80 tracking-[0.2em] uppercase">
           {statusText}
         </h2>
+        {/* Phase indicator — gold gradient glow line */}
         {isRunning && phase !== "Showdown" && (
-          <div className="w-32 h-[2px] mx-auto mt-2 rounded-full phase-glow-line" />
+          <div className="mt-2.5 flex items-center justify-center gap-2">
+            <div className="w-12 h-px bg-gradient-to-r from-transparent to-poker-gold/30" />
+            <div className="w-32 sm:w-40 h-[2px] phase-glow-line rounded-full" />
+            <div className="w-12 h-px bg-gradient-to-l from-transparent to-poker-gold/30" />
+          </div>
         )}
       </motion.div>
 
       {/* Table Container */}
       <motion.div
         className="table-3d relative"
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
       >
         {/* Outer wood rail */}
-        <div className="wood-rail rounded-[50%] p-3 sm:p-4">
+        <div className="wood-rail rounded-[50%] p-3 sm:p-4 relative">
+          {/* Inner gold trim racing stripe */}
+          <div className="absolute inset-[6px] sm:inset-[8px] rounded-[50%] gold-trim pointer-events-none" />
+
           {/* Inner felt surface */}
           <div className="felt-surface rounded-[50%] p-6 sm:p-10 min-h-[340px] sm:min-h-[420px] relative overflow-hidden">
-            {/* Ambient light effect */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[60%] bg-radial pointer-events-none"
+            {/* Ambient overhead spot light — warm golden cone */}
+            <div
+              className="absolute top-0 left-1/2 -translate-x-1/2 w-[95%] h-[75%] pointer-events-none"
               style={{
-                background: "radial-gradient(ellipse at center, rgba(15,95,15,0.15) 0%, transparent 70%)",
+                background: "radial-gradient(ellipse at 50% 0%, rgba(255, 245, 220, 0.05) 0%, rgba(255, 245, 220, 0.02) 30%, transparent 65%)",
               }}
             />
 
-            {/* Inner oval line decoration */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85%] h-[70%] rounded-[50%] border border-white/[0.04] pointer-events-none" />
+            {/* Inner oval decoration — triple line for premium detail */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[63%] rounded-[50%] border border-white/[0.035] pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[83%] h-[66%] rounded-[50%] border border-white/[0.02] pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[86%] h-[69%] rounded-[50%] border border-poker-gold/[0.03] pointer-events-none" />
 
             {/* Seats Grid */}
             <div className="relative w-full h-full min-h-[260px] sm:min-h-[320px]">
@@ -134,7 +143,7 @@ export default function PokerTable({ game, showCards = false }: PokerTableProps)
               </div>
 
               {/* RIGHT seat */}
-              <div className="absolute top-1/2 right=0 -translate-y-1/2 translate-x-2">
+              <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-2">
                 {agents[2] && (
                   <AgentSeat agent={agents[2]} position="right" showCards={showCards} />
                 )}
@@ -156,24 +165,28 @@ export default function PokerTable({ game, showCards = false }: PokerTableProps)
                 <CommunityCards cards={communityCards} phase={phase} />
               </div>
 
-              {/* Floating ambient particles */}
-              {isRunning && [...Array(4)].map((_, i) => (
+              {/* Floating ambient gold dust particles — 8 particles, larger range */}
+              {isRunning && [...Array(8)].map((_, i) => (
                 <motion.div
                   key={`particle-${i}`}
-                  className="absolute w-1 h-1 rounded-full bg-poker-gold/20 pointer-events-none"
+                  className="absolute rounded-full pointer-events-none"
                   style={{
-                    left: `${30 + i * 15}%`,
-                    top: `${40 + (i % 2) * 20}%`,
+                    width: `${1.5 + (i % 3) * 0.5}px`,
+                    height: `${1.5 + (i % 3) * 0.5}px`,
+                    left: `${20 + i * 9}%`,
+                    top: `${30 + (i % 4) * 12}%`,
+                    background: `radial-gradient(circle, rgba(212, 175, 55, 0.7), rgba(255, 215, 0, 0.2))`,
+                    filter: "blur(0.3px)",
                   }}
                   animate={{
                     y: [0, -15 - i * 5, 0],
-                    x: [0, 5 + i * 3, 0],
-                    opacity: [0, 0.6, 0],
+                    x: [0, 4 + i * 2.5, -2 + i, 0],
+                    opacity: [0, 0.4, 0.6, 0.4, 0],
                   }}
                   transition={{
-                    duration: 3 + i,
+                    duration: 4 + i * 0.6,
                     repeat: Infinity,
-                    delay: i * 0.8,
+                    delay: i * 0.6,
                     ease: "easeInOut",
                   }}
                 />
@@ -183,8 +196,11 @@ export default function PokerTable({ game, showCards = false }: PokerTableProps)
         </div>
       </motion.div>
 
-      {/* Table shadow */}
-      <div className="mx-auto w-[90%] h-6 bg-black/30 blur-xl rounded-full -mt-1" />
+      {/* Table shadow — large dramatic shadow beneath */}
+      <div
+        className="mx-auto w-[88%] h-10 blur-3xl rounded-full -mt-1"
+        style={{ background: "radial-gradient(ellipse at center, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 50%, transparent 70%)" }}
+      />
     </div>
   );
 }

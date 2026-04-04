@@ -28,112 +28,131 @@ export default function GameControls({
 }: GameControlsProps) {
   return (
     <div className="w-full max-w-[900px] mx-auto">
-      <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm p-5">
+      <div className="rounded-2xl glass-panel p-5">
         {/* Top row: Game info */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-              <Info className="w-3.5 h-3.5 text-white/40" />
-              <span className="text-[11px] text-white/50 font-medium">
-                Ante: <span className="text-poker-gold font-bold">$${ante}</span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.05)",
+            }}>
+              <Info className="w-3.5 h-3.5 text-white/35" />
+              <span className="text-[11px] text-white/45 font-medium">
+                Ante: <span className="text-poker-gold font-bold" style={{ textShadow: "0 0 8px rgba(212, 175, 55, 0.2)" }}>${ante}</span>
               </span>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
-              <Zap className="w-3.5 h-3.5 text-white/40" />
-              <span className="text-[11px] text-white/50 font-medium">
-                Hand: <span className="text-white/80 font-bold">#{handNumber}</span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.05)",
+            }}>
+              <Zap className="w-3.5 h-3.5 text-white/35" />
+              <span className="text-[11px] text-white/45 font-medium">
+                Hand: <span className="text-white/75 font-bold">#{handNumber}</span>
               </span>
             </div>
           </div>
 
-          {/* Status indicator */}
+          {/* Status indicator with pulsing dot */}
           <div className={clsx(
             "flex items-center gap-1.5 px-3 py-1.5 rounded-full border",
             isRunning
-              ? "bg-green-500/10 border-green-500/30"
-              : "bg-gray-500/10 border-gray-500/30"
-          )}>
+              ? "border-green-500/25"
+              : "border-gray-600/25"
+          )} style={{
+            background: isRunning
+              ? "linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(34, 197, 94, 0.03))"
+              : "linear-gradient(135deg, rgba(107, 114, 128, 0.08), rgba(107, 114, 128, 0.03))",
+          }}>
             <motion.div
-              animate={isRunning ? { scale: [1, 1.3, 1], opacity: [1, 0.5, 1] } : {}}
+              animate={isRunning ? { scale: [1, 1.4, 1], opacity: [1, 0.4, 1] } : {}}
               transition={{ duration: 1.5, repeat: Infinity }}
               className={clsx(
                 "w-1.5 h-1.5 rounded-full",
-                isRunning ? "bg-green-500" : "bg-gray-500"
+                isRunning ? "bg-green-400" : "bg-gray-500"
               )}
+              style={isRunning ? { boxShadow: "0 0 8px rgba(34, 197, 94, 0.5)" } : {}}
             />
             <span className={clsx(
-              "text-[10px] font-bold uppercase tracking-wider",
-              isRunning ? "text-green-400" : "text-gray-400"
+              "text-[10px] font-bold uppercase tracking-[0.15em]",
+              isRunning ? "text-green-400" : "text-gray-500"
             )}>
               {isRunning ? "Live" : "Paused"}
             </span>
           </div>
         </div>
 
-        {/* Bottom row: Buttons */}
+        {/* Bottom row: Buttons — gradient, tactile */}
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Start Game */}
+          {/* Start Game — green gradient */}
           {!isRunning && (
             <motion.button
-              whileHover={{ scale: busy ? 1 : 1.03 }}
-              whileTap={{ scale: busy ? 1 : 0.97 }}
+              whileHover={{ scale: busy ? 1 : 1.04 }}
+              whileTap={{ scale: busy ? 1 : 0.96 }}
               onClick={onStart}
               disabled={busy}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm
-                bg-gradient-to-r from-green-600 to-green-500 text-white
-                shadow-lg shadow-green-500/20
-                hover:shadow-green-500/40 hover:from-green-500 hover:to-green-400
+                text-white
                 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                background: "linear-gradient(135deg, #16A34A, #22C55E, #16A34A)",
+                boxShadow: "0 4px 16px rgba(34, 197, 94, 0.25), 0 0 0 0 rgba(34, 197, 94, 0)",
+              }}
             >
               <Play className="w-4 h-4" />
               Start Game
             </motion.button>
           )}
 
-          {/* New Hand */}
+          {/* New Hand — blue gradient */}
           {isRunning && phase === "Showdown" && (
             <motion.button
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
               onClick={onNewHand}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm
-                bg-gradient-to-r from-blue-600 to-blue-500 text-white
-                shadow-lg shadow-blue-500/20
-                hover:shadow-blue-500/40 hover:from-blue-500 hover:to-blue-400
+                text-white
                 transition-all duration-200"
+              style={{
+                background: "linear-gradient(135deg, #2563EB, #3B82F6, #2563EB)",
+                boxShadow: "0 4px 16px rgba(59, 130, 246, 0.25)",
+              }}
             >
               <RotateCcw className="w-4 h-4" />
               New Hand
             </motion.button>
           )}
 
-          {/* Stop Game */}
+          {/* Stop Game — red gradient */}
           {isRunning && (
             <motion.button
-              whileHover={{ scale: busy ? 1 : 1.03 }}
-              whileTap={{ scale: busy ? 1 : 0.97 }}
+              whileHover={{ scale: busy ? 1 : 1.04 }}
+              whileTap={{ scale: busy ? 1 : 0.96 }}
               onClick={onStop}
               disabled={busy}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm
-                bg-gradient-to-r from-red-600 to-red-500 text-white
-                shadow-lg shadow-red-500/20
-                hover:shadow-red-500/40 hover:from-red-500 hover:to-red-400
+                text-white
                 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                background: "linear-gradient(135deg, #DC2626, #EF4444, #DC2626)",
+                boxShadow: "0 4px 16px rgba(239, 68, 68, 0.25)",
+              }}
             >
               <Square className="w-4 h-4" />
               Stop
             </motion.button>
           )}
 
-          {/* Join Table (decorative) */}
+          {/* Join Table — gold gradient */}
           <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.96 }}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm ml-auto
-              bg-gradient-to-r from-poker-goldDark to-poker-gold text-black
-              shadow-lg shadow-poker-gold/20
-              hover:shadow-poker-gold/40 hover:from-poker-gold hover:to-poker-goldLight
+              text-black
               transition-all duration-200"
+            style={{
+              background: "linear-gradient(135deg, #9A7B2A, #D4AF37, #FFD700, #D4AF37)",
+              boxShadow: "0 4px 16px rgba(212, 175, 55, 0.3), 0 0 32px rgba(212, 175, 55, 0.08)",
+            }}
           >
             <Zap className="w-4 h-4" />
             Join Table
@@ -145,7 +164,7 @@ export default function GameControls({
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mt-3 text-[11px] text-white/40 text-center"
+            className="mt-3 text-[11px] text-white/30 text-center tracking-wide"
           >
             Game running... Hand #{handNumber} • {phase}
           </motion.p>
@@ -154,9 +173,9 @@ export default function GameControls({
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mt-3 text-[11px] text-white/40 text-center"
+            className="mt-3 text-[11px] text-white/30 text-center tracking-wide"
           >
-            Press <span className="text-green-400 font-semibold">Start Game</span> to begin the AI poker night
+            Press <span className="text-green-400/80 font-semibold">Start Game</span> to begin the AI poker night
           </motion.p>
         )}
       </div>
