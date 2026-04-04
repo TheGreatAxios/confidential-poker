@@ -2,7 +2,7 @@
 // AI Poker Night — Mock Data for Standalone Demo
 // ============================================================
 
-import type { GameState, AgentState, CardData, AgentStats } from "./types";
+import type { MockGameState, AgentState, CardData, AgentStats } from "./types";
 
 // ---- Agent Definitions ----
 export const MOCK_AGENTS: Omit<AgentState, "stack" | "currentBet" | "cards" | "action" | "folded" | "allIn" | "isDealer" | "isSB" | "isBB" | "isActive" | "isWinner">[] = [
@@ -130,7 +130,7 @@ export const MOCK_AGENT_STATS: AgentStats[] = [
 // ---- Phase cycling logic ----
 const PHASE_ORDER: Array<keyof typeof PHASE_DATA> = ["Pre-Flop", "Flop", "Turn", "River", "Showdown"];
 
-export function createMockGameState(handNumber: number, phaseIndex: number): GameState {
+export function createMockGameState(handNumber: number, phaseIndex: number): MockGameState {
   const phaseKey = PHASE_ORDER[phaseIndex % PHASE_ORDER.length];
   const phaseState = PHASE_DATA[phaseKey];
   return {

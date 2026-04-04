@@ -40,7 +40,7 @@ export function useTips() {
   const fetchTips = useCallback(async () => {
     try {
       const data = await api.getTipHistory();
-      setTips(Array.isArray(data) ? data : data.tips ?? []);
+      setTips(Array.isArray(data) ? (data as TipRecord[]) : []);
     } catch {
       if (tips.length === 0) {
         setTips(DEMO_TIPS);
@@ -59,7 +59,7 @@ export function useTips() {
   const sendTip = async (agentId: number, amount: number = 0.05) => {
     setTipping(true);
     try {
-      const result = await api.tipAgent(agentId, amount);
+      await api.tipAgent(agentId, amount);
       const agent = AGENTS.find((a) => a.id === agentId);
       const newTip: TipRecord = {
         id: Date.now().toString(),
@@ -67,7 +67,6 @@ export function useTips() {
         agentName: agent?.name ?? "Unknown",
         amount,
         timestamp: new Date().toISOString(),
-        txHash: result?.txHash,
       };
       setTips((prev) => [newTip, ...prev]);
     } catch {
@@ -79,7 +78,6 @@ export function useTips() {
         agentName: agent?.name ?? "Unknown",
         amount,
         timestamp: new Date().toISOString(),
-        isDemo: true,
       };
       setTips((prev) => [newTip, ...prev]);
     } finally {

@@ -4,15 +4,70 @@ import { motion } from "framer-motion";
 import AgentSeat from "./AgentSeat";
 import CommunityCards from "./CommunityCards";
 import PotDisplay from "./PotDisplay";
-import type { GameState } from "@/lib/types";
+import type { GameState, AgentState, CardData, Phase } from "@/lib/types";
 
 interface PokerTableProps {
   game: GameState;
   showCards?: boolean;
 }
 
+/** Map contract PlayerState → AgentState for AgentSeat component */
+function playerToAgent(
+  player: GameState["players"][number],
+  index: number
+): AgentState {
+  const COLORS = ["#EF4444", "#3B82F6", "#A855F7", "#22C55E"];
+  const EMOJIS = ["🤬", "🧐", "🎭", "🧮"];
+  const NAMES = ["Rage Bot", "Caution", "Bluffer", "Calculus"];
+  const PERSONALITIES = ["Aggressive", "Conservative", "Deceptive", "Mathematical"];
+
+  // Decode hole cards
+  const cards: CardData[] = player.holeCards.map((encoded) => ({
+    rank: encoded & 0x0f,
+    suit: (encoded >> 4) & 0x03,
+    encrypted: false,
+  }));
+
+  return {
+    id: index,
+    name: NAMES[index] ?? `Player ${index + 1}`,
+    emoji: EMOJIS[index] ?? "🃏",
+    color: COLORS[index] ?? "#888",
+    personality: PERSONALITIES[index] ?? "Unknown",
+    stack: Number(player.stack),
+    currentBet: Number(player.currentBet),
+    cards,
+    action: player.folded ? "Folded" : player.isActive ? "Thinking" : "Wait",
+    folded: player.folded,
+    allIn: false,
+    isDealer: player.isDealer,
+    isSB: false,
+    isBB: false,
+    isActive: player.isActive,
+    isWinner: player.isWinner,
+  };
+}
+
+/** Map encoded community card numbers → CardData */
+function decodeCommunityCards(cards: number[]): CardData[] {
+  return cards.map((encoded) => ({
+    rank: encoded & 0x0f,
+    suit: (encoded >> 4) & 0x03,
+    encrypted: false,
+  }));
+}
+
 export default function PokerTable({ game, showCards = false }: PokerTableProps) {
-  const { agents, communityCards, phase, pot, handNumber, isRunning } = game;
+  const agents = game.players
+    .filter((p) => p.isSeated)
+    .map((p, i) => playerToAgent(p, i));
+
+  const communityCards = decodeCommunityCards(game.communityCards);
+  const phase = game.phase;
+  const pot = Number(game.pot);
+  const handNumber = Number(game.handNumber);
+  const isRunning = phase !== "Waiting" && phase !== "Finished";
+
   const activePlayers = agents.filter((a) => !a.folded).length;
 
   // Status text
@@ -79,7 +134,7 @@ export default function PokerTable({ game, showCards = false }: PokerTableProps)
               </div>
 
               {/* RIGHT seat */}
-              <div className="absolute top-1/2 right-0 -translate-y-1/2 translate-x-2">
+              <div className="absolute top-1/2 right=0 -translate-y-1/2 translate-x-2">
                 {agents[2] && (
                   <AgentSeat agent={agents[2]} position="right" showCards={showCards} />
                 )}

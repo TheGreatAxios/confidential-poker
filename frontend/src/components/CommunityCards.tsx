@@ -11,26 +11,28 @@ interface CommunityCardsProps {
 
 const PHASE_LABELS: Record<Phase, string> = {
   Waiting: "Waiting for Players",
-  "Pre-Flop": "Pre-Flop",
+  Preflop: "Pre-Flop",
   Flop: "Flop",
   Turn: "Turn",
   River: "River",
   Showdown: "Showdown",
+  Finished: "Hand Complete",
 };
 
 const PHASE_ICONS: Record<Phase, string> = {
   Waiting: "⏳",
-  "Pre-Flop": "🃏",
+  Preflop: "🃏",
   Flop: "✨",
   Turn: "🔄",
   River: "🌊",
   Showdown: "🏆",
+  Finished: "✅",
 };
 
 export default function CommunityCards({ cards, phase }: CommunityCardsProps) {
   const totalSlots = 5;
   const visibleCount =
-    phase === "Pre-Flop" || phase === "Waiting" ? 0 :
+    phase === "Preflop" || phase === "Waiting" ? 0 :
     phase === "Flop" ? 3 :
     phase === "Turn" ? 4 :
     5;
@@ -99,10 +101,10 @@ export default function CommunityCards({ cards, phase }: CommunityCardsProps) {
 
       {/* Phase progress dots */}
       <div className="flex items-center gap-1.5 mt-1">
-        {(["Pre-Flop", "Flop", "Turn", "River", "Showdown"] as Phase[]).map((p, i) => {
+        {(["Preflop", "Flop", "Turn", "River", "Showdown"] as Phase[]).map((p, i) => {
           const isActive = PHASE_LABELS[phase] === PHASE_LABELS[p];
           const isPast =
-            (p === "Pre-Flop" && ["Flop", "Turn", "River", "Showdown"].includes(phase)) ||
+            (p === "Preflop" && ["Flop", "Turn", "River", "Showdown"].includes(phase)) ||
             (p === "Flop" && ["Turn", "River", "Showdown"].includes(phase)) ||
             (p === "Turn" && ["River", "Showdown"].includes(phase)) ||
             (p === "River" && phase === "Showdown");

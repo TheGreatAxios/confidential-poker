@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import { Crown } from "lucide-react";
 import clsx from "clsx";
-import type { AgentInfo } from "@/lib/types";
 
 interface AgentAvatarProps {
   emoji: string;

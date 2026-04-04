@@ -91,3 +91,59 @@ export interface RawPlayer {
   holeCards: [number, number];
   isSeated: boolean;
 }
+
+// ============================================================
+// Demo / Agent Types (used by mock data and AgentSeat)
+// ============================================================
+
+/** Agent state for demo mode (broader than contract PlayerState) */
+export interface AgentState {
+  id: number;
+  name: string;
+  emoji: string;
+  color: string;
+  personality: string;
+  stack: number;
+  currentBet: number;
+  cards: CardData[];
+  action: string;
+  folded: boolean;
+  allIn: boolean;
+  isDealer: boolean;
+  isSB: boolean;
+  isBB: boolean;
+  isActive: boolean;
+  isWinner: boolean;
+}
+
+/** Agent leaderboard stats */
+export interface AgentStats {
+  id: number;
+  name: string;
+  emoji: string;
+  color: string;
+  personality: string;
+  handsPlayed: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  bluffs: number;
+  bluffRate: number;
+  totalWon: number;
+  totalLost: number;
+  tipsReceived: number;
+  chipHistory: number[];
+}
+
+/** Game state for demo / mock mode (separate from on-chain GameState) */
+export interface MockGameState {
+  id: string;
+  handNumber: number;
+  phase: string;
+  pot: number;
+  communityCards: CardData[];
+  agents: AgentState[];
+  deckCount: number;
+  isRunning: boolean;
+  ante: number;
+}

@@ -144,7 +144,7 @@ export default function StatsPage() {
               <div className="mt-4 pt-3 border-t border-white/[0.04]">
                 <p className="text-[10px] text-gray-600 mb-2">Chip History (last 10 hands)</p>
                 <div className="flex items-end gap-1 h-8">
-                  {agent.chipHistory.map((chips, i) => {
+                  {agent.chipHistory.map((chips: number, i: number) => {
                     const max = Math.max(...agent.chipHistory);
                     const min = Math.min(...agent.chipHistory);
                     const range = max - min || 1;
