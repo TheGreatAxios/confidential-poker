@@ -1,3 +1,3 @@
 export { mockSklAbi } from "./MockSKL.js";
 export { axiosUsdAbi } from "./AxiosUSD.js";
-export { pokerGameAbi } from "./PokerGame.js";
+export { pokerTableAbi, faucetAbi } from "./PokerTable.js";
