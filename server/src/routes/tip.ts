@@ -60,12 +60,12 @@ tipRoutes.post("/:agentAddress", async (c) => {
     // x402 payment configuration (for reference / frontend integration)
     const x402Payment = {
       scheme: "exact",
-      network: config.x402Network,
-      facilitator: config.x402FacilitatorUrl,
+      network: "skale-base-sepolia",
+      facilitator: "https://payai.facilitator.dev",
       payTo: agentAddress as `0x${string}`,
       price: {
         amount: tipAmount,
-        asset: config.x402TokenAddress,
+        asset: config.axiosUsdAddress,
       },
       description: `Tip for AI Poker agent ${agentAddress}`,
     };

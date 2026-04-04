@@ -25,9 +25,9 @@ health.get("/api/health", async (c) => {
     chainConnected,
     rpcUrl: config.rpcUrl,
     contractsDeployed:
-      config.pokerGameAddress !==
+      config.pokerTableAddress !==
       "0x0000000000000000000000000000000000000000",
-    pokerGameAddress: config.pokerGameAddress,
+    pokerTableAddress: config.pokerTableAddress,
     mockSklAddress: config.mockSklAddress,
     axiosUsdAddress: config.axiosUsdAddress,
     timestamp: new Date().toISOString(),

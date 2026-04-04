@@ -109,6 +109,6 @@ joinRoutes.get("/queue", (c) => {
     })),
     totalQueued: queued.length,
     totalPlaying: playing.length,
-    activeTables: orchestrator.listTables().length,
+    activeBots: orchestrator.seatedAgents.length,
   });
 });
