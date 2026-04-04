@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { Script, console } from "forge-std/Script.sol";
-import { MockSKL } from "../contracts/src/MockSKL.sol";
-import { AxiosUSD } from "../contracts/src/AxiosUSD.sol";
-import { PokerTable } from "../contracts/src/PokerTable.sol";
+import {Script, console} from "forge-std/Script.sol";
+import {MockSKL} from "../contracts/src/MockSKL.sol";
+import {AxiosUSD} from "../contracts/src/AxiosUSD.sol";
+import {PokerTable} from "../contracts/src/PokerTable.sol";
 
 contract Deploy is Script {
     function run() external {
@@ -27,11 +27,17 @@ contract Deploy is Script {
 
         // Output addresses as JSON for frontend
         string memory json = string.concat(
-            '{',
-            '"mockSKL": "', vm.toString(address(mskl)), '",',
-            '"axiosUSD": "', vm.toString(address(axusd)), '",',
-            '"pokerTable": "', vm.toString(address(poker)), '"',
-            '}'
+            "{",
+            '"mockSKL": "',
+            vm.toString(address(mskl)),
+            '",',
+            '"axiosUSD": "',
+            vm.toString(address(axusd)),
+            '",',
+            '"pokerTable": "',
+            vm.toString(address(poker)),
+            '"',
+            "}"
         );
         vm.writeFile("deployments.json", json);
         console.log("\nDeployment JSON written to deployments.json");

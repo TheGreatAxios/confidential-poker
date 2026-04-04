@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { Test } from "forge-std/Test.sol";
-import { PokerTable } from "../contracts/src/PokerTable.sol";
+import {Test} from "forge-std/Test.sol";
+import {PokerTable} from "../contracts/src/PokerTable.sol";
 
 contract PokerTableTest is Test {
     PokerTable table;
 
     address alice = address(0xA11CE);
-    address bob   = address(0xB0B);
+    address bob = address(0xB0B);
     address carol = address(0xCA70);
 
     uint256 constant BUY_IN = 1 ether;
@@ -197,9 +197,8 @@ contract PokerTableTest is Test {
         table.dealNewHand();
 
         address active = table.getActivePlayer();
-        uint256 stackBefore = _findPlayerIdx(active) < table.getPlayers().length
-            ? table.getPlayers()[_findPlayerIdx(active)].stack
-            : 0;
+        uint256 stackBefore =
+            _findPlayerIdx(active) < table.getPlayers().length ? table.getPlayers()[_findPlayerIdx(active)].stack : 0;
 
         vm.prank(active);
         table.raise(1 ether);

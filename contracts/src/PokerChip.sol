@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title PokerChip — ERC20 chip token with EIP-3009 transferWithAuthorization
 /// @notice Used for buy-in/cash-out at PokerTable. Supports gasless meta-transactions
@@ -20,9 +20,8 @@ contract PokerChip is ERC20Permit, Ownable {
     bytes32 public constant RECEIVE_WITH_AUTHORIZATION_TYPEHASH = keccak256(
         "ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
     );
-    bytes32 public constant CANCEL_AUTHORIZATION_TYPEHASH = keccak256(
-        "CancelAuthorization(address authorizer,bytes32 nonce)"
-    );
+    bytes32 public constant CANCEL_AUTHORIZATION_TYPEHASH =
+        keccak256("CancelAuthorization(address authorizer,bytes32 nonce)");
     uint256 public constant AUTHORIZATION_STATE_ACTIVE = 1;
 
     // ── Minter ──
@@ -41,9 +40,7 @@ contract PokerChip is ERC20Permit, Ownable {
     error NotMinter();
     error ZeroAddress();
 
-    constructor(
-        address _minter
-    ) ERC20("PokerChip", "CHIP") ERC20Permit("PokerChip") Ownable(msg.sender) {
+    constructor(address _minter) ERC20("PokerChip", "CHIP") ERC20Permit("PokerChip") Ownable(msg.sender) {
         if (_minter == address(0)) revert ZeroAddress();
         minter = _minter;
     }
@@ -99,15 +96,9 @@ contract PokerChip is ERC20Permit, Ownable {
         _transfer(from, to, value);
     }
 
-    function cancelAuthorization(
-        address authorizer,
-        bytes32 nonce,
-        bytes calldata signature
-    ) external {
+    function cancelAuthorization(address authorizer, bytes32 nonce, bytes calldata signature) external {
         require(authorizer != address(0), "Zero address");
-        bytes32 digest = _hashTypedDataV4(
-            keccak256(abi.encode(CANCEL_AUTHORIZATION_TYPEHASH, authorizer, nonce))
-        );
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CANCEL_AUTHORIZATION_TYPEHASH, authorizer, nonce)));
         require(authorizer == ECDSA.recover(digest, signature), "Invalid signature");
         require(_authorizationStates[nonce] == 0, "Already used/canceled");
         _authorizationStates[nonce] = AUTHORIZATION_STATE_ACTIVE + 1; // canceled
@@ -136,15 +127,7 @@ contract PokerChip is ERC20Permit, Ownable {
         require(block.timestamp <= validBefore, "Signature expired");
 
         bytes32 digest = _hashTypedDataV4(
-            keccak256(abi.encode(
-                TRANSFER_WITH_AUTHORIZATION_TYPEHASH,
-                from,
-                to,
-                value,
-                validAfter,
-                validBefore,
-                nonce
-            ))
+            keccak256(abi.encode(TRANSFER_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce))
         );
         require(from == ECDSA.recover(digest, signature), "Invalid signature");
     }

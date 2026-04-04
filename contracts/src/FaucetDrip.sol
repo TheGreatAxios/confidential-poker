@@ -21,7 +21,7 @@ contract FaucetDrip {
         require(address(this).balance >= DRIP_AMOUNT, "Faucet empty");
 
         lastClaim[msg.sender] = block.timestamp;
-        (bool ok, ) = msg.sender.call{value: DRIP_AMOUNT}("");
+        (bool ok,) = msg.sender.call{value: DRIP_AMOUNT}("");
         require(ok, "Transfer failed");
 
         emit Dripped(msg.sender, DRIP_AMOUNT);

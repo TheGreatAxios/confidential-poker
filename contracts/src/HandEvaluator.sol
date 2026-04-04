@@ -46,10 +46,10 @@ library HandEvaluator {
             bestScore = _score5(cards);
         } else if (cards.length == 6) {
             // Try all 5-card combinations from 6 cards (6 combos)
-            for (uint i = 0; i < 6; i++) {
+            for (uint256 i = 0; i < 6; i++) {
                 uint8[5] memory five;
-                uint idx = 0;
-                for (uint j = 0; j < 6; j++) {
+                uint256 idx = 0;
+                for (uint256 j = 0; j < 6; j++) {
                     if (j != i) {
                         five[idx] = cards[j];
                         idx++;
@@ -60,11 +60,11 @@ library HandEvaluator {
             }
         } else {
             // 7 cards: try all 21 combinations of 5
-            for (uint i = 0; i < 7; i++) {
-                for (uint j = i + 1; j < 7; j++) {
+            for (uint256 i = 0; i < 7; i++) {
+                for (uint256 j = i + 1; j < 7; j++) {
                     uint8[5] memory five;
-                    uint idx = 0;
-                    for (uint k = 0; k < 7; k++) {
+                    uint256 idx = 0;
+                    for (uint256 k = 0; k < 7; k++) {
                         if (k != i && k != j) {
                             five[idx] = cards[k];
                             idx++;
@@ -82,7 +82,9 @@ library HandEvaluator {
     /// @notice Score exactly 5 cards (from memory array)
     function _score5(uint8[] memory cards) internal pure returns (uint256) {
         uint8[5] memory five;
-        for (uint i = 0; i < 5; i++) five[i] = cards[i];
+        for (uint256 i = 0; i < 5; i++) {
+            five[i] = cards[i];
+        }
         return _score5Fixed(five);
     }
 
@@ -91,35 +93,32 @@ library HandEvaluator {
         // Extract ranks and suits
         uint8[5] memory ranks;
         uint8[5] memory suits;
-        for (uint i = 0; i < 5; i++) {
+        for (uint256 i = 0; i < 5; i++) {
             ranks[i] = getRank(cards[i]);
             suits[i] = getSuit(cards[i]);
         }
 
         // Sort ranks descending (simple bubble sort for 5 elements)
-        for (uint i = 0; i < 4; i++) {
-            for (uint j = 0; j < 4 - i; j++) {
+        for (uint256 i = 0; i < 4; i++) {
+            for (uint256 j = 0; j < 4 - i; j++) {
                 if (ranks[j] < ranks[j + 1]) {
                     (ranks[j], ranks[j + 1]) = (ranks[j + 1], ranks[j]);
                 }
             }
         }
 
-        bool isFlush = (suits[0] == suits[1] && suits[1] == suits[2] &&
-                        suits[2] == suits[3] && suits[3] == suits[4]);
+        bool isFlush = (suits[0] == suits[1] && suits[1] == suits[2] && suits[2] == suits[3] && suits[3] == suits[4]);
 
         bool isStraight = _isStraight(ranks);
 
         // Check for wheel (A-2-3-4-5): ranks are 14,5,4,3,2
-        bool isWheel = !isStraight &&
-            ranks[0] == 14 && ranks[1] == 5 && ranks[2] == 4 &&
-            ranks[3] == 3 && ranks[4] == 2;
+        bool isWheel = !isStraight && ranks[0] == 14 && ranks[1] == 5 && ranks[2] == 4 && ranks[3] == 3 && ranks[4] == 2;
 
         if (isWheel) isStraight = true;
 
         // Count rank frequencies
         uint8[15] memory counts;
-        for (uint i = 0; i < 5; i++) {
+        for (uint256 i = 0; i < 5; i++) {
             counts[ranks[i]]++;
         }
 
@@ -128,7 +127,7 @@ library HandEvaluator {
         uint8 maxRank = 0;
         uint8 secondRank = 0;
 
-        for (uint r = 2; r <= 14; r++) {
+        for (uint256 r = 2; r <= 14; r++) {
             if (counts[r] > maxCount) {
                 secondCount = maxCount;
                 secondRank = maxRank;
@@ -160,17 +159,16 @@ library HandEvaluator {
             tiebreaker = (uint256(maxRank) << 192) | (uint256(secondRank) << 184);
         } else if (isFlush) {
             handRank = FLUSH;
-            tiebreaker = (uint256(ranks[0]) << 192) | (uint256(ranks[1]) << 184) |
-                        (uint256(ranks[2]) << 176) | (uint256(ranks[3]) << 168) |
-                        (uint256(ranks[4]) << 160);
+            tiebreaker = (uint256(ranks[0]) << 192) | (uint256(ranks[1]) << 184) | (uint256(ranks[2]) << 176)
+                | (uint256(ranks[3]) << 168) | (uint256(ranks[4]) << 160);
         } else if (isStraight) {
             handRank = STRAIGHT;
             tiebreaker = uint256(isWheel ? 5 : ranks[0]) << 192;
         } else if (maxCount == 3) {
             // Three of a kind - collect kickers
             uint8[2] memory kickers;
-            uint kIdx = 0;
-            for (uint i = 0; i < 5; i++) {
+            uint256 kIdx = 0;
+            for (uint256 i = 0; i < 5; i++) {
                 if (ranks[i] != maxRank && kIdx < 2) {
                     kickers[kIdx] = ranks[i];
                     kIdx++;
@@ -181,7 +179,7 @@ library HandEvaluator {
         } else if (maxCount == 2 && secondCount == 2) {
             // Two pair
             uint8 kicker = 0;
-            for (uint i = 0; i < 5; i++) {
+            for (uint256 i = 0; i < 5; i++) {
                 if (ranks[i] != maxRank && ranks[i] != secondRank) {
                     kicker = ranks[i];
                 }
@@ -195,22 +193,21 @@ library HandEvaluator {
         } else if (maxCount == 2) {
             // One pair - collect 3 kickers
             uint8[3] memory kickers;
-            uint kIdx = 0;
-            for (uint i = 0; i < 5; i++) {
+            uint256 kIdx = 0;
+            for (uint256 i = 0; i < 5; i++) {
                 if (ranks[i] != maxRank) {
                     kickers[kIdx] = ranks[i];
                     kIdx++;
                 }
             }
             handRank = ONE_PAIR;
-            tiebreaker = (uint256(maxRank) << 192) | (uint256(kickers[0]) << 184) |
-                        (uint256(kickers[1]) << 176) | (uint256(kickers[2]) << 168);
+            tiebreaker = (uint256(maxRank) << 192) | (uint256(kickers[0]) << 184) | (uint256(kickers[1]) << 176)
+                | (uint256(kickers[2]) << 168);
         } else {
             // High card
             handRank = HIGH_CARD;
-            tiebreaker = (uint256(ranks[0]) << 192) | (uint256(ranks[1]) << 184) |
-                        (uint256(ranks[2]) << 176) | (uint256(ranks[3]) << 168) |
-                        (uint256(ranks[4]) << 160);
+            tiebreaker = (uint256(ranks[0]) << 192) | (uint256(ranks[1]) << 184) | (uint256(ranks[2]) << 176)
+                | (uint256(ranks[3]) << 168) | (uint256(ranks[4]) << 160);
         }
 
         return (uint256(handRank) << 200) | tiebreaker;
@@ -219,8 +216,9 @@ library HandEvaluator {
     /// @notice Check if sorted ranks form a straight
     function _isStraight(uint8[5] memory ranks) internal pure returns (bool) {
         // Ranks are already sorted descending
-        if (ranks[0] == ranks[1] + 1 && ranks[1] == ranks[2] + 1 &&
-            ranks[2] == ranks[3] + 1 && ranks[3] == ranks[4] + 1) {
+        if (
+            ranks[0] == ranks[1] + 1 && ranks[1] == ranks[2] + 1 && ranks[2] == ranks[3] + 1 && ranks[3] == ranks[4] + 1
+        ) {
             return true;
         }
         return false;

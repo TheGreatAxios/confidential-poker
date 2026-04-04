@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { IBiteSupplicant } from "@skalenetwork/bite-solidity/interfaces/IBiteSupplicant.sol";
-import { BITE } from "@skalenetwork/bite-solidity/BITE.sol";
-import { HandEvaluator } from "./HandEvaluator.sol";
+import {IBiteSupplicant} from "@skalenetwork/bite-solidity/interfaces/IBiteSupplicant.sol";
+import {BITE} from "@skalenetwork/bite-solidity/BITE.sol";
+import {HandEvaluator} from "./HandEvaluator.sol";
 
 /// @title PokerTable — One contract = one poker table, open to any wallet
 /// @notice Players sit down with ETH, deal, bet, showdown. Cards encrypted via BITE.
@@ -14,13 +14,13 @@ contract PokerTable is IBiteSupplicant {
     // ──────────────── Enums ────────────────
 
     enum Phase {
-        Waiting,    // 0 — between hands, players may join/leave
-        Preflop,    // 1
-        Flop,       // 2
-        Turn,       // 3
-        River,      // 4
-        Showdown,   // 5 — BITE CTX decryption / winner determination
-        Finished    // 6 — hand resolved, ready for next deal
+        Waiting, // 0 — between hands, players may join/leave
+        Preflop, // 1
+        Flop, // 2
+        Turn, // 3
+        River, // 4
+        Showdown, // 5 — BITE CTX decryption / winner determination
+        Finished // 6 — hand resolved, ready for next deal
     }
 
     // ──────────────── Structs ────────────────
@@ -32,12 +32,12 @@ contract PokerTable is IBiteSupplicant {
 
     struct Player {
         address addr;
-        bytes32 viewerKey;       // BITE viewer key for encrypted card delivery
-        uint256 stack;           // ETH balance at table
-        uint256 currentBet;      // Bet in current betting round
-        bool    folded;
-        bool    hasActed;
-        bool    isSeated;
+        bytes32 viewerKey; // BITE viewer key for encrypted card delivery
+        uint256 stack; // ETH balance at table
+        uint256 currentBet; // Bet in current betting round
+        bool folded;
+        bool hasActed;
+        bool isSeated;
         uint8[2] holeCards;
     }
 
@@ -51,20 +51,20 @@ contract PokerTable is IBiteSupplicant {
 
     // ──────────────── Per-hand state ────────────────
 
-    Phase    public phase;
-    uint256  public pot;
-    uint256  public currentMaxBet;
-    uint256  public dealerIndex;
-    uint256  public activePlayerIndex;
+    Phase public phase;
+    uint256 public pot;
+    uint256 public currentMaxBet;
+    uint256 public dealerIndex;
+    uint256 public activePlayerIndex;
     uint8[5] public communityCards;
-    uint256  public communityCardCount;
-    uint256  public lastRaise;
-    uint256  public handCount;
+    uint256 public communityCardCount;
+    uint256 public lastRaise;
+    uint256 public handCount;
 
     // ──────────────── Deck ────────────────
 
     uint8[52] internal deck;
-    uint256  internal deckIndex;
+    uint256 internal deckIndex;
 
     // ──────────────── Side Pots ────────────────
 
@@ -86,7 +86,7 @@ contract PokerTable is IBiteSupplicant {
 
     // ──────────────── Constants ────────────────
 
-    uint256 public constant WITHDRAWAL_FEE_BPS = 100;   // 1%
+    uint256 public constant WITHDRAWAL_FEE_BPS = 100; // 1%
     uint256 public constant EARLY_QUIT_PENALTY_BPS = 1000; // 10%
     uint256 public constant BPS_DENOMINATOR = 10_000;
 
@@ -139,22 +139,17 @@ contract PokerTable is IBiteSupplicant {
     // ──────────────── Constructor ────────────────
     // Deploy = create table. No factory, no proxy, no cloning.
 
-    constructor(
-        uint256 _smallBlind,
-        uint256 _bigBlind,
-        uint256 _minBuyIn,
-        uint256 _maxPlayers
-    ) {
+    constructor(uint256 _smallBlind, uint256 _bigBlind, uint256 _minBuyIn, uint256 _maxPlayers) {
         require(_maxPlayers >= 2 && _maxPlayers <= 10, "Max players must be 2-10");
         require(_bigBlind >= _smallBlind && _smallBlind > 0, "Invalid blinds");
         require(_minBuyIn > 0, "Min buy-in must be > 0");
 
         smallBlind = _smallBlind;
-        bigBlind   = _bigBlind;
-        minBuyIn   = _minBuyIn;
+        bigBlind = _bigBlind;
+        minBuyIn = _minBuyIn;
         maxPlayers = _maxPlayers;
-        owner      = msg.sender;
-        phase      = Phase.Waiting;
+        owner = msg.sender;
+        phase = Phase.Waiting;
     }
 
     // ──────────────── Receive (C-05: protected with event) ────────────────
@@ -200,16 +195,18 @@ contract PokerTable is IBiteSupplicant {
             if (players[i].addr == msg.sender) revert AlreadySeated();
         }
 
-        players.push(Player({
-            addr:         msg.sender,
-            viewerKey:    viewerKey,
-            stack:        msg.value,
-            currentBet:   0,
-            folded:       false,
-            hasActed:     false,
-            isSeated:     true,
-            holeCards:    [uint8(0), 0]
-        }));
+        players.push(
+            Player({
+                addr: msg.sender,
+                viewerKey: viewerKey,
+                stack: msg.value,
+                currentBet: 0,
+                folded: false,
+                hasActed: false,
+                isSeated: true,
+                holeCards: [uint8(0), 0]
+            })
+        );
 
         emit PlayerSatDown(msg.sender, msg.value);
     }
@@ -220,28 +217,27 @@ contract PokerTable is IBiteSupplicant {
         Player storage p = players[idx];
         if (!p.isSeated) revert NotSeated();
 
-        bool wasActive = (idx == activePlayerIndex)
-            && (phase >= Phase.Preflop && phase <= Phase.River);
+        bool wasActive = (idx == activePlayerIndex) && (phase >= Phase.Preflop && phase <= Phase.River);
 
         uint256 amount = p.stack;
-        uint256 fee    = 0;
+        uint256 fee = 0;
 
         // 10% early-quit penalty during active hand
         if (phase != Phase.Waiting && phase != Phase.Finished) {
             uint256 penalty = (amount * EARLY_QUIT_PENALTY_BPS) / BPS_DENOMINATOR;
-            fee    += penalty;
+            fee += penalty;
             amount -= penalty;
         }
 
         // 1% withdrawal fee always
-        uint256 wFee  = (amount * WITHDRAWAL_FEE_BPS) / BPS_DENOMINATOR;
-        fee    += wFee;
+        uint256 wFee = (amount * WITHDRAWAL_FEE_BPS) / BPS_DENOMINATOR;
+        fee += wFee;
         amount -= wFee;
 
         // H-02: State changes BEFORE external call (Checks-Effects-Interactions)
-        p.stack    = 0;
+        p.stack = 0;
         p.isSeated = false;
-        p.folded   = true;
+        p.folded = true;
         hasEverPlayed[msg.sender] = true;
 
         // Advance game FIRST (before external ETH transfer)
@@ -280,10 +276,10 @@ contract PokerTable is IBiteSupplicant {
         if (_countSeated() < 2) revert NotEnoughPlayers();
 
         handCount++;
-        pot                = 0;
-        currentMaxBet      = 0;
+        pot = 0;
+        currentMaxBet = 0;
         communityCardCount = 0;
-        lastRaise          = bigBlind;
+        lastRaise = bigBlind;
 
         // Reset side pots (C-01)
         delete sidePots;
@@ -297,9 +293,9 @@ contract PokerTable is IBiteSupplicant {
         for (uint256 i = 0; i < players.length; i++) {
             Player storage p = players[i];
             if (p.isSeated) {
-                p.folded       = false;
-                p.currentBet   = 0;
-                p.hasActed     = false;
+                p.folded = false;
+                p.currentBet = 0;
+                p.hasActed = false;
                 p.holeCards[0] = 0;
                 p.holeCards[1] = 0;
             } else {
@@ -317,7 +313,7 @@ contract PokerTable is IBiteSupplicant {
         // Deal hole cards using Fisher-Yates shuffled deck (C-04)
         _dealHoleCards();
 
-        phase             = Phase.Preflop;
+        phase = Phase.Preflop;
         activePlayerIndex = _nextActiveFrom(bbIdx);
         lastActionTimestamp = block.timestamp;
 
@@ -332,7 +328,7 @@ contract PokerTable is IBiteSupplicant {
 
     function fold() external {
         uint256 idx = _requireActiveTurn(msg.sender);
-        players[idx].folded   = true;
+        players[idx].folded = true;
         players[idx].hasActed = true;
         lastActionTimestamp = block.timestamp;
         emit PlayerFolded(msg.sender);
@@ -353,13 +349,13 @@ contract PokerTable is IBiteSupplicant {
         uint256 toCall = currentMaxBet - players[idx].currentBet;
         if (toCall == 0) revert NothingToCall();
 
-        Player storage p   = players[idx];
-        uint256 callAmt    = toCall > p.stack ? p.stack : toCall;
+        Player storage p = players[idx];
+        uint256 callAmt = toCall > p.stack ? p.stack : toCall;
 
-        p.stack       -= callAmt;
-        p.currentBet  += callAmt;
-        pot           += callAmt;
-        p.hasActed     = true;
+        p.stack -= callAmt;
+        p.currentBet += callAmt;
+        pot += callAmt;
+        p.hasActed = true;
         lastActionTimestamp = block.timestamp;
 
         emit PlayerCalled(msg.sender, callAmt);
@@ -375,19 +371,19 @@ contract PokerTable is IBiteSupplicant {
         if (raiseAmount < bigBlind) raiseAmount = bigBlind;
 
         uint256 totalBet = currentMaxBet + raiseAmount;
-        uint256 cost     = totalBet - p.currentBet;
+        uint256 cost = totalBet - p.currentBet;
 
         // All-in guard
         if (cost > p.stack) {
-            cost     = p.stack;
+            cost = p.stack;
             totalBet = p.currentBet + cost;
         }
 
-        p.stack       -= cost;
-        pot           += cost;
-        p.currentBet   = totalBet;
+        p.stack -= cost;
+        pot += cost;
+        p.currentBet = totalBet;
         if (totalBet > currentMaxBet) currentMaxBet = totalBet;
-        lastRaise      = raiseAmount;
+        lastRaise = raiseAmount;
         lastActionTimestamp = block.timestamp;
 
         // Re-open betting for everyone else
@@ -406,7 +402,7 @@ contract PokerTable is IBiteSupplicant {
     function forceFold() external {
         if (block.timestamp <= lastActionTimestamp + ACTION_TIMEOUT) revert InvalidPhase();
         if (phase < Phase.Preflop || phase > Phase.River) revert InvalidPhase();
-        players[activePlayerIndex].folded   = true;
+        players[activePlayerIndex].folded = true;
         players[activePlayerIndex].hasActed = true;
         emit PlayerFolded(players[activePlayerIndex].addr);
         emit PlayerTimedOut(players[activePlayerIndex].addr);
@@ -431,12 +427,7 @@ contract PokerTable is IBiteSupplicant {
         plain[0] = abi.encode(handCount);
 
         // BITE.submitCTX is internal — call directly
-        address cb = BITE.submitCTX(
-            BITE.SUBMIT_CTX_ADDRESS,
-            500_000,
-            encrypted,
-            plain
-        );
+        address cb = BITE.submitCTX(BITE.SUBMIT_CTX_ADDRESS, 500_000, encrypted, plain);
         isCallbackSender[cb] = true;
 
         emit PhaseAdvanced(Phase.Showdown);
@@ -453,9 +444,13 @@ contract PokerTable is IBiteSupplicant {
     // ════════════════════════════════════════════
 
     function onDecrypt(
-        bytes[] calldata /* decryptedArguments */,
+        bytes[] calldata,
+        /* decryptedArguments */
         bytes[] calldata /* plaintextArguments */
-    ) external override {
+    )
+        external
+        override
+    {
         if (!isCallbackSender[msg.sender]) revert NotCallbackSender();
         if (phase != Phase.Showdown) revert InvalidPhase();
         _evaluateAndDistribute();
@@ -559,10 +554,10 @@ contract PokerTable is IBiteSupplicant {
         // Reset for new betting round
         for (uint256 i = 0; i < players.length; i++) {
             players[i].currentBet = 0;
-            players[i].hasActed   = false;
+            players[i].hasActed = false;
         }
         currentMaxBet = 0;
-        lastRaise     = bigBlind;
+        lastRaise = bigBlind;
 
         // Only one player left → they win
         if (getActivePlayerCount() <= 1) {
@@ -595,7 +590,7 @@ contract PokerTable is IBiteSupplicant {
     // ════════════════════════════════════════════
 
     function _evaluateAndDistribute() internal {
-        address winner    = address(0);
+        address winner = address(0);
         uint256 bestScore = 0;
         string memory handName;
 
@@ -624,8 +619,8 @@ contract PokerTable is IBiteSupplicant {
                 uint256 score = hand.evaluateHand();
                 if (score > bestScore) {
                     bestScore = score;
-                    winner    = p.addr;
-                    handName  = HandEvaluator.getHandName(score);
+                    winner = p.addr;
+                    handName = HandEvaluator.getHandName(score);
                 }
             }
         }
@@ -655,13 +650,7 @@ contract PokerTable is IBiteSupplicant {
         for (uint256 i = 0; i < players.length; i++) {
             Player storage p = players[i];
             if (p.folded || !p.isSeated) continue;
-            data = abi.encodePacked(
-                data,
-                p.addr,
-                p.holeCards[0],
-                p.holeCards[1],
-                p.viewerKey
-            );
+            data = abi.encodePacked(data, p.addr, p.holeCards[0], p.holeCards[1], p.viewerKey);
         }
         return data;
     }
@@ -713,17 +702,15 @@ contract PokerTable is IBiteSupplicant {
     // ════════════════════════════════════════════
 
     function _postBlind(uint256 idx, uint256 amount) internal {
-        Player storage p   = players[idx];
+        Player storage p = players[idx];
         uint256 amt = amount > p.stack ? p.stack : amount;
-        p.stack       -= amt;
-        p.currentBet   = amt;
-        pot           += amt;
+        p.stack -= amt;
+        p.currentBet = amt;
+        pot += amt;
     }
 
     function _dealHoleCards() internal {
-        uint256 seed = uint256(keccak256(abi.encodePacked(
-            handCount, block.timestamp, block.prevrandao
-        )));
+        uint256 seed = uint256(keccak256(abi.encodePacked(handCount, block.timestamp, block.prevrandao)));
 
         for (uint256 i = 0; i < players.length; i++) {
             if (!players[i].isSeated) continue;
@@ -734,7 +721,7 @@ contract PokerTable is IBiteSupplicant {
             // Ensure hole cards differ
             while (c2 == c1) {
                 seed = uint256(keccak256(abi.encodePacked(seed, c2)));
-                c2   = _genCard(seed, i * 2 + 1);
+                c2 = _genCard(seed, i * 2 + 1);
             }
 
             players[i].holeCards[0] = c1;
@@ -745,9 +732,8 @@ contract PokerTable is IBiteSupplicant {
     }
 
     function _dealCommunity(uint256 count) internal {
-        uint256 seed = uint256(keccak256(abi.encodePacked(
-            handCount, communityCardCount, block.timestamp, block.prevrandao
-        )));
+        uint256 seed =
+            uint256(keccak256(abi.encodePacked(handCount, communityCardCount, block.timestamp, block.prevrandao)));
         for (uint256 i = 0; i < count; i++) {
             communityCards[communityCardCount] = _genCard(seed, 100 + communityCardCount + i);
             communityCardCount++;
@@ -755,9 +741,9 @@ contract PokerTable is IBiteSupplicant {
     }
 
     function _genCard(uint256 seed, uint256 index) internal pure returns (uint8) {
-        uint256 h    = uint256(keccak256(abi.encodePacked(seed, index)));
-        uint8   rank = uint8((h % 13) + 2);   // 2-14
-        uint8   suit = uint8((h >> 8) % 4);    // 0-3
+        uint256 h = uint256(keccak256(abi.encodePacked(seed, index)));
+        uint8 rank = uint8((h % 13) + 2); // 2-14
+        uint8 suit = uint8((h >> 8) % 4); // 0-3
         return HandEvaluator.encodeCard(rank, suit);
     }
 }

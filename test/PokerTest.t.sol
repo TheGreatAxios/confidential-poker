@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.27;
 
-import { Test } from "forge-std/Test.sol";
-import { MockSKL } from "../contracts/src/MockSKL.sol";
-import { AxiosUSD } from "../contracts/src/AxiosUSD.sol";
-import { HandEvaluator } from "../contracts/src/HandEvaluator.sol";
+import {Test} from "forge-std/Test.sol";
+import {MockSKL} from "../contracts/src/MockSKL.sol";
+import {AxiosUSD} from "../contracts/src/AxiosUSD.sol";
+import {HandEvaluator} from "../contracts/src/HandEvaluator.sol";
 
 contract HandEvaluatorTest is Test {
     using HandEvaluator for uint8[];
