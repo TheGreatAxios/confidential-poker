@@ -5,21 +5,23 @@ import { defineChain } from "viem";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 
 // ============================================================
-// SKALE Chain Definition — staging-attentive-steel-laika
+// SKALE Chain Definition — Base Sepolia Testnet
 // ============================================================
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "https://base-sepolia-testnet.skalenodes.com/v1/base-testnet";
+
 export const skaleChain = defineChain({
   id: 324705682,
   name: "SKALE Base Sepolia",
-  nativeCurrency: { name: "sFUEL", symbol: "sFUEL", decimals: 18 },
+  nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
   rpcUrls: {
     default: {
-      http: ["https://rpc.skalenetwork.com/v1/staging-attentive-steel-laika"],
+      http: [RPC_URL],
     },
   },
   blockExplorers: {
     default: {
       name: "SKALE Explorer",
-      url: "https://staging-attentive-steel-laika.explorer.skalenetwork.com",
+      url: "https://base-sepolia-testnet-explorer.skalenodes.com",
     },
   },
 });
@@ -50,7 +52,7 @@ export const config = getDefaultConfig({
     process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "demo-project-id",
   chains: [skaleChain],
   transports: {
-    [skaleChain.id]: http(),
+    [skaleChain.id]: http(RPC_URL),
   },
   ssr: true,
 });

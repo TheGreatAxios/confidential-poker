@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { useAccount } from "wagmi";
 import { useGameState } from "@/hooks/useGameState";
 import { useFaucet } from "@/hooks/useFaucet";
-import { isContractReady, CONTRACTS } from "@/lib/wagmi";
 import PokerTable from "@/components/PokerTable";
 import GameStats from "@/components/GameStats";
 import FaucetPanel from "@/components/FaucetPanel";
@@ -29,7 +28,6 @@ export default function Home() {
   const faucet = useFaucet(address ?? "");
   const [showFaucet, setShowFaucet] = useState(false);
   const [gameAction, setGameAction] = useState<string | null>(null);
-  const isDemo = !game || !isContractReady(CONTRACTS.pokerTable) || isError;
 
   const handleStartGame = useCallback(async () => {
     setGameAction("starting");
@@ -78,15 +76,6 @@ export default function Home() {
 
           {/* Status badges */}
           <div className="flex items-center gap-2">
-            {isDemo && (
-              <span className="text-[10px] px-2.5 py-1 rounded-full font-medium tracking-wide" style={{
-                background: "linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05))",
-                color: "rgba(245, 158, 11, 0.85)",
-                border: "1px solid rgba(245, 158, 11, 0.15)",
-              }}>
-                DEMO
-              </span>
-            )}
             <button
               onClick={() => setShowFaucet(true)}
               className="flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-full font-medium transition-all duration-200"
@@ -169,6 +158,12 @@ export default function Home() {
                 onStart={handleStartGame}
                 onNewHand={refetch}
                 onStop={handleStopGame}
+                isConnectedSeated={game.isConnectedSeated}
+                isMyTurn={game.isMyTurn}
+                currentMaxBet={game.currentMaxBet}
+                playerBet={game.players.find(
+                  (p) => p.address.toLowerCase() === (address ?? "").toLowerCase()
+                )?.currentBet ?? 0n}
               />
 
               {/* Info strip — glass panels */}
