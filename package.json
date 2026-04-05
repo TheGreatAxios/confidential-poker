@@ -1,24 +1,16 @@
 {
   "name": "ai-poker-night",
   "version": "1.0.0",
-  "description": "🃏 Live Texas Hold'em with AI agents on SKALE — Confidential Poker",
   "private": true,
+  "description": "AI Poker Night — Confidential Texas Hold'em with AI agents",
   "scripts": {
-    "install:all": "npm install && cd server && npm install && cd ../frontend && npm install",
-    "dev:server": "cd server && npx tsx src/index.ts",
-    "dev:frontend": "cd frontend && npx next dev -p 3000",
-    "dev": "npm run dev:server & npm run dev:frontend",
-    "build:server": "cd server && npx tsc --noEmit",
-    "build:frontend": "cd frontend && npx next build",
-    "build:contracts": "cd contracts && forge build",
-    "build": "npm run build:contracts && npm run build:server && npm run build:frontend",
-    "test:contracts": "cd contracts && forge test -vvv",
-    "test": "npm run build && npm run test:contracts",
-    "clean": "cd contracts && forge clean && cd ../frontend && rm -rf .next && cd ../server && rm -rf dist",
-    "docker:build": "docker-compose build",
-    "docker:up": "docker-compose up",
-    "docker:down": "docker-compose down"
+    "build": "echo 'Run build in individual packages'",
+    "dev:frontend": "cd packages/frontend && npm run dev",
+    "dev:server": "cd packages/server && npx tsx src/index.ts",
+    "test:contracts": "cd packages/contracts && forge test -vvv",
+    "build:frontend": "cd packages/frontend && npm run build",
+    "build:server": "cd packages/server && npx tsc --noEmit"
   },
-  "keywords": ["skale", "poker", "ai", "blockchain", "confidential"],
+  "keywords": ["poker", "ai", "texas-holdem", "skale", "blockchain"],
   "license": "MIT"
 }

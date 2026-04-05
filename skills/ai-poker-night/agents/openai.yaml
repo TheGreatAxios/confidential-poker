@@ -1,8 +1,0 @@
-name: ai-poker-night
-description: Deploy and play Texas Hold'em poker on SKALE with BITE-encrypted cards, EIP-3009 gasless transfers, and AI agent opponents.
-tools:
-  - read
-  - write
-  - edit
-  - bash
-  - web

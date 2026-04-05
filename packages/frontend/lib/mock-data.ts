@@ -1,0 +1,186 @@
+// ============================================================
+// Mock game state for standalone demo (no server required)
+// ============================================================
+
+import { GameState, Agent, Card } from "./types";
+
+function makeCard(suit: Card["suit"], rank: Card["rank"], faceUp = true): Card {
+  return { suit, rank, faceUp };
+}
+
+const MOCK_AGENTS: Agent[] = [
+  {
+    id: "agent-0",
+    name: "GPT-Betty",
+    personality: "aggressive",
+    emoji: "🔥",
+    chips: 8420,
+    cards: [makeCard("♠", "A"), makeCard("♥", "K")],
+    status: "acting",
+    currentBet: 200,
+    isDealer: false,
+    isThinking: true,
+    message: "I'm all in, baby! 🚀",
+    seatIndex: 0,
+    winRate: 0.62,
+    handsPlayed: 47,
+    color: "#e53e3e",
+  },
+  {
+    id: "agent-1",
+    name: "Claude-Carl",
+    personality: "cautious",
+    emoji: "🛡️",
+    chips: 9100,
+    cards: [makeCard("♦", "Q"), makeCard("♣", "J")],
+    status: "waiting",
+    currentBet: 100,
+    isDealer: false,
+    isThinking: false,
+    message: null,
+    seatIndex: 1,
+    winRate: 0.48,
+    handsPlayed: 47,
+    color: "#4299e1",
+  },
+  {
+    id: "agent-2",
+    name: "LLM-Luna",
+    personality: "bluffer",
+    emoji: "🎭",
+    chips: 6800,
+    cards: [makeCard("♥", "7"), makeCard("♦", "2", false)],
+    status: "waiting",
+    currentBet: 100,
+    isDealer: false,
+    isThinking: false,
+    message: "Feeling lucky... 😏",
+    seatIndex: 2,
+    winRate: 0.41,
+    handsPlayed: 47,
+    color: "#9f7aea",
+  },
+  {
+    id: "agent-3",
+    name: "Token-Tom",
+    personality: "calculator",
+    emoji: "🧮",
+    chips: 12050,
+    cards: [makeCard("♣", "10", false), makeCard("♠", "9", false)],
+    status: "waiting",
+    currentBet: 100,
+    isDealer: false,
+    isThinking: false,
+    message: null,
+    seatIndex: 3,
+    winRate: 0.55,
+    handsPlayed: 47,
+    color: "#38a169",
+  },
+  {
+    id: "agent-4",
+    name: "Prompt-Pete",
+    personality: "tight",
+    emoji: "🔒",
+    chips: 5400,
+    cards: [makeCard("♥", "K"), makeCard("♠", "K")],
+    status: "waiting",
+    currentBet: 100,
+    isDealer: true,
+    isThinking: false,
+    message: "Patience pays off...",
+    seatIndex: 4,
+    winRate: 0.51,
+    handsPlayed: 47,
+    color: "#f0b429",
+  },
+  {
+    id: "agent-5",
+    name: "Deep-Dave",
+    personality: "loose",
+    emoji: "🎲",
+    chips: 0,
+    cards: [],
+    status: "busted",
+    currentBet: 0,
+    isDealer: false,
+    isThinking: false,
+    message: "Rebuying... 💸",
+    seatIndex: 5,
+    winRate: 0.33,
+    handsPlayed: 47,
+    color: "#ed64a6",
+  },
+];
+
+export const MOCK_GAME_STATE: GameState = {
+  phase: "flop",
+  communityCards: [
+    makeCard("♥", "A"),
+    makeCard("♦", "10"),
+    makeCard("♣", "7"),
+  ],
+  pot: 3200,
+  currentBet: 200,
+  minRaise: 200,
+  dealerIndex: 4,
+  currentPlayerIndex: 0,
+  agents: MOCK_AGENTS,
+  handNumber: 48,
+  roundNumber: 3,
+  lastAction: "GPT-Betty raises to 200",
+  winners: null,
+  humanPlayer: null,
+};
+
+// Simulated chat messages per agent
+export const MOCK_CHAT_MESSAGES: Record<string, string[]> = {
+  "agent-0": [
+    "Let's go! 💪",
+    "I'm all in, baby! 🚀",
+    "You can't handle this! 😤",
+    "Betting big! 💰",
+    "Read 'em and weep! 🃏",
+  ],
+  "agent-1": [
+    "Interesting...",
+    "I need to think about this. 🤔",
+    "Playing it safe.",
+    "The odds are in my favor.",
+    "Fold... maybe next time.",
+  ],
+  "agent-2": [
+    "Feeling lucky... 😏",
+    "I have the best hand, trust me! 😈",
+    "Bluffing? Never! 😇",
+    "You'll never guess what I have...",
+    "All part of the plan! 🎭",
+  ],
+  "agent-3": [
+    "EV is positive here. 📊",
+    "Pot odds are 3.2:1. Calling.",
+    "Probability of winning: 67.3%",
+    "Optimal play: raise.",
+    "My model says fold.",
+  ],
+  "agent-4": [
+    "Patience pays off...",
+    "Only playing premium hands. 👑",
+    "Waiting for the right moment.",
+    "Tight but mighty.",
+    "Folding 82% of hands is fine.",
+  ],
+  "agent-5": [
+    "YOLO! 🎲",
+    "Any two cards can win!",
+    "Let's gamble! 🎰",
+    "I feel it this time!",
+    "Rebuying... 💸",
+  ],
+};
+
+export function getRandomMessage(agentId: string): string {
+  const messages = MOCK_CHAT_MESSAGES[agentId];
+  if (!messages) return "...";
+  return messages[Math.floor(Math.random() * messages.length)];
+}

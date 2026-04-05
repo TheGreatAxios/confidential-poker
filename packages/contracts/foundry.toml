@@ -1,0 +1,28 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.28"
+evm_version = "shanghai"
+optimizer = true
+optimizer_runs = 1
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "@skalenetwork/bite-solidity/=lib/bite-solidity/contracts/",
+]
+
+# BITE V2 Sandbox 2 — requires Istanbul EVM per SKALE docs
+[profile.sandbox]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc_version = "0.8.28"
+evm_version = "istanbul"
+optimizer = true
+optimizer_runs = 1
+remappings = [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "@skalenetwork/bite-solidity/=lib/bite-solidity/contracts/",
+]
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
