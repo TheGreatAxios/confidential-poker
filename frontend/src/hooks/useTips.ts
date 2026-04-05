@@ -13,25 +13,6 @@ export interface TipRecord {
   txHash?: string;
 }
 
-const DEMO_TIPS: TipRecord[] = [
-  {
-    id: "1",
-    agentId: 1,
-    agentName: "Rage Bot",
-    amount: 0.05,
-    timestamp: new Date(Date.now() - 120000).toISOString(),
-    txHash: "0x1234...abcd",
-  },
-  {
-    id: "2",
-    agentId: 3,
-    agentName: "Bluffer",
-    amount: 0.05,
-    timestamp: new Date(Date.now() - 300000).toISOString(),
-    txHash: "0x5678...efgh",
-  },
-];
-
 export function useTips() {
   const [tips, setTips] = useState<TipRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,13 +23,11 @@ export function useTips() {
       const data = await api.getTipHistory();
       setTips(Array.isArray(data) ? (data as TipRecord[]) : []);
     } catch {
-      if (tips.length === 0) {
-        setTips(DEMO_TIPS);
-      }
+      // Server unavailable — keep existing tips or stay empty
     } finally {
       setLoading(false);
     }
-  }, [tips.length]);
+  }, []);
 
   useEffect(() => {
     fetchTips();
@@ -70,16 +49,7 @@ export function useTips() {
       };
       setTips((prev) => [newTip, ...prev]);
     } catch {
-      // Simulate tip in demo mode — mark as demo, not a real tx
-      const agent = AGENTS.find((a) => a.id === agentId);
-      const newTip: TipRecord = {
-        id: Date.now().toString(),
-        agentId,
-        agentName: agent?.name ?? "Unknown",
-        amount,
-        timestamp: new Date().toISOString(),
-      };
-      setTips((prev) => [newTip, ...prev]);
+      // Tip failed — don't add fake record
     } finally {
       setTipping(false);
     }
