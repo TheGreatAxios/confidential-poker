@@ -17,6 +17,21 @@ library HandEvaluator {
     uint8 public constant STRAIGHT_FLUSH = 8;
     uint8 public constant ROYAL_FLUSH = 9;
 
+    /// @dev Intermediate evaluation state stored in memory to avoid stack-too-deep.
+    ///      All local variables that would otherwise consume EVM stack slots are
+    ///      packed into this struct so only a single memory pointer is needed.
+    struct EvalState {
+        uint8[5] ranks;
+        uint8[5] suits;
+        uint8[15] counts;
+        bool isFlush;
+        bool isStraight;
+        uint8 maxCount;
+        uint8 secondCount;
+        uint8 maxRank;
+        uint8 secondRank;
+    }
+
     /// @notice Card encoding helpers
     function getRank(uint8 card) internal pure returns (uint8) {
         return card & 0x0F; // lower 4 bits: rank 2-14
@@ -89,16 +104,43 @@ library HandEvaluator {
     }
 
     /// @notice Score exactly 5 cards (fixed-size array for efficiency)
+    /// @dev Uses EvalState struct to keep all intermediates in memory,
+    ///      avoiding "Stack too deep" without needing via_ir compilation.
     function _score5Fixed(uint8[5] memory cards) internal pure returns (uint256) {
+        EvalState memory s;
+
         // Extract ranks and suits
-        uint8[5] memory ranks;
-        uint8[5] memory suits;
         for (uint256 i = 0; i < 5; i++) {
-            ranks[i] = getRank(cards[i]);
-            suits[i] = getSuit(cards[i]);
+            s.ranks[i] = getRank(cards[i]);
+            s.suits[i] = getSuit(cards[i]);
         }
 
-        // Sort ranks descending (simple bubble sort for 5 elements)
+        // Sort ranks descending (bubble sort for 5 elements)
+        _sortRanks(s.ranks);
+
+        // Flush check
+        s.isFlush =
+            (s.suits[0] == s.suits[1] && s.suits[1] == s.suits[2] && s.suits[2] == s.suits[3] && s.suits[3] == s.suits[4]);
+
+        // Straight check
+        s.isStraight = _checkStraight(s.ranks);
+
+        // Check for wheel (A-2-3-4-5): ranks are 14,5,4,3,2
+        bool isWheel = !s.isStraight && s.ranks[0] == 14 && s.ranks[1] == 5 && s.ranks[2] == 4 && s.ranks[3] == 3
+            && s.ranks[4] == 2;
+        if (isWheel) s.isStraight = true;
+
+        // Count rank frequencies and find top groups
+        _countFrequencies(s.ranks, s.counts);
+
+        _findTopGroups(s.counts, s);
+
+        // Determine hand rank and build score
+        return _buildScore(s, isWheel);
+    }
+
+    /// @dev Sort ranks array in descending order using bubble sort
+    function _sortRanks(uint8[5] memory ranks) internal pure {
         for (uint256 i = 0; i < 4; i++) {
             for (uint256 j = 0; j < 4 - i; j++) {
                 if (ranks[j] < ranks[j + 1]) {
@@ -106,122 +148,141 @@ library HandEvaluator {
                 }
             }
         }
+    }
 
-        bool isFlush = (suits[0] == suits[1] && suits[1] == suits[2] && suits[2] == suits[3] && suits[3] == suits[4]);
+    /// @dev Check if sorted descending ranks form a straight
+    function _checkStraight(uint8[5] memory ranks) internal pure returns (bool) {
+        if (
+            ranks[0] == ranks[1] + 1 && ranks[1] == ranks[2] + 1 && ranks[2] == ranks[3] + 1
+                && ranks[3] == ranks[4] + 1
+        ) {
+            return true;
+        }
+        return false;
+    }
 
-        bool isStraight = _isStraight(ranks);
-
-        // Check for wheel (A-2-3-4-5): ranks are 14,5,4,3,2
-        bool isWheel = !isStraight && ranks[0] == 14 && ranks[1] == 5 && ranks[2] == 4 && ranks[3] == 3 && ranks[4] == 2;
-
-        if (isWheel) isStraight = true;
-
-        // Count rank frequencies
-        uint8[15] memory counts;
+    /// @dev Count frequency of each rank
+    function _countFrequencies(uint8[5] memory ranks, uint8[15] memory counts) internal pure {
         for (uint256 i = 0; i < 5; i++) {
             counts[ranks[i]]++;
         }
+    }
 
-        uint8 maxCount = 0;
-        uint8 secondCount = 0;
-        uint8 maxRank = 0;
-        uint8 secondRank = 0;
-
+    /// @dev Find the top two groups by frequency
+    function _findTopGroups(uint8[15] memory counts, EvalState memory s) internal pure {
         for (uint256 r = 2; r <= 14; r++) {
-            if (counts[r] > maxCount) {
-                secondCount = maxCount;
-                secondRank = maxRank;
-                maxCount = counts[r];
-                maxRank = uint8(r);
-            } else if (counts[r] > secondCount) {
-                secondCount = counts[r];
-                secondRank = uint8(r);
+            if (counts[r] > s.maxCount) {
+                s.secondCount = s.maxCount;
+                s.secondRank = s.maxRank;
+                s.maxCount = counts[r];
+                s.maxRank = uint8(r);
+            } else if (counts[r] > s.secondCount) {
+                s.secondCount = counts[r];
+                s.secondRank = uint8(r);
             }
         }
+    }
 
-        // Determine hand rank and build score
+    /// @dev Build final score from evaluation state
+    function _buildScore(EvalState memory s, bool isWheel) internal pure returns (uint256) {
         uint8 handRank;
         uint256 tiebreaker;
 
-        if (isFlush && isStraight) {
-            if (ranks[0] == 14 && ranks[1] == 13) {
+        if (s.isFlush && s.isStraight) {
+            if (s.ranks[0] == 14 && s.ranks[1] == 13) {
                 handRank = ROYAL_FLUSH;
                 tiebreaker = 0;
             } else {
                 handRank = STRAIGHT_FLUSH;
-                tiebreaker = uint256(isWheel ? 5 : ranks[0]) << 192;
+                tiebreaker = uint256(isWheel ? 5 : s.ranks[0]) << 192;
             }
-        } else if (maxCount == 4) {
+        } else if (s.maxCount == 4) {
             handRank = FOUR_OF_A_KIND;
-            tiebreaker = (uint256(maxRank) << 192) | (uint256(secondRank) << 184);
-        } else if (maxCount == 3 && secondCount == 2) {
+            tiebreaker = (uint256(s.maxRank) << 192) | (uint256(s.secondRank) << 184);
+        } else if (s.maxCount == 3 && s.secondCount == 2) {
             handRank = FULL_HOUSE;
-            tiebreaker = (uint256(maxRank) << 192) | (uint256(secondRank) << 184);
-        } else if (isFlush) {
+            tiebreaker = (uint256(s.maxRank) << 192) | (uint256(s.secondRank) << 184);
+        } else if (s.isFlush) {
             handRank = FLUSH;
-            tiebreaker = (uint256(ranks[0]) << 192) | (uint256(ranks[1]) << 184) | (uint256(ranks[2]) << 176)
-                | (uint256(ranks[3]) << 168) | (uint256(ranks[4]) << 160);
-        } else if (isStraight) {
+            tiebreaker = _flushTiebreaker(s.ranks);
+        } else if (s.isStraight) {
             handRank = STRAIGHT;
-            tiebreaker = uint256(isWheel ? 5 : ranks[0]) << 192;
-        } else if (maxCount == 3) {
-            // Three of a kind - collect kickers
-            uint8[2] memory kickers;
-            uint256 kIdx = 0;
-            for (uint256 i = 0; i < 5; i++) {
-                if (ranks[i] != maxRank && kIdx < 2) {
-                    kickers[kIdx] = ranks[i];
-                    kIdx++;
-                }
-            }
+            tiebreaker = uint256(isWheel ? 5 : s.ranks[0]) << 192;
+        } else if (s.maxCount == 3) {
             handRank = THREE_OF_A_KIND;
-            tiebreaker = (uint256(maxRank) << 192) | (uint256(kickers[0]) << 184) | (uint256(kickers[1]) << 176);
-        } else if (maxCount == 2 && secondCount == 2) {
-            // Two pair
-            uint8 kicker = 0;
-            for (uint256 i = 0; i < 5; i++) {
-                if (ranks[i] != maxRank && ranks[i] != secondRank) {
-                    kicker = ranks[i];
-                }
-            }
-            // Ensure higher pair is first
-            if (secondRank > maxRank) {
-                (maxRank, secondRank) = (secondRank, maxRank);
-            }
+            tiebreaker = _threeOfAKindTiebreaker(s);
+        } else if (s.maxCount == 2 && s.secondCount == 2) {
             handRank = TWO_PAIR;
-            tiebreaker = (uint256(maxRank) << 192) | (uint256(secondRank) << 184) | (uint256(kicker) << 176);
-        } else if (maxCount == 2) {
-            // One pair - collect 3 kickers
-            uint8[3] memory kickers;
-            uint256 kIdx = 0;
-            for (uint256 i = 0; i < 5; i++) {
-                if (ranks[i] != maxRank) {
-                    kickers[kIdx] = ranks[i];
-                    kIdx++;
-                }
-            }
+            tiebreaker = _twoPairTiebreaker(s);
+        } else if (s.maxCount == 2) {
             handRank = ONE_PAIR;
-            tiebreaker = (uint256(maxRank) << 192) | (uint256(kickers[0]) << 184) | (uint256(kickers[1]) << 176)
-                | (uint256(kickers[2]) << 168);
+            tiebreaker = _onePairTiebreaker(s);
         } else {
-            // High card
             handRank = HIGH_CARD;
-            tiebreaker = (uint256(ranks[0]) << 192) | (uint256(ranks[1]) << 184) | (uint256(ranks[2]) << 176)
-                | (uint256(ranks[3]) << 168) | (uint256(ranks[4]) << 160);
+            tiebreaker = _highCardTiebreaker(s.ranks);
         }
 
         return (uint256(handRank) << 200) | tiebreaker;
     }
 
-    /// @notice Check if sorted ranks form a straight
-    function _isStraight(uint8[5] memory ranks) internal pure returns (bool) {
-        // Ranks are already sorted descending
-        if (
-            ranks[0] == ranks[1] + 1 && ranks[1] == ranks[2] + 1 && ranks[2] == ranks[3] + 1 && ranks[3] == ranks[4] + 1
-        ) {
-            return true;
+    /// @dev Tiebreaker for flush / high card: all 5 ranks packed
+    function _flushTiebreaker(uint8[5] memory ranks) internal pure returns (uint256) {
+        return (uint256(ranks[0]) << 192) | (uint256(ranks[1]) << 184) | (uint256(ranks[2]) << 176)
+            | (uint256(ranks[3]) << 168) | (uint256(ranks[4]) << 160);
+    }
+
+    /// @dev Tiebreaker for high card: all 5 ranks packed
+    function _highCardTiebreaker(uint8[5] memory ranks) internal pure returns (uint256) {
+        return (uint256(ranks[0]) << 192) | (uint256(ranks[1]) << 184) | (uint256(ranks[2]) << 176)
+            | (uint256(ranks[3]) << 168) | (uint256(ranks[4]) << 160);
+    }
+
+    /// @dev Tiebreaker for three of a kind: group rank + 2 kickers
+    function _threeOfAKindTiebreaker(EvalState memory s) internal pure returns (uint256) {
+        uint8 k1;
+        uint8 k2;
+        for (uint256 i = 0; i < 5; i++) {
+            if (s.ranks[i] != s.maxRank) {
+                if (k1 == 0) {
+                    k1 = s.ranks[i];
+                } else {
+                    k2 = s.ranks[i];
+                }
+            }
         }
-        return false;
+        return (uint256(s.maxRank) << 192) | (uint256(k1) << 184) | (uint256(k2) << 176);
+    }
+
+    /// @dev Tiebreaker for two pair: high pair + low pair + kicker
+    function _twoPairTiebreaker(EvalState memory s) internal pure returns (uint256) {
+        uint8 highPair = s.maxRank > s.secondRank ? s.maxRank : s.secondRank;
+        uint8 lowPair = s.maxRank > s.secondRank ? s.secondRank : s.maxRank;
+        uint8 kicker;
+        for (uint256 i = 0; i < 5; i++) {
+            if (s.ranks[i] != s.maxRank && s.ranks[i] != s.secondRank) {
+                kicker = s.ranks[i];
+            }
+        }
+        return (uint256(highPair) << 192) | (uint256(lowPair) << 184) | (uint256(kicker) << 176);
+    }
+
+    /// @dev Tiebreaker for one pair: pair rank + 3 kickers
+    function _onePairTiebreaker(EvalState memory s) internal pure returns (uint256) {
+        uint8 k1;
+        uint8 k2;
+        uint8 k3;
+        for (uint256 i = 0; i < 5; i++) {
+            if (s.ranks[i] != s.maxRank) {
+                if (k1 == 0) {
+                    k1 = s.ranks[i];
+                } else if (k2 == 0) {
+                    k2 = s.ranks[i];
+                } else {
+                    k3 = s.ranks[i];
+                }
+            }
+        }
+        return (uint256(s.maxRank) << 192) | (uint256(k1) << 184) | (uint256(k2) << 176) | (uint256(k3) << 168);
     }
 
     /// @notice Get hand rank name from score

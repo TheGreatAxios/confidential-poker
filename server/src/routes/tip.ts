@@ -27,7 +27,7 @@ let tipCounter = 0;
 // For the hackathon demo, we record the tip in memory and
 // provide the x402 payment details. In production, this
 // would integrate with @x402/core for actual payment processing.
-tipRoutes.post("/:agentAddress", async (c) => {
+tipRoutes.post("/api/tip/:agentAddress", async (c) => {
   try {
     const agentAddress = c.req.param("agentAddress");
 
@@ -97,7 +97,7 @@ tipRoutes.post("/:agentAddress", async (c) => {
 });
 
 // ── GET /api/tips ──
-tipRoutes.get("/", (c) => {
+tipRoutes.get("/api/tips", (c) => {
   const limit = parseInt(c.req.query("limit") ?? "20", 10);
 
   return c.json({

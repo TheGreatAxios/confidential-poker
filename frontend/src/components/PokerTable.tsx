@@ -52,7 +52,7 @@ function playerToAgent(
 function decodeCommunityCards(cards: number[]): CardData[] {
   return cards.map((encoded) => ({
     rank: encoded & 0x0f,
-    suit: (encoded >> 4) & 0x07,
+    suit: (encoded >> 4) & 0x03,
     encrypted: false,
   }));
 }

@@ -207,7 +207,7 @@ contract MockSKLTest is Test {
         mskl.faucet();
         vm.expectRevert("Faucet: cooldown active");
         mskl.faucet();
-        vm.warp(block.timestamp + 61);
+        vm.warp(block.timestamp + 301); // must wait > 5 min cooldown
         mskl.faucet();
         assertEq(mskl.balanceOf(address(this)), 200 * 10 ** 18);
     }
@@ -242,7 +242,7 @@ contract AxiosUSDTest is Test {
         axusd.faucet();
         vm.expectRevert("Faucet: cooldown active");
         axusd.faucet();
-        vm.warp(block.timestamp + 61);
+        vm.warp(block.timestamp + 301); // must wait > 5 min cooldown
         axusd.faucet();
         assertEq(axusd.balanceOf(address(this)), 200 * 10 ** 18);
     }

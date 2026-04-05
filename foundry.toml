@@ -6,7 +6,7 @@ solc_version = "0.8.27"
 evm_version = "cancun"
 optimizer = true
 optimizer_runs = 200
-via_ir = true
+via_ir = false
 legacy = true
 remappings = [
     "@skalenetwork/bite-solidity/=lib/bite-solidity/contracts/",
@@ -15,3 +15,17 @@ remappings = [
 
 [profile.ci]
 verbosity = 4
+
+[profile.fast]
+src = "contracts/src"
+out = "out-fast"
+libs = ["lib"]
+solc_version = "0.8.27"
+evm_version = "cancun"
+optimizer = true
+optimizer_runs = 200
+via_ir = false
+remappings = [
+    "@skalenetwork/bite-solidity/=lib/bite-solidity/contracts/",
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+]

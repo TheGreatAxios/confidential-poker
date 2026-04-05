@@ -20,7 +20,10 @@ contract MockSKL is ERC20, Ownable {
 
     /// @notice Faucet: mints 100 mSKL to caller, 5 min cooldown
     function faucet() external {
-        require(block.timestamp >= lastFaucetTime[msg.sender] + FAUCET_COOLDOWN, "Faucet: cooldown active");
+        require(
+            lastFaucetTime[msg.sender] == 0 || block.timestamp >= lastFaucetTime[msg.sender] + FAUCET_COOLDOWN,
+            "Faucet: cooldown active"
+        );
         lastFaucetTime[msg.sender] = block.timestamp;
         _mint(msg.sender, FAUCET_AMOUNT);
     }

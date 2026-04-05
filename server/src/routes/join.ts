@@ -19,7 +19,7 @@ let queueCounter = 0;
 // Open table registration: any agent can post their address
 // to join the next hand. This is a lightweight endpoint that
 // adds the player to the queue without requiring on-chain interaction.
-joinRoutes.post("/", async (c) => {
+joinRoutes.post("/api/join", async (c) => {
   try {
     const body = await c.req.json<{
       address?: string;
