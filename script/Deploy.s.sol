@@ -25,21 +25,9 @@ contract Deploy is Script {
 
         vm.stopBroadcast();
 
-        // Output addresses as JSON for frontend
-        string memory json = string.concat(
-            "{",
-            '"mockSKL": "',
-            vm.toString(address(mskl)),
-            '",',
-            '"axiosUSD": "',
-            vm.toString(address(axusd)),
-            '",',
-            '"pokerTable": "',
-            vm.toString(address(poker)),
-            '"',
-            "}"
-        );
-        vm.writeFile("deployments.json", json);
-        console.log("\nDeployment JSON written to deployments.json");
+        console.log("\nDeployment complete!");
+        console.log("MockSKL:", address(mskl));
+        console.log("AxiosUSD:", address(axusd));
+        console.log("PokerTable:", address(poker));
     }
 }
