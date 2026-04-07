@@ -5,7 +5,14 @@
 
 export const POKER_TABLE_ADDRESS = (process.env
   .NEXT_PUBLIC_POKER_TABLE_ADDRESS ??
-  "0x0D5d9697bda657c1ba2D1882dcF7BB20903D3aDC") as `0x${string}`;
+  "0x81Ee21F192D85d04cbE37eB303629B68f5a92258") as `0x${string}`;
+
+export const TOKEN_ADDRESS = (process.env
+  .NEXT_PUBLIC_TOKEN_ADDRESS ??
+  "0xa73dDa16E180Ed08FC532CCf5Dc258890D6b2FdF") as `0x${string}`;
+
+/** 1000 tokens with 6 decimals — must match contract BUY_IN constant */
+export const BUY_IN = 1_000_000_000n;
 
 export const POKER_TABLE_ABI = [
   // ── Player Actions (all public) ───────────────────────────────────────────
@@ -220,6 +227,20 @@ export const POKER_TABLE_ABI = [
     outputs: [{ name: "", type: "uint256" }],
     stateMutability: "view",
   },
+  {
+    type: "function" as const,
+    name: "sklToken",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function" as const,
+    name: "BUY_IN",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+  },
 
   // ── Events ────────────────────────────────────────────────────────────────
   {
@@ -323,6 +344,49 @@ export const POKER_TABLE_ABI = [
     type: "event" as const,
     name: "HandComplete",
     inputs: [],
+  },
+
+  // ── ERC-20 (used for approve / allowance) ─────────────────────────────────
+  {
+    type: "function" as const,
+    name: "approve",
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function" as const,
+    name: "allowance",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function" as const,
+    name: "balanceOf",
+    inputs: [{ name: "account", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function" as const,
+    name: "symbol",
+    inputs: [],
+    outputs: [{ name: "", type: "string" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function" as const,
+    name: "decimals",
+    inputs: [],
+    outputs: [{ name: "", type: "uint8" }],
+    stateMutability: "view",
   },
 ] as const;
 

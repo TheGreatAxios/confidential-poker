@@ -17,18 +17,19 @@ export const skaleBaseSepolia = defineChain({
     symbol: "sFUEL",
     decimals: 18,
   },
+  blockTime: 1_000,
   rpcUrls: {
     default: {
       http: [
         process.env.NEXT_PUBLIC_RPC_URL ||
-          "https://staging-v3.skalenodes.com/v1/staging-fast-ubiquity",
+          "https://base-sepolia-testnet.skalenodes.com/v1/base-testnet",
       ],
     },
   },
   blockExplorers: {
     default: {
       name: "SKALE Explorer",
-      url: "https://base-sepia.explorer.skale.network/",
+      url: "https://base-sepolia-testnet-explorer.skalenodes.com",
     },
   },
 });
@@ -49,6 +50,6 @@ export function createWagmiConfig() {
     storage: createStorage({
       storage: cookieStorage,
     }),
-    ssr: true,
+    ssr: false,
   });
 }

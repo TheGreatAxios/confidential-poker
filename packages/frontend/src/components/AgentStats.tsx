@@ -1,4 +1,3 @@
-"use client";
 
 import { useMemo } from "react";
 import type { Agent } from "@/lib/types";

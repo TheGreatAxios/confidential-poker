@@ -1,4 +1,3 @@
-"use client";
 
 import type { GameState, SeatPosition } from "@/lib/types";
 import { SEAT_POSITIONS } from "@/lib/types";

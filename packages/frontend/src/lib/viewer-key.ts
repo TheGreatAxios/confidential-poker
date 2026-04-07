@@ -36,8 +36,6 @@ export function generateViewerKeyPair(): ViewerKeyPair {
 }
 
 export function persistViewerKey(address: string, key: ViewerKeyPair) {
-  if (typeof window === "undefined") return;
-
   const storageKey = `${VIEWER_KEY_PREFIX}${address.toLowerCase()}`;
   window.localStorage.setItem(
     storageKey,

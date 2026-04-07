@@ -1,4 +1,3 @@
-"use client";
 
 import type { Agent } from "@/lib/types";
 import { Card } from "./Card";

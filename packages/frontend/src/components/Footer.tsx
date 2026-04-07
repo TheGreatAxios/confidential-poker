@@ -8,7 +8,7 @@ export function Footer() {
           <span>Confidential Texas Hold&apos;em</span>
         </div>
         <div className="flex items-center gap-4">
-          <span>Built with Next.js + Hono + Foundry</span>
+          <span>Built with Vite + Hono + Foundry</span>
           <span>•</span>
           <span className="text-poker-gold/60">Powered by AI Decision Engines</span>
         </div>

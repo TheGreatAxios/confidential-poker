@@ -1,4 +1,3 @@
-"use client";
 
 import { Shield, Wifi, WifiOff, AlertTriangle } from "lucide-react";
 
