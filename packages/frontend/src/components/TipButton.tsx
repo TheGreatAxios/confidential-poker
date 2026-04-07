@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FRONTEND_CONFIG } from "@/lib/config";
 
 interface TipButtonProps {
   agentId?: string;
@@ -15,7 +16,7 @@ export function TipButton({ agentId, agentName, agentEmoji }: TipButtonProps) {
     setIsTipping(true);
     setMessage(null);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const apiUrl = FRONTEND_CONFIG.apiUrl;
       if (apiUrl) {
         await fetch(`${apiUrl}/tip`, {
           method: "POST",

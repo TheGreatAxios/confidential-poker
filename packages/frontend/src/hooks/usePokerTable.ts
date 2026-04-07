@@ -1,6 +1,5 @@
-
 import { useMemo } from "react";
-import { useReadContract, useReadContracts, useAccount } from "wagmi";
+import { useReadContracts } from "wagmi";
 import {
   POKER_TABLE_ABI,
   POKER_TABLE_ADDRESS,
@@ -24,19 +23,41 @@ export function phaseFromContract(phase: number): GamePhase {
   return PHASE_MAP[phase] ?? "waiting";
 }
 
-/** Map a uint8 card encoding (0–51) to a Card object.
- *  Encoding: suit = floor(card / 13), rank = card % 13
- *  Suits: 0=♠ 1=♥ 2=♦ 3=♣   Ranks: 0=2 … 12=A */
-const SUITS: Card["suit"][] = ["♠", "♥", "♦", "♣"];
-const RANKS: Card["rank"][] = [
-  "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A",
-];
+const SUITS: Record<number, Card["suit"]> = {
+  0: "♣",
+  1: "♦",
+  2: "♥",
+  3: "♠",
+};
+
+const RANKS: Record<number, Card["rank"]> = {
+  2: "2",
+  3: "3",
+  4: "4",
+  5: "5",
+  6: "6",
+  7: "7",
+  8: "8",
+  9: "9",
+  10: "10",
+  11: "J",
+  12: "Q",
+  13: "K",
+  14: "A",
+};
 
 export function cardFromUint8(c: number): Card | null {
-  if (c === 0 || c > 51) return null;
+  if (c === 0) return null;
+
+  const rank = c & 0x0f;
+  const suit = (c >> 4) & 0x03;
+  if (rank < 2 || rank > 14 || !(suit in SUITS)) {
+    return null;
+  }
+
   return {
-    suit: SUITS[Math.floor(c / 13)] ?? "♠",
-    rank: RANKS[c % 13] ?? "2",
+    suit: SUITS[suit],
+    rank: RANKS[rank],
     faceUp: true,
   };
 }
@@ -151,19 +172,4 @@ export function usePokerTable(): PokerTableState {
       refetch: () => refetch(),
     };
   }, [data, isError, error, isLoading, refetch, contractReady]);
-}
-
-// ── Individual read: player's hole cards ─────────────────────────────────────────
-
-export function useMyHoleCards() {
-  const { isConnected } = useAccount();
-
-  return useReadContract({
-    address: POKER_TABLE_ADDRESS,
-    abi: POKER_TABLE_ABI,
-    functionName: "getMyHoleCards",
-    query: {
-      enabled: isConnected && isContractDeployed(POKER_TABLE_ADDRESS),
-    },
-  });
 }

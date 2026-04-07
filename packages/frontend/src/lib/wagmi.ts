@@ -6,11 +6,12 @@
 import { cookieStorage, createStorage, http } from "wagmi";
 import { defineChain } from "viem";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
+import { FRONTEND_CONFIG } from "@/lib/config";
 
 // ── SKALE Base Sepolia Chain Definition ────────────────────────────────────────
 
 export const skaleBaseSepolia = defineChain({
-  id: 324705682,
+  id: FRONTEND_CONFIG.chainId,
   name: "SKALE Base Sepolia",
   nativeCurrency: {
     name: "SKALE",
@@ -20,16 +21,13 @@ export const skaleBaseSepolia = defineChain({
   blockTime: 1_000,
   rpcUrls: {
     default: {
-      http: [
-        process.env.NEXT_PUBLIC_RPC_URL ||
-          "https://base-sepolia-testnet.skalenodes.com/v1/base-testnet",
-      ],
+      http: [FRONTEND_CONFIG.rpcUrl],
     },
   },
   blockExplorers: {
     default: {
       name: "SKALE Explorer",
-      url: "https://base-sepolia-testnet-explorer.skalenodes.com",
+      url: FRONTEND_CONFIG.explorerUrl.replace(/\/$/, ""),
     },
   },
 });
@@ -42,10 +40,10 @@ export function createWagmiConfig() {
     // WalletConnect Cloud project ID — get one at https://cloud.walletconnect.com
     // Works without a real ID for injected wallets (MetaMask, etc.)
     projectId:
-      process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "demo-project-id",
+      import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "demo-project-id",
     chains: [skaleBaseSepolia],
     transports: {
-      [skaleBaseSepolia.id]: http(),
+      [skaleBaseSepolia.id]: http(FRONTEND_CONFIG.rpcUrl),
     },
     storage: createStorage({
       storage: cookieStorage,

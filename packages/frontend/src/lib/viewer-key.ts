@@ -48,3 +48,36 @@ export function persistViewerKey(address: string, key: ViewerKeyPair) {
     }),
   );
 }
+
+export function loadViewerKey(address: string | null | undefined): ViewerKeyPair | null {
+  if (!address || typeof window === "undefined") {
+    return null;
+  }
+
+  const storageKey = `${VIEWER_KEY_PREFIX}${address.toLowerCase()}`;
+  const rawValue = window.localStorage.getItem(storageKey);
+  if (!rawValue) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawValue) as Partial<ViewerKeyPair>;
+    if (
+      typeof parsed.privateKey !== "string" ||
+      typeof parsed.publicKey !== "string" ||
+      typeof parsed.x !== "string" ||
+      typeof parsed.y !== "string"
+    ) {
+      return null;
+    }
+
+    return {
+      privateKey: parsed.privateKey as Hex,
+      publicKey: parsed.publicKey as Hex,
+      x: parsed.x as Hex,
+      y: parsed.y as Hex,
+    };
+  } catch {
+    return null;
+  }
+}

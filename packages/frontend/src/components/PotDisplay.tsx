@@ -1,6 +1,8 @@
+import { formatTokenAmount } from "@/lib/token-format";
+
 interface PotDisplayProps {
-  pot: number;
-  currentBet: number;
+  pot: bigint;
+  currentBet: bigint;
 }
 
 export function PotDisplay({ pot, currentBet }: PotDisplayProps) {
@@ -14,17 +16,17 @@ export function PotDisplay({ pot, currentBet }: PotDisplayProps) {
             Pot
           </p>
           <p className="text-sm sm:text-base font-bold text-poker-gold font-mono">
-            {pot.toLocaleString()}
+            {formatTokenAmount(pot)}
           </p>
         </div>
       </div>
 
       {/* Current Bet */}
-      {currentBet > 0 && (
+      {currentBet > 0n && (
         <p className="text-xs text-gray-400">
           Current bet:{" "}
           <span className="text-white font-mono font-semibold">
-            {currentBet.toLocaleString()}
+            {formatTokenAmount(currentBet)}
           </span>
         </p>
       )}

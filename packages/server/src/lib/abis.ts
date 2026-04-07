@@ -13,7 +13,6 @@ import type { Address } from 'viem';
  *
  * The contract exposes simple, human-readable functions:
  *   sitDown(viewerKey), fold(), check(), call(), raise(amount)
- *   revealCards() — initiates BITE CTX showdown decryption
  */
 
 export const POKER_TABLE_ABI = [
@@ -53,23 +52,14 @@ export const POKER_TABLE_ABI = [
     name: 'call',
     inputs: [],
     outputs: [],
-    stateMutability: 'payable',
+    stateMutability: 'nonpayable',
   },
   {
     type: 'function',
     name: 'raise',
     inputs: [{ name: 'raiseAmount', type: 'uint256' }],
     outputs: [],
-    stateMutability: 'payable',
-  },
-
-  // ── Showdown (BITE encrypted — the only private part) ──────────────────
-  {
-    type: 'function',
-    name: 'revealCards',
-    inputs: [],
-    outputs: [],
-    stateMutability: 'payable',
+    stateMutability: 'nonpayable',
   },
 
   // ── Game Flow (dealer-controlled) ──────────────────────────────────────

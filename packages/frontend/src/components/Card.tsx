@@ -7,10 +7,10 @@ interface CardProps {
 }
 
 const SUIT_COLOR: Record<string, string> = {
-  "♠": "text-gray-100",
+  "♠": "text-slate-900",
   "♥": "text-red-500",
   "♦": "text-red-500",
-  "♣": "text-gray-100",
+  "♣": "text-slate-900",
 };
 
 export function Card({ card, index = 0 }: CardProps) {
@@ -34,10 +34,10 @@ export function Card({ card, index = 0 }: CardProps) {
       className="card-deal flex h-[56px] w-10 flex-col items-center justify-center rounded-lg border border-gray-200 bg-white shadow-lg transition-shadow hover:shadow-xl sm:h-[80px] sm:w-14"
       style={{ animationDelay: `${index * 0.15}s` }}
     >
-      <span className={`text-[10px] font-bold leading-none sm:text-sm ${colorClass}`}>
+      <span className={`text-[10px] font-extrabold leading-none sm:text-sm ${colorClass}`}>
         {card.rank}
       </span>
-      <span className={`mt-0.5 text-base leading-none sm:text-xl ${colorClass}`}>
+      <span className={`mt-0.5 text-base font-extrabold leading-none sm:text-xl ${colorClass}`}>
         {card.suit}
       </span>
     </div>

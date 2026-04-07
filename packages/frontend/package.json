@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "lint": "oxlint . --tsconfig tsconfig.json",
-    "lint:fix": "oxlint . --tsconfig tsconfig.json --fix",
+    "lint": "oxlint . --tsconfig tsconfig.json --ignore-path .gitignore --ignore-pattern .next --ignore-pattern dist",
+    "lint:fix": "oxlint . --tsconfig tsconfig.json --fix --ignore-path .gitignore --ignore-pattern .next --ignore-pattern dist",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

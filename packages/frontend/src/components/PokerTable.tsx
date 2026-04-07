@@ -11,15 +11,29 @@ interface PokerTableProps {
 
 export function PokerTable({ gameState }: PokerTableProps) {
   return (
-    <div className="relative w-full max-w-5xl">
-      {/* Table Container */}
-      <div className="relative mx-auto aspect-[16/10] w-full max-w-[860px] min-w-[300px]">
-        {/* Felt Oval */}
-        <div className="felt-texture absolute inset-[8%] rounded-[50%] border-[3px] border-poker-gold/20 shadow-2xl sm:border-4" />
+    <div className="relative w-full max-w-6xl">
+      <div className="relative mx-auto aspect-[16/10] w-full max-w-[980px] min-w-[320px]">
+        {/* Table Rail */}
+        <div className="wood-rim absolute inset-[4.9%] rounded-[48%] border border-black/65" />
+
+        {/* Felt Surface */}
+        <div
+          className="absolute inset-[5.3%] rounded-[48%] border-[2px] border-emerald-100/30 bg-[#0d7a43] shadow-[0_30px_90px_rgba(0,0,0,0.65)] sm:border-[3px]"
+          style={{
+            backgroundImage:
+              "radial-gradient(ellipse at 50% 42%, rgba(63, 229, 141, 0.26) 0%, rgba(63, 229, 141, 0.12) 32%, rgba(13, 122, 67, 0) 66%), linear-gradient(180deg, #118a4d 0%, #0d7a43 56%, #0b6537 100%)",
+          }}
+        />
+
+        {/* Felt Depth */}
+        <div className="pointer-events-none absolute inset-[5.3%] rounded-[48%] shadow-[inset_0_2px_16px_rgba(255,255,255,0.04),inset_0_-10px_18px_rgba(0,0,0,0.22)]" />
+
+        {/* Inner Betting Ring */}
+        <div className="pointer-events-none absolute inset-[15%] rounded-[46%] border border-dashed border-emerald-100/25 shadow-[inset_0_0_18px_rgba(0,0,0,0.26)]" />
 
         {/* Inner Table Content */}
-        <div className="absolute inset-0 flex items-center justify-center z-[1]">
-          <div className="flex flex-col items-center gap-3">
+        <div className="absolute inset-0 z-[1] flex items-center justify-center">
+          <div className="flex translate-y-4 flex-col items-center gap-3 sm:translate-y-6">
             <CommunityCards cards={gameState.communityCards} />
             <PotDisplay pot={gameState.pot} currentBet={gameState.currentBet} />
           </div>
@@ -42,15 +56,6 @@ export function PokerTable({ gameState }: PokerTableProps) {
           );
         })}
 
-        {/* Human Player Placeholder */}
-        {gameState.humanPlayer && (
-          <div className="absolute bottom-[6%] left-1/2 z-20 -translate-x-1/2">
-            <div className="rounded-full border border-poker-gold/30 bg-poker-gold/20 px-3 py-1.5 text-xs text-poker-gold sm:px-4 sm:py-2 sm:text-sm">
-              You ({gameState.humanPlayer.address?.slice(0, 6)}...
-              {gameState.humanPlayer.address?.slice(-4)})
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

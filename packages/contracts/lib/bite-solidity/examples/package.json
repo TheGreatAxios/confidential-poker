@@ -14,7 +14,7 @@
         "@nomicfoundation/hardhat-chai-matchers": "^2.1.2",
         "@nomicfoundation/hardhat-ethers": "^3.1.2",
         "@nomicfoundation/hardhat-network-helpers": "^1.1.2",
-        "@skalenetwork/bite": "^0.7.2",
+        "@skalenetwork/bite": "0.8.1-develop.0",
         "@typechain/ethers-v6": "^0.5.1",
         "@typechain/hardhat": "^9.1.0",
         "@types/node": ">=25.4.0",

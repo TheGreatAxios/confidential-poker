@@ -39,10 +39,10 @@ export interface Agent {
   name: string;
   personality: AgentPersonality;
   emoji: string;
-  chips: number;
+  chips: bigint;
   cards: Card[];
   status: PlayerStatus;
-  currentBet: number;
+  currentBet: bigint;
   isDealer: boolean;
   isThinking: boolean;
   message: string | null;
@@ -55,9 +55,9 @@ export interface Agent {
 export interface GameState {
   phase: GamePhase;
   communityCards: Card[];
-  pot: number;
-  currentBet: number;
-  minRaise: number;
+  pot: bigint;
+  currentBet: bigint;
+  minRaise: bigint;
   dealerIndex: number;
   currentPlayerIndex: number | null;
   agents: Agent[];
@@ -68,10 +68,11 @@ export interface GameState {
   humanPlayer: {
     isConnected: boolean;
     address: string | null;
-    chips: number;
+    viewerKey: string | null;
+    chips: bigint;
     cards: Card[];
     status: PlayerStatus;
-    currentBet: number;
+    currentBet: bigint;
     seatIndex: number;
   } | null;
 }

@@ -3,8 +3,8 @@ pragma solidity >=0.8.27;
 
 import "./HandEvaluator.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { BITE, PublicKey } from "@skalenetwork/bite-solidity/BITE.sol";
-import { IBiteSupplicant } from "@skalenetwork/bite-solidity/interfaces/IBiteSupplicant.sol";
+import {BITE, PublicKey} from "@skalenetwork/bite-solidity/BITE.sol";
+import {IBiteSupplicant} from "@skalenetwork/bite-solidity/interfaces/IBiteSupplicant.sol";
 import "@dirtroad/skale-rng/contracts/RNG.sol";
 
 /**
@@ -27,7 +27,7 @@ import "@dirtroad/skale-rng/contracts/RNG.sol";
  *
  *         TOKEN:
  *         All game mechanics (buy-in, blinds, betting, payouts) use ERC-20.
- *         msg.value is used ONLY for revealCards() to fund the CTX callback gas.
+ *         ETH held by this contract is reserved for BITE CTX callback gas.
  *
  *         State machine: Waiting → Preflop → Flop → Turn → River → Showdown
  */
@@ -36,38 +36,46 @@ contract PokerGame is IBiteSupplicant, RNG {
 
     // ─── Enums ───────────────────────────────────────────────────────────
     enum GamePhase {
-        Waiting,   // 0: waiting for players
-        Preflop,   // 1: preflop betting (cards dealt, blinds posted)
-        Flop,      // 2: flop betting
-        Turn,      // 3: turn betting
-        River,     // 4: river betting
-        Showdown   // 5: card reveal and pot distribution
+        Waiting, // 0: waiting for players
+        Preflop, // 1: preflop betting (cards dealt, blinds posted)
+        Flop, // 2: flop betting
+        Turn, // 3: turn betting
+        River, // 4: river betting
+        Showdown // 5: card reveal and pot distribution
     }
 
     // ─── Structs ─────────────────────────────────────────────────────────
     struct Player {
         address addr;
-        PublicKey viewerKey;              // ECIES public key for encrypting their cards
-        uint8[2] holeCards;               // ONLY populated in onDecrypt at showdown; zero otherwise
-        bool isActive;                    // hasn't folded this hand
-        bool hasActed;                    // acted this betting round
-        uint256 betAmount;                // total bet in current betting round
+        PublicKey viewerKey; // ECIES public key for encrypting their cards
+        uint8[2] holeCards; // ONLY populated in onDecrypt at showdown; zero otherwise
+        bool isActive; // hasn't folded this hand
+        bool hasActed; // acted this betting round
+        uint256 betAmount; // total bet in current betting round
         bool isAllIn;
-        uint256 stack;                    // chip stack (ERC-20 balance in contract)
-        bytes teEncryptedHoleCards;       // TE-encrypted for showdown CTX decryption
-        bytes eciesEncryptedHoleCards;    // ECIES-encrypted to player's viewer key
-        bool cardsRevealed;               // true after showdown decryption
+        uint256 stack; // chip stack (ERC-20 balance in contract)
+        bytes teEncryptedHoleCards; // TE-encrypted for showdown CTX decryption
+        bytes eciesEncryptedHoleCards; // ECIES-encrypted to player's viewer key
+        bool cardsRevealed; // true after showdown decryption
     }
 
     // ─── Constants ───────────────────────────────────────────────────────
-    uint256 public constant SMALL_BLIND = 5 * 10**6;    // 5 USDC
-    uint256 public constant BIG_BLIND = 10 * 10**6;     // 10 USDC
+    uint256 public constant SMALL_BLIND = 5 * 10 ** 17; // 0.5 SKL
+    uint256 public constant BIG_BLIND = 1 * 10 ** 18; // 1 SKL
+    uint256 public constant MIN_BET = 5 * 10 ** 17; // 0.5 SKL
+    uint256 public constant MAX_BET = 500 * 10 ** 18; // 500 SKL
+    uint256 public constant MIN_BUY_IN = 5 * 10 ** 18; // 5 SKL
+    uint256 public constant MAX_BUY_IN = 50_000 * 10 ** 18; // 50,000 SKL
     uint256 public constant MAX_PLAYERS = 10;
     uint256 public constant MIN_PLAYERS = 2;
-    uint256 public constant BUY_IN = 1000 * 10**6;  // 1000 USDC (6 decimals)
+    uint256 public constant ACTIVE_PLAYERS_PER_HAND = 2;
+    uint256 public constant BUY_IN = 1000 * 10 ** 18; // 1000 SKL (18 decimals)
+    uint256 public constant CTX_GAS_BUFFER = 100_000;
+    uint256 public constant MIN_CTX_RESERVE_HANDS = 2;
 
     /// @notice Minimum gas to reserve for the CTX callback
     uint256 public minCallbackGas = 500_000;
+    uint256 public immutable ctxCallbackValueWei;
 
     // ─── State ───────────────────────────────────────────────────────────
     GamePhase public phase;
@@ -77,6 +85,10 @@ contract PokerGame is IBiteSupplicant, RNG {
     uint256 public currentTurnIndex;
     address public dealer;
     uint256 public dealerIndex;
+    uint256 public handSelectionCursor;
+    uint256 internal rngCursor;
+    uint8 private deckPosition;
+    uint8[52] private deck;
 
     IERC20 public sklToken;
     Player[] public players;
@@ -106,6 +118,7 @@ contract PokerGame is IBiteSupplicant, RNG {
     event PotAwarded(address indexed player, uint256 amount);
     event HandComplete();
     event PlayerLeft(address indexed player, uint256 returned);
+    event PlayerForfeited(address indexed player, uint256 forfeited);
 
     // ─── Errors ──────────────────────────────────────────────────────────
     error NotOwner();
@@ -126,7 +139,10 @@ contract PokerGame is IBiteSupplicant, RNG {
     error NotAtRiver();
     error CardsNotYetRevealed();
     error InsufficientCallbackGas();
+    error InsufficientCtxReserve();
+    error InvalidCtxCallbackValue();
     error AccessDenied();
+    error DeckExhausted();
 
     // ─── Modifiers ───────────────────────────────────────────────────────
     modifier onlyOwner() {
@@ -146,18 +162,22 @@ contract PokerGame is IBiteSupplicant, RNG {
 
     modifier inBettingPhase() {
         require(
-            phase == GamePhase.Preflop || phase == GamePhase.Flop ||
-            phase == GamePhase.Turn || phase == GamePhase.River,
+            phase == GamePhase.Preflop || phase == GamePhase.Flop || phase == GamePhase.Turn
+                || phase == GamePhase.River,
             NotBettingPhase()
         );
         _;
     }
 
     // ─── Constructor ─────────────────────────────────────────────────────
-    constructor(address _sklToken) {
+    constructor(address _sklToken, uint256 _ctxCallbackValueWei) payable {
         owner = msg.sender;
         sklToken = IERC20(_sklToken);
         phase = GamePhase.Waiting;
+        require(BUY_IN >= MIN_BUY_IN && BUY_IN <= MAX_BUY_IN, "Buy-in out of range");
+        require(_ctxCallbackValueWei > 0, InvalidCtxCallbackValue());
+        ctxCallbackValueWei = _ctxCallbackValueWei;
+        require(msg.value >= minimumCtxReserve(), InsufficientCtxReserve());
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -168,7 +188,6 @@ contract PokerGame is IBiteSupplicant, RNG {
     /// @notice Sit down at the table with your ECIES viewer key.
     ///         You must have approved this contract to transfer BUY_IN tokens.
     function sitDown(PublicKey calldata viewerKey) external {
-        require(phase == GamePhase.Waiting, "Game not waiting");
         require(players.length < MAX_PLAYERS, GameIsFull());
         require(_playerIndex(msg.sender) == type(uint256).max, AlreadyJoined());
 
@@ -176,22 +195,30 @@ contract PokerGame is IBiteSupplicant, RNG {
         bool ok = sklToken.transferFrom(msg.sender, address(this), BUY_IN);
         require(ok, TransferFailed());
 
-        players.push(Player({
-            addr: msg.sender,
-            viewerKey: viewerKey,
-            holeCards: [uint8(0), uint8(0)],
-            isActive: true,
-            hasActed: false,
-            betAmount: 0,
-            isAllIn: false,
-            stack: BUY_IN,
-            teEncryptedHoleCards: bytes(""),
-            eciesEncryptedHoleCards: bytes(""),
-            cardsRevealed: false
-        }));
+        players.push(
+            Player({
+                addr: msg.sender,
+                viewerKey: viewerKey,
+                holeCards: [uint8(0), uint8(0)],
+                isActive: true,
+                hasActed: false,
+                betAmount: 0,
+                isAllIn: false,
+                stack: BUY_IN,
+                teEncryptedHoleCards: bytes(""),
+                eciesEncryptedHoleCards: bytes(""),
+                cardsRevealed: false
+            })
+        );
 
         emit PlayerJoined(msg.sender, players.length - 1);
+
+        if (phase == GamePhase.Waiting && _countPlayersWithStack() >= MIN_PLAYERS) {
+            dealNewHand();
+        }
     }
+
+    receive() external payable {}
 
     /// @notice Fold your hand.
     function fold() external onlyPlayer isCurrentTurn inBettingPhase {
@@ -230,9 +257,10 @@ contract PokerGame is IBiteSupplicant, RNG {
 
     /// @notice Raise by a given amount. Deducted from your stack.
     function raise(uint256 raiseAmount) external onlyPlayer isCurrentTurn inBettingPhase {
-        require(raiseAmount > 0, NotEnoughForRaise());
+        require(raiseAmount >= MIN_BET, NotEnoughForRaise());
 
         uint256 newBet = currentBet + raiseAmount;
+        require(newBet <= MAX_BET, NotEnoughForRaise());
         uint256 toPay = newBet - players[currentTurnIndex].betAmount;
 
         if (toPay > players[currentTurnIndex].stack) {
@@ -265,22 +293,22 @@ contract PokerGame is IBiteSupplicant, RNG {
     ///         posts blinds, deals encrypted hole cards via BITE.
     function dealNewHand() public {
         require(phase == GamePhase.Waiting, "Game not waiting");
-        require(players.length >= MIN_PLAYERS, NotEnoughPlayers());
+        require(_countPlayersWithStack() >= MIN_PLAYERS, NotEnoughPlayers());
+        require(address(this).balance >= minimumCtxReserve(), InsufficientCtxReserve());
 
         _removeBustedPlayers();
-        require(players.length >= MIN_PLAYERS, NotEnoughPlayers());
+        require(_countPlayersWithStack() >= MIN_PLAYERS, NotEnoughPlayers());
 
         handNumber++;
         pot = 0;
         currentBet = 0;
+        rngCursor = 1;
+        _resetDeck();
         _clearCommunityCards();
 
-        dealerIndex = handNumber % players.length;
-        dealer = players[dealerIndex].addr;
-
         for (uint256 i = 0; i < players.length; i++) {
-            players[i].isActive = true;
-            players[i].hasActed = false;
+            players[i].isActive = false;
+            players[i].hasActed = true;
             players[i].betAmount = 0;
             players[i].isAllIn = false;
             players[i].holeCards = [uint8(0), uint8(0)];
@@ -289,23 +317,41 @@ contract PokerGame is IBiteSupplicant, RNG {
             players[i].eciesEncryptedHoleCards = bytes("");
         }
 
+        uint256[2] memory handPlayers;
+        uint256 picked = 0;
+        uint256 scanned = 0;
+        while (scanned < players.length && picked < ACTIVE_PLAYERS_PER_HAND) {
+            uint256 idx = (handSelectionCursor + scanned) % players.length;
+            if (players[idx].stack > 0) {
+                handPlayers[picked] = idx;
+                players[idx].isActive = true;
+                players[idx].hasActed = false;
+                picked++;
+            }
+            scanned++;
+        }
+        require(picked == ACTIVE_PLAYERS_PER_HAND, NotEnoughPlayers());
+        handSelectionCursor = (handPlayers[1] + 1) % players.length;
+
+        if (handNumber == 1) {
+            dealerIndex = handPlayers[0];
+        } else if (dealerIndex == handPlayers[0]) {
+            dealerIndex = handPlayers[1];
+        } else {
+            dealerIndex = handPlayers[0];
+        }
+        dealer = players[dealerIndex].addr;
+
         // Deal encrypted hole cards
         for (uint256 i = 0; i < players.length; i++) {
-            uint8 card1 = uint8(getNextRandomRange(i * 2, 52) + 1);
-            uint8 card2 = uint8(getNextRandomRange((i * 2) + 1, 52) + 1);
+            if (!players[i].isActive) continue;
+            uint8 encodedCard1 = _drawUniqueCard();
+            uint8 encodedCard2 = _drawUniqueCard();
 
-            uint8 encodedCard1 = HandEvaluator.encodeCard((card1 % 13) + 2, card1 / 13);
-            uint8 encodedCard2 = HandEvaluator.encodeCard((card2 % 13) + 2, card2 / 13);
-
-            bytes memory teCards = BITE.encryptTE(
-                BITE.ENCRYPT_TE_ADDRESS,
-                abi.encode(encodedCard1, encodedCard2)
-            );
+            bytes memory teCards = BITE.encryptTE(BITE.ENCRYPT_TE_ADDRESS, abi.encode(encodedCard1, encodedCard2));
 
             bytes memory eciesCards = BITE.encryptECIES(
-                BITE.ENCRYPT_ECIES_ADDRESS,
-                abi.encode(encodedCard1, encodedCard2),
-                players[i].viewerKey
+                BITE.ENCRYPT_ECIES_ADDRESS, abi.encode(encodedCard1, encodedCard2), players[i].viewerKey
             );
 
             players[i].teEncryptedHoleCards = teCards;
@@ -316,13 +362,14 @@ contract PokerGame is IBiteSupplicant, RNG {
         }
 
         // Post blinds from player stacks
-        uint256 sbIdx = _nextActiveIndex(dealerIndex);
+        uint256 sbIdx = dealerIndex;
         uint256 bbIdx = _nextActiveIndex(sbIdx);
         _postBlind(sbIdx, SMALL_BLIND);
         _postBlind(bbIdx, BIG_BLIND);
         currentBet = BIG_BLIND;
 
-        currentTurnIndex = _nextActiveIndex(bbIdx);
+        // Heads-up preflop action starts with the small blind (dealer).
+        currentTurnIndex = sbIdx;
         _resetActedFlags();
 
         phase = GamePhase.Preflop;
@@ -335,9 +382,9 @@ contract PokerGame is IBiteSupplicant, RNG {
         require(phase == GamePhase.Preflop, "Must be in preflop phase");
         _collectBets();
 
-        communityCards[0] = _randCard(getNextRandomRange(0, 52));
-        communityCards[1] = _randCard(getNextRandomRange(1, 52));
-        communityCards[2] = _randCard(getNextRandomRange(2, 52));
+        communityCards[0] = _drawUniqueCard();
+        communityCards[1] = _drawUniqueCard();
+        communityCards[2] = _drawUniqueCard();
 
         currentBet = 0;
         _resetActedFlags();
@@ -353,7 +400,7 @@ contract PokerGame is IBiteSupplicant, RNG {
         require(phase == GamePhase.Flop, "Must be in flop phase");
         _collectBets();
 
-        communityCards[3] = _randCard(getRandomRange(52));
+        communityCards[3] = _drawUniqueCard();
 
         currentBet = 0;
         _resetActedFlags();
@@ -369,7 +416,7 @@ contract PokerGame is IBiteSupplicant, RNG {
         require(phase == GamePhase.Turn, "Must be in turn phase");
         _collectBets();
 
-        communityCards[4] = _randCard(getRandomRange(52));
+        communityCards[4] = _drawUniqueCard();
 
         currentBet = 0;
         _resetActedFlags();
@@ -381,61 +428,11 @@ contract PokerGame is IBiteSupplicant, RNG {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // SHOWDOWN — the ONLY place msg.value is used (for CTX callback gas)
+    // SHOWDOWN
     // ═══════════════════════════════════════════════════════════════════════
 
-    /// @notice Request encrypted card reveal via BITE CTX.
-    ///         msg.value funds the CTX callback gas — forwarded to the CTX sender.
-    ///         All game tokens stay as ERC-20; ETH here is ONLY for gas.
-    function revealCards() external payable {
-        require(phase == GamePhase.River, NotAtRiver());
-        require(!_showdownPending, ShowdownInProgress());
-
-        uint256 allowedGas = msg.value / tx.gasprice;
-        require(allowedGas > minCallbackGas, InsufficientCallbackGas());
-
-        uint256 activeCount = 0;
-        for (uint256 i = 0; i < players.length; i++) {
-            if (players[i].isActive) activeCount++;
-        }
-        require(activeCount > 1, "Only one player left");
-
-        bytes[] memory encryptedArgs = new bytes[](activeCount);
-        bytes[] memory plaintextArgs = new bytes[](activeCount);
-        uint256 j = 0;
-
-        for (uint256 i = 0; i < players.length; i++) {
-            if (players[i].isActive) {
-                require(players[i].teEncryptedHoleCards.length > 0, NoCardsDealt());
-                encryptedArgs[j] = players[i].teEncryptedHoleCards;
-                plaintextArgs[j] = abi.encode(i);
-                j++;
-            }
-        }
-
-        _showdownPending = true;
-        phase = GamePhase.Showdown;
-
-        address payable ctxSender = BITE.submitCTX(
-            BITE.SUBMIT_CTX_ADDRESS,
-            allowedGas,
-            encryptedArgs,
-            plaintextArgs
-        );
-
-        _canCallOnDecrypt[ctxSender] = true;
-
-        // Forward msg.value to CTX sender for callback gas
-        ctxSender.transfer(msg.value);
-
-        emit ShowdownInitiated(j);
-    }
-
     /// @notice BITE callback — called after threshold decryption of showdown cards.
-    function onDecrypt(
-        bytes[] calldata decryptedArguments,
-        bytes[] calldata plaintextArguments
-    ) external override {
+    function onDecrypt(bytes[] calldata decryptedArguments, bytes[] calldata plaintextArguments) external override {
         require(_canCallOnDecrypt[msg.sender], AccessDenied());
         _canCallOnDecrypt[msg.sender] = false;
         require(_showdownPending, "No pending showdown");
@@ -473,42 +470,13 @@ contract PokerGame is IBiteSupplicant, RNG {
             _evaluateAndDistribute(activePlayers, activeCount);
         }
 
-        phase = GamePhase.Waiting;
+        _resetWaitingState();
         emit HandComplete();
     }
 
-    /// @notice Fallback showdown — owner can resolve if only one player remains.
+    /// @notice Owner-triggered showdown entrypoint. Winner settlement happens in onDecrypt.
     function resolveHand() external onlyOwner {
-        require(phase == GamePhase.River, "Must be at river");
-
-        phase = GamePhase.Showdown;
-
-        for (uint256 i = 0; i < players.length; i++) {
-            pot += players[i].betAmount;
-            players[i].betAmount = 0;
-        }
-
-        address[] memory activePlayers = new address[](players.length);
-        uint256 activeCount = 0;
-        for (uint256 i = 0; i < players.length; i++) {
-            if (players[i].isActive) {
-                activePlayers[activeCount++] = players[i].addr;
-            }
-        }
-
-        if (activeCount == 1) {
-            _awardPot(activePlayers[0], pot, "Last player standing");
-        } else {
-            for (uint256 i = 0; i < players.length; i++) {
-                if (players[i].isActive && !players[i].cardsRevealed) {
-                    revert CardsNotYetRevealed();
-                }
-            }
-            _evaluateAndDistribute(activePlayers, activeCount);
-        }
-
-        phase = GamePhase.Waiting;
-        emit HandComplete();
+        _initiateShowdown();
     }
 
     /// @notice Leave the table and withdraw your remaining stack as tokens.
@@ -517,15 +485,55 @@ contract PokerGame is IBiteSupplicant, RNG {
         uint256 idx = _playerIndex(msg.sender);
 
         uint256 stack = players[idx].stack;
-        uint256 lastIdx = players.length - 1;
-        if (idx != lastIdx) {
-            players[idx] = players[lastIdx];
-        }
-        players.pop();
+        _removePlayerAt(idx);
 
         bool ok = sklToken.transfer(msg.sender, stack);
         require(ok, TransferFailed());
         emit PlayerLeft(msg.sender, stack);
+    }
+
+    /// @notice Emergency dev exit: leave immediately and forfeit any remaining stack.
+    function forfeitAndLeave() external onlyPlayer {
+        require(!_showdownPending, ShowdownInProgress());
+
+        uint256 idx = _playerIndex(msg.sender);
+        uint256 forfeited = players[idx].stack;
+        bool wasBettingPhase =
+            phase == GamePhase.Preflop || phase == GamePhase.Flop || phase == GamePhase.Turn || phase == GamePhase.River;
+        bool wasCurrentTurn = players.length > 0 && currentTurnIndex == idx;
+
+        players[idx].stack = 0;
+        players[idx].isActive = false;
+        players[idx].hasActed = true;
+
+        _removePlayerAt(idx);
+        emit PlayerForfeited(msg.sender, forfeited);
+
+        if (players.length == 0) {
+            _resetWaitingState();
+            pot = 0;
+            dealer = address(0);
+            _clearCommunityCards();
+            return;
+        }
+
+        if (wasBettingPhase) {
+            uint256 activeCount = _activePlayerCountInternal();
+            if (activeCount <= 1) {
+                if (activeCount == 1) {
+                    _initiateShowdown();
+                } else {
+                    _resetWaitingState();
+                    emit HandComplete();
+                }
+                return;
+            }
+
+            if (wasCurrentTurn) {
+                currentTurnIndex = idx == 0 ? players.length - 1 : idx - 1;
+                _advanceTurn();
+            }
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -594,9 +602,11 @@ contract PokerGame is IBiteSupplicant, RNG {
         return "Showdown";
     }
 
-    function evaluatePlayerHand(address player) external view returns (
-        uint8 handRank, uint8 primary, uint8 secondary, uint8 tertiary, uint8 quaternary
-    ) {
+    function evaluatePlayerHand(address player)
+        external
+        view
+        returns (uint8 handRank, uint8 primary, uint8 secondary, uint8 tertiary, uint8 quaternary)
+    {
         uint256 idx = _playerIndex(player);
         require(idx != type(uint256).max, NotAPlayer());
 
@@ -613,9 +623,11 @@ contract PokerGame is IBiteSupplicant, RNG {
         return (result.handRank, result.primary, result.secondary, result.tertiary, result.quaternary);
     }
 
-    function getPlayerInfo(uint256 idx) external view returns (
-        address addr, bool active, bool acted, uint256 bet, bool allIn, uint256 stackBal
-    ) {
+    function getPlayerInfo(uint256 idx)
+        external
+        view
+        returns (address addr, bool active, bool acted, uint256 bet, bool allIn, uint256 stackBal)
+    {
         Player storage p = players[idx];
         return (p.addr, p.isActive, p.hasActed, p.betAmount, p.isAllIn, p.stack);
     }
@@ -636,6 +648,10 @@ contract PokerGame is IBiteSupplicant, RNG {
         return currentTurnIndex;
     }
 
+    function minimumCtxReserve() public view returns (uint256) {
+        return ctxCallbackValueWei * MIN_CTX_RESERVE_HANDS;
+    }
+
     // ─── Internal Helpers ────────────────────────────────────────────────
 
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
@@ -651,7 +667,6 @@ contract PokerGame is IBiteSupplicant, RNG {
 
     function _collectBets() internal {
         for (uint256 i = 0; i < players.length; i++) {
-            pot += players[i].betAmount;
             players[i].betAmount = 0;
         }
     }
@@ -659,6 +674,12 @@ contract PokerGame is IBiteSupplicant, RNG {
     function _clearCommunityCards() internal {
         for (uint256 i = 0; i < 5; i++) {
             communityCards[i] = 0;
+        }
+    }
+
+    function _countPlayersWithStack() internal view returns (uint256 count) {
+        for (uint256 i = 0; i < players.length; i++) {
+            if (players[i].stack > 0) count++;
         }
     }
 
@@ -678,24 +699,19 @@ contract PokerGame is IBiteSupplicant, RNG {
 
     function _advanceTurn() internal {
         uint256 activeCount = 0;
-        uint256 lastActive = 0;
         for (uint256 i = 0; i < players.length; i++) {
             if (players[i].isActive) {
                 activeCount++;
-                lastActive = i;
             }
         }
 
         if (activeCount <= 1) {
-            _collectBets();
-            _awardPot(players[lastActive].addr, pot, "Last player standing");
-            phase = GamePhase.Waiting;
-            emit HandComplete();
+            _initiateShowdown();
             return;
         }
 
         if (_allActivePlayersActed()) {
-            currentTurnIndex = type(uint256).max;
+            _advancePhaseFromTurn();
             return;
         }
 
@@ -707,11 +723,107 @@ contract PokerGame is IBiteSupplicant, RNG {
         }
 
         if (guard >= players.length || _allActivePlayersActed()) {
-            currentTurnIndex = type(uint256).max;
+            _advancePhaseFromTurn();
             return;
         }
 
         currentTurnIndex = nextIdx;
+    }
+
+    function _advancePhaseFromTurn() internal {
+        if (phase == GamePhase.Preflop) {
+            _collectBets();
+
+            communityCards[0] = _drawUniqueCard();
+            communityCards[1] = _drawUniqueCard();
+            communityCards[2] = _drawUniqueCard();
+
+            currentBet = 0;
+            _resetActedFlags();
+            currentTurnIndex = _nextActiveIndexFromDealer();
+
+            phase = GamePhase.Flop;
+            emit FlopDealt(communityCards[0], communityCards[1], communityCards[2]);
+            emit PhaseChanged(GamePhase.Flop);
+            return;
+        }
+
+        if (phase == GamePhase.Flop) {
+            _collectBets();
+
+            communityCards[3] = _drawUniqueCard();
+
+            currentBet = 0;
+            _resetActedFlags();
+            currentTurnIndex = _nextActiveIndexFromDealer();
+
+            phase = GamePhase.Turn;
+            emit TurnDealt(communityCards[3]);
+            emit PhaseChanged(GamePhase.Turn);
+            return;
+        }
+
+        if (phase == GamePhase.Turn) {
+            _collectBets();
+
+            communityCards[4] = _drawUniqueCard();
+
+            currentBet = 0;
+            _resetActedFlags();
+            currentTurnIndex = _nextActiveIndexFromDealer();
+
+            phase = GamePhase.River;
+            emit RiverDealt(communityCards[4]);
+            emit PhaseChanged(GamePhase.River);
+            return;
+        }
+
+        if (phase == GamePhase.River) {
+            _initiateShowdown();
+        }
+    }
+
+    function _initiateShowdown() internal {
+        require(
+            phase == GamePhase.Preflop || phase == GamePhase.Flop || phase == GamePhase.Turn
+                || phase == GamePhase.River,
+            NotBettingPhase()
+        );
+        require(!_showdownPending, ShowdownInProgress());
+        require(address(this).balance >= ctxCallbackValueWei, InsufficientCtxReserve());
+
+        uint256 allowedGas = tx.gasprice == 0 ? minCallbackGas + CTX_GAS_BUFFER : ctxCallbackValueWei / tx.gasprice;
+        require(allowedGas > minCallbackGas, InsufficientCallbackGas());
+
+        uint256 activeCount = 0;
+        for (uint256 i = 0; i < players.length; i++) {
+            if (players[i].isActive) activeCount++;
+        }
+        require(activeCount > 0, NotEnoughPlayers());
+
+        bytes[] memory encryptedArgs = new bytes[](activeCount);
+        bytes[] memory plaintextArgs = new bytes[](activeCount);
+        uint256 j = 0;
+
+        for (uint256 i = 0; i < players.length; i++) {
+            if (players[i].isActive) {
+                require(players[i].teEncryptedHoleCards.length > 0, NoCardsDealt());
+                encryptedArgs[j] = players[i].teEncryptedHoleCards;
+                plaintextArgs[j] = abi.encode(i);
+                j++;
+            }
+        }
+
+        _showdownPending = true;
+        phase = GamePhase.Showdown;
+        currentTurnIndex = type(uint256).max;
+
+        address payable ctxSender = BITE.submitCTX(BITE.SUBMIT_CTX_ADDRESS, allowedGas, encryptedArgs, plaintextArgs);
+
+        _canCallOnDecrypt[ctxSender] = true;
+        ctxSender.transfer(ctxCallbackValueWei);
+
+        emit ShowdownInitiated(j);
     }
 
     function _allActivePlayersActed() internal view returns (bool) {
@@ -746,11 +858,80 @@ contract PokerGame is IBiteSupplicant, RNG {
         for (uint256 i = players.length; i > 0; i--) {
             uint256 idx = i - 1;
             if (players[idx].stack == 0) {
-                uint256 lastIdx = players.length - 1;
-                if (idx != lastIdx) players[idx] = players[lastIdx];
-                players.pop();
+                _removePlayerAt(idx);
             }
         }
+    }
+
+    function _removePlayerAt(uint256 idx) internal {
+        uint256 lastIdx = players.length - 1;
+
+        if (idx != lastIdx) {
+            players[idx] = players[lastIdx];
+        }
+        players.pop();
+
+        if (players.length == 0) {
+            dealerIndex = 0;
+            handSelectionCursor = 0;
+            currentTurnIndex = type(uint256).max;
+            dealer = address(0);
+            return;
+        }
+
+        if (dealerIndex == lastIdx && idx != lastIdx) {
+            dealerIndex = idx;
+        } else if (dealerIndex > idx) {
+            dealerIndex--;
+        } else if (dealerIndex >= players.length) {
+            dealerIndex = 0;
+        }
+
+        if (handSelectionCursor == lastIdx && idx != lastIdx) {
+            handSelectionCursor = idx;
+        } else if (handSelectionCursor > idx) {
+            handSelectionCursor--;
+        }
+        if (handSelectionCursor >= players.length) {
+            handSelectionCursor = 0;
+        }
+
+        if (currentTurnIndex == lastIdx && idx != lastIdx) {
+            currentTurnIndex = idx;
+        } else if (currentTurnIndex > idx && currentTurnIndex != type(uint256).max) {
+            currentTurnIndex--;
+        }
+        if (currentTurnIndex >= players.length) {
+            currentTurnIndex = type(uint256).max;
+        }
+
+        dealer = players[dealerIndex].addr;
+    }
+
+    function _activePlayerCountInternal() internal view returns (uint256 count) {
+        for (uint256 i = 0; i < players.length; i++) {
+            if (players[i].isActive) count++;
+        }
+    }
+
+    function _resetWaitingState() internal {
+        phase = GamePhase.Waiting;
+        currentBet = 0;
+        currentTurnIndex = type(uint256).max;
+
+        for (uint256 i = 0; i < players.length; i++) {
+            players[i].betAmount = 0;
+            players[i].isActive = false;
+            players[i].hasActed = true;
+            players[i].isAllIn = false;
+        }
+    }
+
+    function _firstActivePlayerIndex() internal view returns (uint256) {
+        for (uint256 i = 0; i < players.length; i++) {
+            if (players[i].isActive) return i;
+        }
+        return type(uint256).max;
     }
 
     function _awardPot(address winner, uint256 amount, string memory handName) internal {
@@ -794,10 +975,34 @@ contract PokerGame is IBiteSupplicant, RNG {
         _awardPot(bestPlayer, pot, handName);
     }
 
-    function _randCard(uint256 seed) internal pure returns (uint8) {
-        uint256 card = seed % 52;
+    function _randCard(uint256 card) internal pure returns (uint8) {
         return HandEvaluator.encodeCard(uint8((card % 13) + 2), uint8(card / 13));
     }
 
-    receive() external payable {}
+    function _resetDeck() internal {
+        deckPosition = 0;
+
+        for (uint256 i = 0; i < 52; i++) {
+            deck[i] = _randCard(i);
+        }
+
+        for (uint256 i = 51; i > 0; i--) {
+            uint256 swapIndex = getNextRandomRange(rngCursor, i + 1);
+            rngCursor++;
+
+            uint8 card = deck[i];
+            deck[i] = deck[swapIndex];
+            deck[swapIndex] = card;
+        }
+    }
+
+    function _drawUniqueCard() internal returns (uint8) {
+        if (deckPosition >= deck.length) {
+            revert DeckExhausted();
+        }
+
+        uint8 card = deck[deckPosition];
+        deckPosition++;
+        return card;
+    }
 }

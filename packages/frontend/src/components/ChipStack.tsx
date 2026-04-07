@@ -1,10 +1,12 @@
+import { formatTokenAmount } from "@/lib/token-format";
+
 interface ChipStackProps {
-  amount: number;
+  amount: bigint;
   color?: string;
 }
 
 export function ChipStack({ amount, color = "#f0b429" }: ChipStackProps) {
-  const formatted = amount.toLocaleString();
+  const formatted = formatTokenAmount(amount);
 
   return (
     <div className="flex items-center gap-1.5">

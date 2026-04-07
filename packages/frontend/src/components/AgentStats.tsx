@@ -1,7 +1,7 @@
 
 import { useMemo } from "react";
 import type { Agent } from "@/lib/types";
-import { TipButton } from "./TipButton";
+import { formatTokenAmount } from "@/lib/token-format";
 
 interface AgentStatsProps {
   agents: Agent[];
@@ -9,7 +9,7 @@ interface AgentStatsProps {
 
 export function AgentStats({ agents }: AgentStatsProps) {
   const sorted = useMemo(
-    () => [...agents].sort((a, b) => b.chips - a.chips),
+    () => [...agents].sort((a, b) => (a.chips === b.chips ? 0 : a.chips > b.chips ? -1 : 1)),
     [agents],
   );
 
@@ -41,16 +41,11 @@ export function AgentStats({ agents }: AgentStatsProps) {
                 {(agent.winRate * 100).toFixed(0)}% WR
               </div>
               <div className="text-xs font-bold font-mono text-gray-200">
-                {agent.chips.toLocaleString()}
+                {formatTokenAmount(agent.chips)}
               </div>
               <div className="text-[10px] text-gray-600">
                 {agent.handsPlayed} hands
               </div>
-              <TipButton
-                agentId={agent.id}
-                agentName={agent.name}
-                agentEmoji={agent.emoji}
-              />
             </div>
           ))}
         </div>

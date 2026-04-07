@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
 import { FaucetState } from "@/lib/types";
+import { FRONTEND_CONFIG } from "@/lib/config";
 
-const FAUCET_URL = process.env.NEXT_PUBLIC_FAUCET_URL || "";
+const FAUCET_URL = FRONTEND_CONFIG.faucetUrl;
 const MOCK_DELAY = 1500;
 
 export function useFaucet() {

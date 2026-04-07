@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAccount } from "wagmi";
+import { FRONTEND_CONFIG } from "@/lib/config";
 
 export function FaucetPanel() {
   const { address } = useAccount();
@@ -10,9 +11,14 @@ export function FaucetPanel() {
     setIsLoading(true);
     setMessage(null);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (!apiUrl) throw new Error("Missing NEXT_PUBLIC_API_URL");
       if (!address) throw new Error("Connect wallet to claim sFUEL");
+      const apiUrl = FRONTEND_CONFIG.apiUrl;
+
+      if (!apiUrl) {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        setMessage("✅ sFUEL demo claim complete.");
+        return;
+      }
 
       const res = await fetch(`${apiUrl}/faucet`, {
         method: "POST",

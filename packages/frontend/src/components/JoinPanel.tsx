@@ -1,29 +1,38 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import {
   useAccount,
   usePublicClient,
   useReadContract,
+  useSwitchChain,
   useWriteContract,
 } from "wagmi";
 import {
   POKER_TABLE_ABI,
   POKER_TABLE_ADDRESS,
   TOKEN_ADDRESS,
+  ERC20_ABI,
   BUY_IN,
   isContractDeployed,
 } from "@/lib/contracts";
+import { FRONTEND_CONFIG } from "@/lib/config";
 import { generateViewerKeyPair, persistViewerKey } from "@/lib/viewer-key";
+import { TOKEN_DECIMALS } from "@/lib/token-format";
 
 interface JoinPanelProps {
   onJoined?: (address: `0x${string}`) => void;
+  onLeft?: () => void;
+  mode?: "join" | "rejoin";
+  canCashOut?: boolean;
 }
 
-type Step = "idle" | "approving" | "joining" | "done";
+type Step = "idle" | "leaving" | "approving" | "joining" | "done";
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
+    if (error.message.includes("InsufficientCtxReserve")) {
+      return "Table CTX reserve is too low to start a hand. Refill the contract gas reserve.";
+    }
     if (error.message.toLowerCase().includes("user rejected")) {
       return "Transaction rejected in wallet.";
     }
@@ -32,18 +41,91 @@ function getErrorMessage(error: unknown): string {
   return "Transaction failed.";
 }
 
-export function JoinPanel({ onJoined }: JoinPanelProps) {
+const TARGET_CHAIN_HEX = `0x${FRONTEND_CONFIG.chainId.toString(16)}`;
+
+type InjectedProvider = {
+  on?: (event: string, listener: (...args: unknown[]) => void) => void;
+  removeListener?: (event: string, listener: (...args: unknown[]) => void) => void;
+  request?: (args: unknown) => Promise<unknown>;
+};
+
+function getInjectedProvider(): InjectedProvider | null {
+  const provider = (globalThis as { ethereum?: InjectedProvider }).ethereum;
+  return provider ?? null;
+}
+
+async function getInjectedChainId(): Promise<number | null> {
+  const provider = getInjectedProvider();
+  if (!provider?.request) return null;
+  const hex = await provider.request({ method: "eth_chainId" });
+  if (typeof hex !== "string") return null;
+  return Number.parseInt(hex, 16);
+}
+
+async function switchChainWithProviderFallback() {
+  const eth = getInjectedProvider();
+  if (!eth?.request) {
+    throw new Error("No injected wallet provider found.");
+  }
+
+  try {
+    await eth.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: TARGET_CHAIN_HEX }],
+    });
+    return;
+  } catch (switchErr) {
+    const code =
+      typeof switchErr === "object" && switchErr && "code" in switchErr
+        ? (switchErr as { code?: number }).code
+        : undefined;
+
+    // 4902: chain not added in wallet
+    if (code === 4902) {
+      await eth.request({
+        method: "wallet_addEthereumChain",
+        params: [
+          {
+            chainId: TARGET_CHAIN_HEX,
+            chainName: "SKALE Base Sepolia",
+            nativeCurrency: { name: "SKALE", symbol: "sFUEL", decimals: 18 },
+            rpcUrls: [FRONTEND_CONFIG.rpcUrl],
+            blockExplorerUrls: [FRONTEND_CONFIG.explorerUrl.replace(/\/$/, "")],
+          },
+        ],
+      });
+
+      await eth.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: TARGET_CHAIN_HEX }],
+      });
+      return;
+    }
+
+    throw switchErr;
+  }
+}
+
+export function JoinPanel({
+  onJoined,
+  onLeft,
+  mode = "join",
+  canCashOut = false,
+}: JoinPanelProps) {
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const publicClient = usePublicClient();
+  const { switchChainAsync } = useSwitchChain();
   const { writeContractAsync } = useWriteContract();
 
   const [step, setStep] = useState<Step>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
+  const [walletChainId, setWalletChainId] = useState<number | null>(null);
 
   // Read on-chain BUY_IN and token metadata
   const { data: onChainBuyIn } = useReadContract({
+    chainId: FRONTEND_CONFIG.chainId,
     address: POKER_TABLE_ADDRESS,
     abi: POKER_TABLE_ABI,
     functionName: "BUY_IN",
@@ -51,68 +133,106 @@ export function JoinPanel({ onJoined }: JoinPanelProps) {
   });
 
   const { data: tokenSymbol } = useReadContract({
+    chainId: FRONTEND_CONFIG.chainId,
     address: TOKEN_ADDRESS,
-    abi: POKER_TABLE_ABI,
+    abi: ERC20_ABI,
     functionName: "symbol",
     query: { enabled: isContractDeployed(TOKEN_ADDRESS) },
   });
 
   const { data: tokenDecimals } = useReadContract({
+    chainId: FRONTEND_CONFIG.chainId,
     address: TOKEN_ADDRESS,
-    abi: POKER_TABLE_ABI,
+    abi: ERC20_ABI,
     functionName: "decimals",
     query: { enabled: isContractDeployed(TOKEN_ADDRESS) },
   });
 
   // Check current allowance
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    chainId: FRONTEND_CONFIG.chainId,
     address: TOKEN_ADDRESS,
-    abi: POKER_TABLE_ABI,
+    abi: ERC20_ABI,
     functionName: "allowance",
     args: address ? [address, POKER_TABLE_ADDRESS] : undefined,
     query: { enabled: !!address },
   });
 
   // Check token balance
-  const { data: balance } = useReadContract({
+  const { data: balance, refetch: refetchBalance } = useReadContract({
+    chainId: FRONTEND_CONFIG.chainId,
     address: TOKEN_ADDRESS,
-    abi: POKER_TABLE_ABI,
+    abi: ERC20_ABI,
     functionName: "balanceOf",
     args: address ? [address] : undefined,
     query: { enabled: !!address },
   });
 
   const activeBuyIn = onChainBuyIn ?? BUY_IN;
-  const decimals = tokenDecimals ?? 6;
+  const decimals = tokenDecimals ?? TOKEN_DECIMALS;
   const symbol = tokenSymbol ?? "SKL";
   const formattedBuyIn = formatAmount(activeBuyIn, decimals);
   const needsApproval = (allowance ?? 0n) < activeBuyIn;
   const hasBalance = (balance ?? 0n) >= activeBuyIn;
+  const onExpectedChain = walletChainId === FRONTEND_CONFIG.chainId;
+  const hasReadData =
+    onChainBuyIn !== undefined &&
+    tokenSymbol !== undefined &&
+    tokenDecimals !== undefined &&
+    balance !== undefined;
 
-  const handleJoin = async () => {
-    if (step !== "idle" || !address) return;
+  useEffect(() => {
+    let mounted = true;
+    const provider = getInjectedProvider();
 
-    if (!isContractDeployed(POKER_TABLE_ADDRESS)) {
-      setMessage("Poker table contract is not deployed.");
-      return;
+    const refreshChainId = async () => {
+      const id = await getInjectedChainId();
+      if (mounted) setWalletChainId(id);
+    };
+
+    void refreshChainId();
+
+    const onChainChanged = () => {
+      void refreshChainId();
+    };
+
+    provider?.on?.("chainChanged", onChainChanged);
+    return () => {
+      mounted = false;
+      provider?.removeListener?.("chainChanged", onChainChanged);
+    };
+  }, []);
+
+  const handleSwitchChain = async () => {
+    try {
+      try {
+        await switchChainAsync({ chainId: FRONTEND_CONFIG.chainId });
+      } catch {
+        await switchChainWithProviderFallback();
+      }
+      const actualChainId = await getInjectedChainId();
+      setWalletChainId(actualChainId);
+      if (actualChainId !== FRONTEND_CONFIG.chainId) {
+        throw new Error("Please approve the network switch in your wallet to continue.");
+      }
+      setMessage(null);
+    } catch (err) {
+      setMessage(getErrorMessage(err));
+      throw err;
     }
+  };
 
-    if (!hasBalance) {
-      setMessage(`Insufficient ${symbol} balance. Need ${formattedBuyIn} ${symbol}.`);
-      return;
-    }
-
-    const viewerKey = generateViewerKeyPair();
-    persistViewerKey(address, viewerKey);
+  const handleJoinWithViewerKey = async (viewerKey: ReturnType<typeof generateViewerKeyPair>) => {
+    persistViewerKey(address!, viewerKey);
     setMessage(null);
 
-    // Step 1: Approve if needed
     if (needsApproval) {
       setStep("approving");
       try {
         const hash = await writeContractAsync({
+          chainId: FRONTEND_CONFIG.chainId,
           address: TOKEN_ADDRESS,
-          abi: POKER_TABLE_ABI,
+          abi: ERC20_ABI,
           functionName: "approve",
           args: [POKER_TABLE_ADDRESS, activeBuyIn],
         });
@@ -134,17 +254,17 @@ export function JoinPanel({ onJoined }: JoinPanelProps) {
       }
     }
 
-    // Step 2: sitDown
     setStep("joining");
     try {
       const hash = await writeContractAsync({
+        chainId: FRONTEND_CONFIG.chainId,
         address: POKER_TABLE_ADDRESS,
         abi: POKER_TABLE_ABI,
         functionName: "sitDown",
         args: [{ x: viewerKey.x, y: viewerKey.y }],
       });
       setTxHash(hash);
-      setMessage("Waiting for join confirmation...");
+      setMessage(mode === "rejoin" ? "Waiting for rejoin confirmation..." : "Waiting for join confirmation...");
 
       if (!publicClient) throw new Error("No RPC client.");
       const receipt = await publicClient.waitForTransactionReceipt({
@@ -152,23 +272,115 @@ export function JoinPanel({ onJoined }: JoinPanelProps) {
         pollingInterval: 1_000,
       });
       if (receipt.status !== "success") throw new Error("Join reverted on-chain.");
-      onJoined?.(address);
+      onJoined?.(address!);
       setStep("done");
-      setMessage("Joined table.");
+      setMessage(mode === "rejoin" ? "Viewer key restored." : "Joined table.");
     } catch (err) {
       setMessage(getErrorMessage(err));
       setStep("idle");
     }
   };
 
-  const isBusy = step === "approving" || step === "joining";
+  const handleJoin = async () => {
+    if (step !== "idle" || !address) return;
+
+    if (!onExpectedChain) {
+      try {
+        await handleSwitchChain();
+      } catch {
+        return;
+      }
+    }
+
+    if (!isContractDeployed(POKER_TABLE_ADDRESS)) {
+      setMessage("Poker table contract is not deployed.");
+      return;
+    }
+
+    if (!hasReadData) {
+      setMessage("Unable to read contract state. Check network and deployed addresses.");
+      return;
+    }
+
+    if (!hasBalance) {
+      setMessage(`Insufficient ${symbol} balance. Need ${formattedBuyIn} ${symbol}.`);
+      return;
+    }
+
+    const viewerKey = generateViewerKeyPair();
+    await handleJoinWithViewerKey(viewerKey);
+  };
+
+  const handleRejoin = async () => {
+    if (step !== "idle" || !address || mode !== "rejoin") return;
+
+    if (!onExpectedChain) {
+      try {
+        await handleSwitchChain();
+      } catch {
+        return;
+      }
+    }
+
+    if (!isContractDeployed(POKER_TABLE_ADDRESS)) {
+      setMessage("Poker table contract is not deployed.");
+      return;
+    }
+
+    setStep("leaving");
+    try {
+      const leaveHash = await writeContractAsync({
+        chainId: FRONTEND_CONFIG.chainId,
+        address: POKER_TABLE_ADDRESS,
+        abi: POKER_TABLE_ABI,
+        functionName: canCashOut ? "leaveTable" : "forfeitAndLeave",
+      });
+      setTxHash(leaveHash);
+      setMessage(canCashOut ? "Leaving table to restore viewer key..." : "Forfeiting current seat to restore viewer key...");
+
+      if (!publicClient) throw new Error("No RPC client.");
+      const leaveReceipt = await publicClient.waitForTransactionReceipt({
+        hash: leaveHash,
+        pollingInterval: 1_000,
+      });
+      if (leaveReceipt.status !== "success") {
+        throw new Error("Leave reverted on-chain.");
+      }
+
+      onLeft?.();
+      await refetchBalance();
+      await refetchAllowance();
+
+      const refreshedBalance = await publicClient.readContract({
+        address: TOKEN_ADDRESS,
+        abi: ERC20_ABI,
+        functionName: "balanceOf",
+        args: [address],
+      });
+
+      if (refreshedBalance < activeBuyIn) {
+        setMessage(`Insufficient ${symbol} balance to rejoin. Need ${formattedBuyIn} ${symbol}.`);
+        setStep("idle");
+        return;
+      }
+
+      const viewerKey = generateViewerKeyPair();
+      await handleJoinWithViewerKey(viewerKey);
+    } catch (err) {
+      setMessage(getErrorMessage(err));
+      setStep("idle");
+    }
+  };
+
+  const isBusy = step === "leaving" || step === "approving" || step === "joining";
 
   const statusLabel = (() => {
+    if (step === "leaving") return canCashOut ? "Leaving..." : "Forfeiting...";
     if (step === "approving") return "Approving...";
-    if (step === "joining") return "Joining...";
-    if (step === "done") return "Joined";
+    if (step === "joining") return mode === "rejoin" ? "Rejoining..." : "Joining...";
+    if (step === "done") return mode === "rejoin" ? "Restored" : "Joined";
     if (!isConnected) return "Connect Wallet";
-    return "Join Table";
+    return mode === "rejoin" ? "Restore Viewer Key" : "Join Table";
   })();
 
   return (
@@ -181,7 +393,7 @@ export function JoinPanel({ onJoined }: JoinPanelProps) {
         </div>
 
         <button
-          onClick={isConnected ? handleJoin : () => openConnectModal?.()}
+          onClick={isConnected ? (mode === "rejoin" ? handleRejoin : handleJoin) : () => openConnectModal?.()}
           disabled={isBusy || step === "done"}
           className="rounded-lg border border-poker-gold/30 bg-poker-gold/20 px-4 py-2 text-sm font-semibold text-poker-gold transition-colors hover:bg-poker-gold/30 disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -190,7 +402,7 @@ export function JoinPanel({ onJoined }: JoinPanelProps) {
 
         {txHash && (
           <a
-            href={`https://base-sepolia-testnet-explorer.skalenodes.com/tx/${txHash}`}
+            href={`${FRONTEND_CONFIG.explorerUrl}tx/${txHash}`}
             target="_blank"
             rel="noreferrer"
             className="rounded-lg border border-white/10 px-3 py-2 text-center text-xs text-poker-text-muted transition-colors hover:text-white"
@@ -202,18 +414,26 @@ export function JoinPanel({ onJoined }: JoinPanelProps) {
 
       {/* Buy-in info */}
       <div className="mt-2 flex items-center gap-3 text-xs text-gray-400 sm:text-left">
-        <span>
-          Buy-in:{" "}
-          <span className="font-semibold text-poker-gold">
-            {formattedBuyIn} {symbol}
-          </span>
-        </span>
-        {isConnected && !hasBalance && (
-          <span className="text-poker-red">Insufficient balance</span>
-        )}
-        {isConnected && hasBalance && needsApproval && step === "idle" && (
-          <span className="text-yellow-400">
-            Approval required before joining
+        {mode === "join" ? (
+          <>
+            <span>
+              Buy-in:{" "}
+              <span className="font-semibold text-poker-gold">
+                {formattedBuyIn} {symbol}
+              </span>
+            </span>
+            {isConnected && hasReadData && !hasBalance && (
+              <span className="text-poker-red">Insufficient balance</span>
+            )}
+            {isConnected && hasBalance && needsApproval && step === "idle" && (
+              <span className="text-yellow-400">
+                Approval required before joining
+              </span>
+            )}
+          </>
+        ) : (
+          <span>
+            Local viewer key is missing on this device. {canCashOut ? "Your stack will be returned, then a new viewer key will be registered." : "This hand will be forfeited, then a new viewer key will be registered."}
           </span>
         )}
       </div>

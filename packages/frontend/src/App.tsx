@@ -6,11 +6,12 @@ import { GameControls } from "@/components/GameControls";
 import { FaucetPanel } from "@/components/FaucetPanel";
 import { AgentStats } from "@/components/AgentStats";
 import { JoinPanel } from "@/components/JoinPanel";
+import { PlayerHandPanel } from "@/components/PlayerHandPanel";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAccount } from "wagmi";
 
 export default function Home() {
-  const { gameState, isConnected, error, joinHumanPlayer } = useGameState();
+  const { gameState, isConnected, error, joinHumanPlayer, leaveHumanPlayer } = useGameState();
   const { isConnected: isWalletConnected } = useAccount();
 
   return (
@@ -36,6 +37,8 @@ export default function Home() {
         {/* Poker Table */}
         <PokerTable gameState={gameState} />
 
+        {gameState.humanPlayer && <PlayerHandPanel gameState={gameState} />}
+
         {/* Player Controls */}
         <motion.div
           className="flex w-full max-w-5xl flex-col items-stretch gap-3 sm:items-center"
@@ -43,8 +46,17 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
         >
+          {gameState.humanPlayer?.viewerKey === null && (
+            <JoinPanel
+              mode="rejoin"
+              canCashOut={gameState.phase === "waiting"}
+              onJoined={joinHumanPlayer}
+              onLeft={leaveHumanPlayer}
+            />
+          )}
+
           {gameState.humanPlayer ? (
-            <GameControls gameState={gameState} />
+            <GameControls gameState={gameState} onLeft={leaveHumanPlayer} />
           ) : (
             <JoinPanel onJoined={joinHumanPlayer} />
           )}

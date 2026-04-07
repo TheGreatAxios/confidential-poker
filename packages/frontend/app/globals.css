@@ -257,7 +257,10 @@ body {
    Felt Texture
    ============================================================ */
 .felt-texture {
-  background-image: radial-gradient(ellipse at center, #198754 0%, #0f5132 40%, #0a3622 80%, #072419 100%);
+  background-color: #0f7a4c;
+  background-image:
+    radial-gradient(ellipse at 50% 45%, rgba(49, 224, 140, 0.22) 0%, rgba(49, 224, 140, 0.08) 36%, rgba(15, 122, 76, 0) 70%),
+    linear-gradient(180deg, #128653 0%, #0f7a4c 58%, #0d6b44 100%);
   position: relative;
 }
 
@@ -276,7 +279,10 @@ body {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: inset 0 2px 20px rgba(0, 0, 0, 0.35), inset 0 -4px 16px rgba(251, 191, 36, 0.04);
+  box-shadow:
+    inset 0 2px 16px rgba(0, 0, 0, 0.24),
+    inset 0 -6px 14px rgba(7, 66, 41, 0.2),
+    inset 0 0 22px rgba(38, 186, 116, 0.12);
   pointer-events: none;
 }
 
@@ -284,12 +290,12 @@ body {
    Wood Rim Effect
    ============================================================ */
 .wood-rim {
-  background: linear-gradient(135deg, #3d2b1f 0%, #5c3d2e 25%, #4a3425 50%, #5c3d2e 75%, #3d2b1f 100%);
+  background: linear-gradient(135deg, #2a1a13 0%, #4a3124 28%, #3a261c 52%, #4a3124 78%, #2a1a13 100%);
   box-shadow:
-    0 0 0 2px rgba(92, 61, 46, 0.6),
-    0 0 20px rgba(0, 0, 0, 0.5),
-    inset 0 1px 1px rgba(255, 255, 255, 0.08),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.3);
+    0 0 0 2px rgba(58, 38, 28, 0.7),
+    0 0 20px rgba(0, 0, 0, 0.55),
+    inset 0 1px 1px rgba(255, 255, 255, 0.07),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.36);
 }
 
 .wood-rim::before {
