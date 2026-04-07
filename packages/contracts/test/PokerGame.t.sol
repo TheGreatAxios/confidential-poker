@@ -2,6 +2,7 @@
 pragma solidity >=0.8.27;
 
 import "forge-std/Test.sol";
+import "../src/HandEvaluator.sol";
 import "../src/MockSKL.sol";
 import "../src/PokerGame.sol";
 import {PublicKey} from "@skalenetwork/bite-solidity/BITE.sol";
@@ -12,6 +13,10 @@ contract PokerGameHarness is PokerGame {
     function buildDeckForTest(uint256 cursor) external returns (uint8[52] memory) {
         rngCursor = cursor;
         return _buildShuffledDeck();
+    }
+
+    function evaluateHandForTest(uint8[7] memory cards) external pure returns (HandEvaluator.EvalResult memory) {
+        return HandEvaluator.evaluateHand(cards);
     }
 }
 
@@ -64,6 +69,38 @@ contract PokerGameTest is Test {
             assertFalse(seen[card]);
             seen[card] = true;
         }
+    }
+
+    function testHighCardKickerUsesRankNotSuit() external view {
+        uint8[7] memory left = [
+            HandEvaluator.heart(2),
+            HandEvaluator.diamond(6),
+            HandEvaluator.club(12),
+            HandEvaluator.diamond(13),
+            HandEvaluator.diamond(9),
+            HandEvaluator.diamond(3),
+            HandEvaluator.heart(14)
+        ];
+        uint8[7] memory right = [
+            HandEvaluator.club(4),
+            HandEvaluator.club(7),
+            HandEvaluator.club(12),
+            HandEvaluator.diamond(13),
+            HandEvaluator.diamond(9),
+            HandEvaluator.diamond(3),
+            HandEvaluator.heart(14)
+        ];
+
+        HandEvaluator.EvalResult memory leftResult = harness.evaluateHandForTest(left);
+        HandEvaluator.EvalResult memory rightResult = harness.evaluateHandForTest(right);
+
+        assertTrue(HandEvaluator.gte(rightResult, leftResult));
+        assertFalse(HandEvaluator.gte(leftResult, rightResult));
+        assertEq(uint256(rightResult.primary), 14);
+        assertEq(uint256(rightResult.secondary), 13);
+        assertEq(uint256(rightResult.tertiary), 12);
+        assertEq(uint256(rightResult.quaternary), 9);
+        assertEq(uint256(rightResult.quinary), 7);
     }
 
     function _viewerKey(uint256 seed) internal pure returns (PublicKey memory) {

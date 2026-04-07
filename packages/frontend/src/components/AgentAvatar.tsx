@@ -15,6 +15,8 @@ export function AgentAvatar({ agent }: AgentAvatarProps) {
         className={`relative h-12 w-12 rounded-full border-2 text-xl transition-all duration-300 sm:h-16 sm:w-16 sm:text-3xl ${
           agent.status === "busted"
             ? "bg-gray-800 border-gray-700 opacity-50"
+            : agent.isWinner
+            ? "bg-emerald-900/40 border-emerald-400 shadow-[0_0_24px_rgba(52,211,153,0.35)]"
             : agent.status === "acting"
             ? "bg-gray-800 border-poker-gold glow-gold"
             : agent.status === "folded"
@@ -57,7 +59,7 @@ export function AgentAvatar({ agent }: AgentAvatarProps) {
 
       {/* Cards */}
       {agent.cards.length > 0 && (
-        <div className="hidden gap-0.5 sm:flex">
+        <div className="flex gap-0.5">
           {agent.cards.map((card, i) => (
             <Card key={i} card={card} index={i} />
           ))}
@@ -88,6 +90,11 @@ export function AgentAvatar({ agent }: AgentAvatarProps) {
       {agent.status === "busted" && (
         <span className="text-[10px] text-gray-600 font-semibold uppercase tracking-wider">
           Busted
+        </span>
+      )}
+      {agent.isWinner && (
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+          Winner
         </span>
       )}
     </div>

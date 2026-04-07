@@ -45,6 +45,8 @@ export interface Agent {
   currentBet: bigint;
   isDealer: boolean;
   isThinking: boolean;
+  isWinner: boolean;
+  cardsRevealed: boolean;
   message: string | null;
   seatIndex: number;
   winRate: number;
@@ -65,6 +67,8 @@ export interface GameState {
   roundNumber: number;
   lastAction: string | null;
   winners: string[] | null;
+  canStartNextHand: boolean;
+  handComplete: boolean;
   humanPlayer: {
     isConnected: boolean;
     address: string | null;
@@ -74,6 +78,7 @@ export interface GameState {
     status: PlayerStatus;
     currentBet: bigint;
     seatIndex: number;
+    isWinner: boolean;
   } | null;
 }
 

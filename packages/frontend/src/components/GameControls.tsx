@@ -48,6 +48,7 @@ export function GameControls({ gameState, onLeft }: GameControlsProps) {
   const isDealer =
     gameState.humanPlayer !== null &&
     gameState.humanPlayer.seatIndex === gameState.dealerIndex;
+  const canDealNextHand = gameState.humanPlayer !== null && gameState.canStartNextHand;
   const viewerKeyLabel = gameState.humanPlayer?.viewerKey
     ? `${gameState.humanPlayer.viewerKey.slice(0, 12)}...${gameState.humanPlayer.viewerKey.slice(-10)}`
     : null;
@@ -189,6 +190,25 @@ export function GameControls({ gameState, onLeft }: GameControlsProps) {
     }
   };
 
+  const handleDealNextHand = async () => {
+    if (!address || !publicClient || acting || !canDealNextHand) return;
+    setActing(true);
+    setMessage(null);
+    try {
+      const hash = await writeContractAsync({
+        chainId: FRONTEND_CONFIG.chainId,
+        address: POKER_TABLE_ADDRESS,
+        abi: POKER_TABLE_ABI,
+        functionName: "dealNewHand",
+      });
+      await sendAndWait(hash);
+    } catch (error) {
+      setMessage(`❌ ${getActionErrorMessage(error)}`);
+    } finally {
+      setActing(false);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center gap-2">
       {viewerKeyLabel && (
@@ -255,15 +275,31 @@ export function GameControls({ gameState, onLeft }: GameControlsProps) {
         >
           {canCashOut ? "Leave Table" : "Forfeit & Leave"}
         </button>
+
+        {canDealNextHand && (
+          <button
+            className="min-w-[140px] rounded-lg border border-poker-gold/40 bg-poker-gold/15 px-3 py-2 text-sm font-semibold text-poker-gold transition-colors hover:bg-poker-gold/25 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
+            onClick={handleDealNextHand}
+            disabled={acting}
+          >
+            {gameState.handComplete ? "Play Another Hand" : "Play Again"}
+          </button>
+        )}
       </div>
 
-      {!canAct && (
+      {!canAct && !gameState.handComplete && !canDealNextHand && (
         <p className="text-center text-xs text-gray-500">Waiting for the other player...</p>
       )}
 
       {canAct && !isRaiseAmountValid && (
         <p className="text-center text-xs text-gray-500">
           Raise must be at least {formatTokenAmount(gameState.minRaise)}.
+        </p>
+      )}
+
+      {canDealNextHand && (
+        <p className="text-center text-xs text-gray-500">
+          {isDealer ? "You can start the next hand now." : "Any seated player can start the next hand now."}
         </p>
       )}
 

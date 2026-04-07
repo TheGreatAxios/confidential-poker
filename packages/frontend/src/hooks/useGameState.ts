@@ -1,12 +1,13 @@
-
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useAccount, useReadContract, useReadContracts } from "wagmi";
+import { parseAbiItem } from "viem";
+import { useAccount, usePublicClient, useReadContract, useReadContracts } from "wagmi";
 import { Card, GameState } from "@/lib/types";
 import { POKER_TABLE_ABI, POKER_TABLE_ADDRESS } from "@/lib/contracts";
 import { cardFromUint8, usePokerTable } from "@/hooks/usePokerTable";
 import { FRONTEND_CONFIG } from "@/lib/config";
 import { loadViewerKey } from "@/lib/viewer-key";
 import { decryptEncryptedCards } from "@/lib/encrypted-cards";
+import { findWinningPlayerIds } from "@/lib/hand-evaluator";
 
 const PERSONALITIES: GameState["agents"][number]["personality"][] = [
   "aggressive",
@@ -19,36 +20,47 @@ const PERSONALITIES: GameState["agents"][number]["personality"][] = [
 
 const EMOJIS = ["🔥", "🛡️", "🎭", "🧮", "🔒", "🎲"];
 const COLORS = ["#e53e3e", "#4299e1", "#9f7aea", "#38a169", "#f0b429", "#ed64a6"];
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
-const MAX_SEATS = 6;
 const NO_TURN = (2n ** 256n) - 1n;
+const CARDS_REVEALED_EVENT = parseAbiItem("event CardsRevealed(address indexed player, uint8 card1, uint8 card2)");
 
-const ALL_SEAT_CONTRACTS = Array.from({ length: MAX_SEATS }, (_, i) => ({
-  chainId: FRONTEND_CONFIG.chainId,
-  address: POKER_TABLE_ADDRESS,
-  abi: POKER_TABLE_ABI,
-  functionName: "getPlayer" as const,
-  args: [BigInt(i)] as const,
-}));
-
-const ALL_PLAYER_INFO_CONTRACTS = Array.from({ length: MAX_SEATS }, (_, i) => ({
-  chainId: FRONTEND_CONFIG.chainId,
-  address: POKER_TABLE_ADDRESS,
-  abi: POKER_TABLE_ABI,
-  functionName: "getPlayerInfo" as const,
-  args: [BigInt(i)] as const,
-}));
+type PlayerRead = readonly [
+  `0x${string}`,
+  { x: `0x${string}`; y: `0x${string}` },
+  boolean,
+  boolean,
+  bigint,
+  boolean,
+  bigint,
+  `0x${string}`,
+  `0x${string}`,
+  boolean,
+];
 
 export function useGameState() {
   const { address, isConnected: isWalletConnected } = useAccount();
+  const publicClient = usePublicClient();
   const table = usePokerTable();
   const [pendingJoinAddress, setPendingJoinAddress] = useState<`0x${string}` | null>(null);
   const [holeCards, setHoleCards] = useState<Card[]>([]);
+  const [revealedCardsByAddress, setRevealedCardsByAddress] = useState<Record<string, Card[]>>({});
+  const playerCount = Number(table.playerCount);
 
-  const { data: playerAddressReads, refetch: refetchPlayers } = useReadContracts({
-    contracts: ALL_SEAT_CONTRACTS,
+  const playerContracts = useMemo(
+    () =>
+      Array.from({ length: playerCount }, (_, i) => ({
+        chainId: FRONTEND_CONFIG.chainId,
+        address: POKER_TABLE_ADDRESS,
+        abi: POKER_TABLE_ABI,
+        functionName: "players" as const,
+        args: [BigInt(i)] as const,
+      })),
+    [playerCount],
+  );
+
+  const { data: playerReads, refetch: refetchPlayers } = useReadContracts({
+    contracts: playerContracts,
     query: {
-      enabled: true,
+      enabled: playerContracts.length > 0,
       refetchInterval: 5_000,
     },
   });
@@ -75,32 +87,36 @@ export function useGameState() {
     },
   });
 
-  const { data: playerInfoReads, refetch: refetchPlayerInfo } = useReadContracts({
-    contracts: ALL_PLAYER_INFO_CONTRACTS,
-    query: {
-      enabled: true,
-      refetchInterval: 5_000,
-    },
-  });
+  const players = useMemo(() => {
+    return (playerReads ?? []).map((entry, index) => {
+      const player = entry.status === "success" ? (entry.result as PlayerRead) : null;
+      if (!player) {
+        return null;
+      }
+
+      const address = player[0];
+      const currentBet = player[4];
+      const chips = player[6];
+      const cardsRevealed = player[9];
+      const encryptedHoleCards = player[8];
+
+      return {
+        address,
+        isActive: player[2],
+        currentBet,
+        isAllIn: player[5],
+        chips,
+        cardsRevealed,
+        hadCardsThisHand: encryptedHoleCards !== "0x" || cardsRevealed,
+        seatIndex: index,
+      };
+    });
+  }, [playerReads]);
 
   const playerAddresses = useMemo(
-    () =>
-      (playerAddressReads ?? [])
-        .map((entry) => entry.result)
-        .filter(
-          (value): value is `0x${string}` =>
-            typeof value === "string" && value.toLowerCase() !== ZERO_ADDRESS,
-        ),
-    [playerAddressReads],
+    () => players.flatMap((player) => (player ? [player.address] : [])),
+    [players],
   );
-
-  const playerInfo = useMemo(() => {
-    return (playerInfoReads ?? []).map((entry) =>
-      entry.status === "success"
-        ? (entry.result as readonly [`0x${string}`, boolean, boolean, bigint, boolean, bigint])
-        : null,
-    );
-  }, [playerInfoReads]);
 
   const normalizedAddress = address?.toLowerCase();
   const hasHumanSeat = !!normalizedAddress && playerAddresses.some((p) => p.toLowerCase() === normalizedAddress);
@@ -130,8 +146,8 @@ export function useGameState() {
         return;
       }
 
-      const viewerKey = loadViewerKey(address);
-      if (!viewerKey) {
+      const nextViewerKey = loadViewerKey(address);
+      if (!nextViewerKey) {
         if (!cancelled) {
           setHoleCards([]);
         }
@@ -139,7 +155,7 @@ export function useGameState() {
       }
 
       try {
-        const [card1, card2] = await decryptEncryptedCards(viewerKey.privateKey, encryptedHoleCards);
+        const [card1, card2] = await decryptEncryptedCards(nextViewerKey.privateKey, encryptedHoleCards);
         const nextHoleCards = [cardFromUint8(card1), cardFromUint8(card2)].filter(
           (card): card is NonNullable<typeof card> => card !== null,
         );
@@ -161,43 +177,127 @@ export function useGameState() {
     };
   }, [address, encryptedHoleCards, hasHumanSeat, table.handNumber]);
 
+  useEffect(() => {
+    if (table.phase !== "waiting" || table.communityCards.length === 0) {
+      setRevealedCardsByAddress({});
+      return;
+    }
+
+    if (!publicClient) {
+      return;
+    }
+
+    const client = publicClient;
+    let cancelled = false;
+
+    async function loadRevealedCards() {
+      try {
+        const latestBlock = await client.getBlockNumber();
+        const fromBlock = latestBlock > 2_000n ? latestBlock - 2_000n : 0n;
+        const logs = await client.getLogs({
+          address: POKER_TABLE_ADDRESS,
+          event: CARDS_REVEALED_EVENT,
+          fromBlock,
+          toBlock: "latest",
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        const nextCards: Record<string, Card[]> = {};
+        for (const log of logs) {
+          const playerAddress = log.args.player?.toLowerCase();
+          const card1 = typeof log.args.card1 === "number" ? log.args.card1 : Number(log.args.card1 ?? 0);
+          const card2 = typeof log.args.card2 === "number" ? log.args.card2 : Number(log.args.card2 ?? 0);
+          if (!playerAddress) {
+            continue;
+          }
+
+          nextCards[playerAddress] = [cardFromUint8(card1), cardFromUint8(card2)].filter(
+            (card): card is Card => card !== null,
+          );
+        }
+
+        setRevealedCardsByAddress(nextCards);
+      } catch {
+        if (!cancelled) {
+          setRevealedCardsByAddress({});
+        }
+      }
+    }
+
+    void loadRevealedCards();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [publicClient, table.communityCards, table.phase]);
+
   const gameState = useMemo<GameState>(() => {
     const dealer = typeof dealerAddress === "string" ? dealerAddress.toLowerCase() : null;
     const currentTurnIndex =
       typeof turnIndexRead === "bigint" && turnIndexRead !== NO_TURN ? Number(turnIndexRead) : null;
     const isTableEmpty = table.playerCount === 0n;
     const isWaiting = table.phase === "waiting";
-    const agents = playerAddresses.map((playerAddress, i) => {
-      const info = playerInfo[i];
-      const currentBet = info ? info[3] : 0n;
-      const chips = info ? info[5] : 0n;
-      const isActive = info ? info[1] : false;
-      const isAllIn = info ? info[4] : false;
-      const status = !isActive
-        ? ("folded" as const)
-        : isAllIn
-          ? ("all-in" as const)
-          : currentTurnIndex === i
-            ? ("acting" as const)
-          : ("waiting" as const);
+    const handComplete =
+      table.phase === "showdown" ||
+      (isWaiting && table.communityCards.length > 0 && players.some((player) => player?.hadCardsThisHand));
 
-      return {
-        id: `agent-${i}`,
-        name: `${playerAddress.slice(0, 6)}...${playerAddress.slice(-4)}`,
-        personality: PERSONALITIES[i % PERSONALITIES.length],
-        emoji: EMOJIS[i % EMOJIS.length] ?? "🧠",
-        chips,
-        cards: playerAddress.toLowerCase() === normalizedAddress ? holeCards : [],
-        status,
-        currentBet,
-        isDealer: dealer === playerAddress.toLowerCase(),
-        isThinking: currentTurnIndex === i,
-        message: null,
-        seatIndex: i,
-        winRate: 0,
-        handsPlayed: Number(table.handNumber),
-        color: COLORS[i % COLORS.length] ?? "#6b7280",
-      };
+    const revealablePlayers = players.flatMap((player) => {
+      if (!player) {
+        return [];
+      }
+
+      const revealedCards = revealedCardsByAddress[player.address.toLowerCase()] ?? [];
+      return revealedCards.length === 2 ? [{ id: `agent-${player.seatIndex}`, cards: revealedCards }] : [];
+    });
+
+    const winners =
+      handComplete && revealablePlayers.length > 0
+        ? findWinningPlayerIds(revealablePlayers, table.communityCards)
+        : null;
+
+    const agents = players.flatMap((player, i) => {
+      if (!player) {
+        return [];
+      }
+
+      const isHumanSeat = player.address.toLowerCase() === normalizedAddress;
+      const revealedCards = revealedCardsByAddress[player.address.toLowerCase()] ?? [];
+      let status: GameState["agents"][number]["status"] = "waiting";
+
+      if (player.chips === 0n && !player.hadCardsThisHand) {
+        status = "busted";
+      } else if (!handComplete) {
+        if (player.isActive) {
+          status = player.isAllIn ? "all-in" : currentTurnIndex === i ? "acting" : "waiting";
+        } else if (player.hadCardsThisHand) {
+          status = "folded";
+        }
+      }
+
+      return [
+        {
+          id: `agent-${i}`,
+          name: `${player.address.slice(0, 6)}...${player.address.slice(-4)}`,
+          personality: PERSONALITIES[i % PERSONALITIES.length],
+          emoji: EMOJIS[i % EMOJIS.length] ?? "🧠",
+          chips: player.chips,
+          cards: revealedCards.length === 2 ? revealedCards : isHumanSeat ? holeCards : [],
+          status,
+          currentBet: player.currentBet,
+          isDealer: dealer === player.address.toLowerCase(),
+          isThinking: !handComplete && currentTurnIndex === i,
+          isWinner: winners?.includes(`agent-${i}`) ?? false,
+          cardsRevealed: revealedCards.length === 2,
+          message: null,
+          seatIndex: i,
+          winRate: 0,
+          handsPlayed: Number(table.handNumber),
+          color: COLORS[i % COLORS.length] ?? "#6b7280",
+        },
+      ];
     });
 
     const dealerIndex = agents.findIndex((agent) => agent.isDealer);
@@ -206,16 +306,10 @@ export function useGameState() {
     const humanSeatIndex = normalizedAddress
       ? playerAddresses.findIndex((p) => p.toLowerCase() === normalizedAddress)
       : -1;
-    const humanInfo = humanSeatIndex >= 0 ? playerInfo[humanSeatIndex] : null;
-    const humanStatus = humanInfo
-      ? humanInfo[4]
-        ? "all-in"
-        : !humanInfo[1]
-          ? "folded"
-          : currentTurnIndex === humanSeatIndex
-            ? "acting"
-            : "waiting"
-      : "waiting";
+    const humanPlayerState = humanSeatIndex >= 0 ? players[humanSeatIndex] : null;
+    const humanAgent = humanSeatIndex >= 0 ? agents[humanSeatIndex] : null;
+    const humanRevealedCards =
+      humanPlayerState ? revealedCardsByAddress[humanPlayerState.address.toLowerCase()] ?? [] : [];
 
     return {
       phase: table.phase,
@@ -229,17 +323,20 @@ export function useGameState() {
       handNumber: Number(table.handNumber),
       roundNumber: 0,
       lastAction: null,
-      winners: null,
+      winners: winners && winners.length > 0 ? winners : null,
+      canStartNextHand: isWaiting && players.filter((player) => player && player.chips > 0n).length >= 2,
+      handComplete,
       humanPlayer: humanAddress
         ? {
             isConnected: isWalletConnected,
             address: humanAddress,
             viewerKey: viewerKey?.publicKey ?? null,
-            chips: humanInfo ? humanInfo[5] : 0n,
-            cards: holeCards,
-            status: humanStatus,
-            currentBet: humanInfo ? humanInfo[3] : 0n,
+            chips: humanPlayerState ? humanPlayerState.chips : 0n,
+            cards: humanRevealedCards.length === 2 ? humanRevealedCards : holeCards,
+            status: humanAgent?.status ?? "waiting",
+            currentBet: humanPlayerState ? humanPlayerState.currentBet : 0n,
             seatIndex: humanSeatIndex >= 0 ? humanSeatIndex : 6,
+            isWinner: humanAgent?.isWinner ?? false,
           }
         : null,
     };
@@ -250,12 +347,13 @@ export function useGameState() {
     isWalletConnected,
     normalizedAddress,
     playerAddresses,
+    players,
+    revealedCardsByAddress,
     table.communityCards,
     table.currentBet,
     table.handNumber,
     table.phase,
     table.pot,
-    playerInfo,
     turnIndexRead,
     viewerKey,
   ]);
@@ -267,8 +365,7 @@ export function useGameState() {
     refetchPlayers();
     refetchDealer();
     refetchTurnIndex();
-    refetchPlayerInfo();
-  }, [table, refetchPlayers, refetchDealer, refetchTurnIndex, refetchPlayerInfo]);
+  }, [table, refetchPlayers, refetchDealer, refetchTurnIndex]);
 
   const joinHumanPlayer = useCallback(
     (joinedAddress: `0x${string}`) => {
