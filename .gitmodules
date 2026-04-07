@@ -1,0 +1,3 @@
+[submodule "packages/contracts/lib-skale-rng"]
+	path = packages/contracts/lib-skale-rng
+	url = git@github.com:thegreataxios/skale-rng

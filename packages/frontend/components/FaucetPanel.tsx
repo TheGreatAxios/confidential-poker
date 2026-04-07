@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useAccount } from "wagmi";
 
 export function FaucetPanel() {
+  const { address } = useAccount();
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -11,19 +13,16 @@ export function FaucetPanel() {
     setMessage(null);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-      if (apiUrl) {
-        const res = await fetch(`${apiUrl}/faucet`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ address: "demo-player" }),
-        });
-        const data = await res.json();
-        setMessage(data.txHash ? `✅ sFUEL sent!` : "✅ Claimed!");
-      } else {
-        // Demo mode
-        await new Promise((r) => setTimeout(r, 1000));
-        setMessage("✅ Demo: 1000 sFUEL claimed!");
-      }
+      if (!apiUrl) throw new Error("Missing NEXT_PUBLIC_API_URL");
+      if (!address) throw new Error("Connect wallet to claim sFUEL");
+
+      const res = await fetch(`${apiUrl}/faucet`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address }),
+      });
+      const data = await res.json();
+      setMessage(data.txHash ? "✅ sFUEL sent!" : "✅ Claimed!");
     } catch {
       setMessage("❌ Claim failed. Try again.");
     } finally {

@@ -55,7 +55,7 @@ export function Header({ isConnected, error }: HeaderProps) {
             <span className={`text-[10px] font-semibold uppercase tracking-wider ${
               isConnected ? "text-poker-emerald/80" : "text-amber-400/80"
             }`}>
-              {isConnected ? "Live" : "Demo"}
+              {isConnected ? "Live" : "Offline"}
             </span>
           </div>
         </div>

@@ -47,9 +47,9 @@ module.exports = {
         "poker-card-white": "#f7fafc",
       },
       fontFamily: {
-        poker: ['"Playfair Display"', "Georgia", "serif"],
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        mono: ['"JetBrains Mono"', "Fira Code", "monospace"],
+        poker: ["var(--font-playfair)", "Georgia", "serif"],
+        sans: ["var(--font-inter)", "system-ui", "-apple-system", "sans-serif"],
+        mono: ["var(--font-jetbrains-mono)", "Fira Code", "monospace"],
       },
       animation: {
         "deal-card": "dealCard 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",

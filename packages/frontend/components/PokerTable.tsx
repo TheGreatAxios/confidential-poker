@@ -1,6 +1,6 @@
 "use client";
 
-import type { GameState } from "@/lib/types";
+import type { GameState, SeatPosition } from "@/lib/types";
 import { SEAT_POSITIONS } from "@/lib/types";
 import { AgentSeat } from "./AgentSeat";
 import { CommunityCards } from "./CommunityCards";
@@ -12,11 +12,11 @@ interface PokerTableProps {
 
 export function PokerTable({ gameState }: PokerTableProps) {
   return (
-    <div className="relative w-full max-w-4xl">
+    <div className="relative w-full max-w-5xl">
       {/* Table Container */}
-      <div className="relative mx-auto w-[360px] h-[280px] sm:w-[520px] sm:h-[380px] md:w-[640px] md:h-[420px]">
+      <div className="relative mx-auto aspect-[16/10] w-full max-w-[860px] min-w-[300px]">
         {/* Felt Oval */}
-        <div className="felt-texture absolute inset-8 sm:inset-12 rounded-[50%] border-4 border-poker-gold/20 shadow-2xl" />
+        <div className="felt-texture absolute inset-[8%] rounded-[50%] border-[3px] border-poker-gold/20 shadow-2xl sm:border-4" />
 
         {/* Inner Table Content */}
         <div className="absolute inset-0 flex items-center justify-center z-[1]">
@@ -28,7 +28,7 @@ export function PokerTable({ gameState }: PokerTableProps) {
 
         {/* Agent Seats */}
         {gameState.agents.map((agent) => {
-          const position = SEAT_POSITIONS[agent.seatIndex] || "top-left";
+          const position = (SEAT_POSITIONS[agent.seatIndex] ?? "top-left") as SeatPosition;
           const isActive =
             gameState.currentPlayerIndex === agent.seatIndex &&
             agent.status === "acting";
@@ -45,8 +45,8 @@ export function PokerTable({ gameState }: PokerTableProps) {
 
         {/* Human Player Placeholder */}
         {gameState.humanPlayer && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20">
-            <div className="px-4 py-2 rounded-full bg-poker-gold/20 border border-poker-gold/30 text-sm text-poker-gold">
+          <div className="absolute bottom-[6%] left-1/2 z-20 -translate-x-1/2">
+            <div className="rounded-full border border-poker-gold/30 bg-poker-gold/20 px-3 py-1.5 text-xs text-poker-gold sm:px-4 sm:py-2 sm:text-sm">
               You ({gameState.humanPlayer.address?.slice(0, 6)}...
               {gameState.humanPlayer.address?.slice(-4)})
             </div>

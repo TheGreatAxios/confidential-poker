@@ -3,7 +3,7 @@
 // Defines the custom SKALE chain and wagmi config for RainbowKit.
 // Falls back to hardcoded values when env vars are absent.
 
-import { http, createConfig } from "wagmi";
+import { cookieStorage, createStorage, http } from "wagmi";
 import { defineChain } from "viem";
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 
@@ -35,14 +35,20 @@ export const skaleBaseSepolia = defineChain({
 
 // ── Wagmi Config ────────────────────────────────────────────────────────────────
 
-export const config = getDefaultConfig({
-  appName: "AI Poker Night",
-  // WalletConnect Cloud project ID — get one at https://cloud.walletconnect.com
-  // Works without a real ID for injected wallets (MetaMask, etc.)
-  projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "demo-project-id",
-  chains: [skaleBaseSepolia],
-  transports: {
-    [skaleBaseSepolia.id]: http(),
-  },
-  ssr: true, // Enable server-side rendering for Next.js
-});
+export function createWagmiConfig() {
+  return getDefaultConfig({
+    appName: "AI Poker Night",
+    // WalletConnect Cloud project ID — get one at https://cloud.walletconnect.com
+    // Works without a real ID for injected wallets (MetaMask, etc.)
+    projectId:
+      process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "demo-project-id",
+    chains: [skaleBaseSepolia],
+    transports: {
+      [skaleBaseSepolia.id]: http(),
+    },
+    storage: createStorage({
+      storage: cookieStorage,
+    }),
+    ssr: true,
+  });
+}

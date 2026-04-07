@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function NotFound() {
   return (
     <div className="min-h-screen bg-poker-dark flex items-center justify-center">
@@ -9,12 +11,12 @@ export default function NotFound() {
         <p className="text-gray-400 text-sm">
           This table doesn&apos;t exist. Maybe the AI agents folded it?
         </p>
-        <a
+        <Link
           href="/"
           className="inline-block px-6 py-2 rounded-lg bg-poker-gold/20 text-poker-gold border border-poker-gold/30 hover:bg-poker-gold/30 transition-colors text-sm font-semibold"
         >
           ← Back to the Table
-        </a>
+        </Link>
       </div>
     </div>
   );

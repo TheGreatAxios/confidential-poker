@@ -2,15 +2,17 @@
 pragma solidity >=0.8.27;
 
 import "forge-std/Script.sol";
-import "../src/PokerGameTestnet.sol";
+import "../src/MockSKL.sol";
+import "../src/PokerGame.sol";
 
 contract Deploy is Script {
     function run() external {
-        uint256 deployerKey = vm.envUint("PRIVATE_KEY");
-        vm.startBroadcast(deployerKey);
+        vm.startBroadcast();
 
-        PokerGameTestnet game = new PokerGameTestnet();
-        console.log("PokerGameTestnet:", address(game));
+        MockSKL token = new MockSKL();
+        PokerGame game = new PokerGame(address(token));
+        console.log("MockSKL:", address(token));
+        console.log("PokerGame:", address(game));
 
         vm.stopBroadcast();
     }

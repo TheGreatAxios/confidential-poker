@@ -36,6 +36,9 @@ NETWORKS = {
     },
 }
 
+DEFAULT_POKER_CONTRACT = "0x0D5d9697bda657c1ba2D1882dcF7BB20903D3aDC"
+DEFAULT_MOCK_SKL = "0x4C1928684B7028C2805FA1d12aCEd5c839A8D42C"
+
 def load_data():
     return json.loads(Path("/data/.nanobot/persistent/scratchpad/poker-deploy.json").read_text())
 
@@ -142,7 +145,7 @@ def main():
     data = load_data()
     net_data = data.get("networks", {}).get(network_name, {})
     
-    CONTRACT = net_data.get("contract", data.get("contract", ""))
+    CONTRACT = net_data.get("contract", data.get("contract", DEFAULT_POKER_CONTRACT))
     
     TOKEN_DECIMALS = NETWORK_CFG["token_decimals"]
     BUY_IN = NETWORK_CFG["buy_in"]
@@ -152,7 +155,7 @@ def main():
         TOKEN_ADDR = net_data["usdc"]
         TOKEN_SYM = "USDC"
     else:
-        TOKEN_ADDR = net_data.get("mock_skl", data.get("mock_skl", ""))
+        TOKEN_ADDR = net_data.get("mock_skl", data.get("mock_skl", DEFAULT_MOCK_SKL))
         TOKEN_SYM = "MockSKL"
     
     agent = data["agent"]

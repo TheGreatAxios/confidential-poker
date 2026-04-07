@@ -64,10 +64,7 @@ export interface PokerTableState {
 // ── Hook ────────────────────────────────────────────────────────────────────────
 
 export function usePokerTable(): PokerTableState {
-  const { isConnected } = useAccount();
-
-  const contractReady =
-    isConnected && isContractDeployed(POKER_TABLE_ADDRESS);
+  const contractReady = isContractDeployed(POKER_TABLE_ADDRESS);
 
   const { data, isLoading, isError, error, refetch } = useReadContracts({
     contracts: [
@@ -104,7 +101,7 @@ export function usePokerTable(): PokerTableState {
     ],
     query: {
       enabled: contractReady,
-      pollingInterval: 5_000,
+      refetchInterval: 5_000,
     },
   });
 

@@ -7,10 +7,12 @@ import "../src/MockSKL.sol";
 
 contract DeployBite is Script {
     function run() external {
-        uint256 deployerKey = vm.envUint("PRIVATE_KEY");
-        address tokenAddress = vm.envOr("TOKEN_ADDRESS", address(0));
+        address tokenAddress = vm.envOr(
+            "TOKEN_ADDRESS",
+            address(0x4C1928684B7028C2805FA1d12aCEd5c839A8D42C)
+        );
         
-        vm.startBroadcast(deployerKey);
+        vm.startBroadcast();
 
         if (tokenAddress == address(0)) {
             // Deploy MockSKL token (for base-sepolia which has no native USDC)

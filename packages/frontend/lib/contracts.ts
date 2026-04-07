@@ -5,7 +5,7 @@
 
 export const POKER_TABLE_ADDRESS = (process.env
   .NEXT_PUBLIC_POKER_TABLE_ADDRESS ??
-  "0x0000000000000000000000000000000000000000") as `0x${string}`;
+  "0x0D5d9697bda657c1ba2D1882dcF7BB20903D3aDC") as `0x${string}`;
 
 export const POKER_TABLE_ABI = [
   // ── Player Actions (all public) ───────────────────────────────────────────

@@ -5,6 +5,7 @@ import "./HandEvaluator.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { BITE, PublicKey } from "@skalenetwork/bite-solidity/BITE.sol";
 import { IBiteSupplicant } from "@skalenetwork/bite-solidity/interfaces/IBiteSupplicant.sol";
+import "@dirtroad/skale-rng/contracts/RNG.sol";
 
 /**
  * @title PokerGame
@@ -30,7 +31,7 @@ import { IBiteSupplicant } from "@skalenetwork/bite-solidity/interfaces/IBiteSup
  *
  *         State machine: Waiting → Preflop → Flop → Turn → River → Showdown
  */
-contract PokerGame is IBiteSupplicant {
+contract PokerGame is IBiteSupplicant, RNG {
     using HandEvaluator for uint8[7];
 
     // ─── Enums ───────────────────────────────────────────────────────────
@@ -289,14 +290,9 @@ contract PokerGame is IBiteSupplicant {
         }
 
         // Deal encrypted hole cards
-        uint256 seed = uint256(keccak256(abi.encodePacked(
-            block.timestamp, block.prevrandao, handNumber, msg.sender
-        )));
         for (uint256 i = 0; i < players.length; i++) {
-            seed = _nextRand(seed);
-            uint8 card1 = uint8((seed % 52) + 1);
-            seed = _nextRand(seed);
-            uint8 card2 = uint8((seed % 52) + 1);
+            uint8 card1 = uint8(getNextRandomRange(i * 2, 52) + 1);
+            uint8 card2 = uint8(getNextRandomRange((i * 2) + 1, 52) + 1);
 
             uint8 encodedCard1 = HandEvaluator.encodeCard((card1 % 13) + 2, card1 / 13);
             uint8 encodedCard2 = HandEvaluator.encodeCard((card2 % 13) + 2, card2 / 13);
@@ -339,10 +335,9 @@ contract PokerGame is IBiteSupplicant {
         require(phase == GamePhase.Preflop, "Must be in preflop phase");
         _collectBets();
 
-        uint256 seed = uint256(keccak256(abi.encodePacked(block.timestamp, handNumber, "flop")));
-        communityCards[0] = _randCard(seed); seed = _nextRand(seed);
-        communityCards[1] = _randCard(seed); seed = _nextRand(seed);
-        communityCards[2] = _randCard(seed);
+        communityCards[0] = _randCard(getNextRandomRange(0, 52));
+        communityCards[1] = _randCard(getNextRandomRange(1, 52));
+        communityCards[2] = _randCard(getNextRandomRange(2, 52));
 
         currentBet = 0;
         _resetActedFlags();
@@ -358,8 +353,7 @@ contract PokerGame is IBiteSupplicant {
         require(phase == GamePhase.Flop, "Must be in flop phase");
         _collectBets();
 
-        uint256 seed = uint256(keccak256(abi.encodePacked(block.timestamp, handNumber, "turn")));
-        communityCards[3] = _randCard(seed);
+        communityCards[3] = _randCard(getRandomRange(52));
 
         currentBet = 0;
         _resetActedFlags();
@@ -375,8 +369,7 @@ contract PokerGame is IBiteSupplicant {
         require(phase == GamePhase.Turn, "Must be in turn phase");
         _collectBets();
 
-        uint256 seed = uint256(keccak256(abi.encodePacked(block.timestamp, handNumber, "river")));
-        communityCards[4] = _randCard(seed);
+        communityCards[4] = _randCard(getRandomRange(52));
 
         currentBet = 0;
         _resetActedFlags();
@@ -799,10 +792,6 @@ contract PokerGame is IBiteSupplicant {
 
         string memory handName = HandEvaluator.handRankName(best.handRank);
         _awardPot(bestPlayer, pot, handName);
-    }
-
-    function _nextRand(uint256 seed) internal pure returns (uint256) {
-        return uint256(keccak256(abi.encodePacked(seed)));
     }
 
     function _randCard(uint256 seed) internal pure returns (uint8) {

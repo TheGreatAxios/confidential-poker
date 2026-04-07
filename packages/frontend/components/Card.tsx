@@ -18,10 +18,10 @@ export function Card({ card, index = 0 }: CardProps) {
   if (!card.faceUp) {
     return (
       <div
-        className="card-deal w-12 h-[68px] sm:w-14 sm:h-[80px] rounded-lg bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 border-2 border-blue-700/50 flex items-center justify-center shadow-lg"
+        className="card-deal flex h-[56px] w-10 items-center justify-center rounded-lg border-2 border-blue-700/50 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 shadow-lg sm:h-[80px] sm:w-14"
         style={{ animationDelay: `${index * 0.15}s` }}
       >
-        <div className="w-8 h-10 sm:w-10 sm:h-12 rounded border border-blue-600/30 bg-blue-800/50 flex items-center justify-center">
+        <div className="flex h-9 w-7 items-center justify-center rounded border border-blue-600/30 bg-blue-800/50 sm:h-12 sm:w-10">
           <span className="text-lg sm:text-xl opacity-60">🂠</span>
         </div>
       </div>
@@ -32,13 +32,13 @@ export function Card({ card, index = 0 }: CardProps) {
 
   return (
     <div
-      className="card-deal w-12 h-[68px] sm:w-14 sm:h-[80px] rounded-lg bg-white border border-gray-200 flex flex-col items-center justify-center shadow-lg hover:shadow-xl transition-shadow"
+      className="card-deal flex h-[56px] w-10 flex-col items-center justify-center rounded-lg border border-gray-200 bg-white shadow-lg transition-shadow hover:shadow-xl sm:h-[80px] sm:w-14"
       style={{ animationDelay: `${index * 0.15}s` }}
     >
-      <span className={`text-xs sm:text-sm font-bold leading-none ${colorClass}`}>
+      <span className={`text-[10px] font-bold leading-none sm:text-sm ${colorClass}`}>
         {card.rank}
       </span>
-      <span className={`text-lg sm:text-xl leading-none mt-0.5 ${colorClass}`}>
+      <span className={`mt-0.5 text-base leading-none sm:text-xl ${colorClass}`}>
         {card.suit}
       </span>
     </div>

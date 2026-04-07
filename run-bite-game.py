@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Full BITE-encrypted poker game on SKALE Base Sepolia.
-Contract: 0x8284F42d668080BB0750AD4A945f066E470D072f
+Contract: 0x0D5d9697bda657c1ba2D1882dcF7BB20903D3aDC
 Uses ECIES viewer keys for encrypted card dealing and CTX for showdown.
 """
 import json, subprocess, sys, time, random
@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 
 RPC = "https://base-sepolia-testnet.skalenodes.com/v1/base-testnet"
 CAST = "/data/.foundry/bin/cast"
-BITE_CONTRACT = "0x8284F42d668080BB0750AD4A945f066E470D072f"
+BITE_CONTRACT = "0x0D5d9697bda657c1ba2D1882dcF7BB20903D3aDC"
 
 def load_data():
     return json.loads(Path("/data/.nanobot/persistent/scratchpad/poker-deploy.json").read_text())
@@ -431,13 +431,13 @@ def main():
         reveal_value = "10000000000000000"  # 0.01 ETH
         
         tx, err = send_tx(CONTRACT, "revealCards()", [], reveal_player["private_key"], value=reveal_value, gas_limit=1000000)
-            if err:
-                print(f"  ❌ revealCards failed: {err[:300]}")
-                print(f"  Trying resolveHand() as fallback...")
-            else:
-                print(f"  ✅ revealCards submitted! TX: {tx}")
-                print(f"  ⏳ Waiting for CTX callback (next block)...")
-                time.sleep(5)  # Wait for the CTX to execute on next block
+        if err:
+            print(f"  ❌ revealCards failed: {err[:300]}")
+            print(f"  Trying resolveHand() as fallback...")
+        else:
+            print(f"  ✅ revealCards submitted! TX: {tx}")
+            print(f"  ⏳ Waiting for CTX callback (next block)...")
+            time.sleep(5)  # Wait for the CTX to execute on next block
         
         # Check if showdown happened
         phase = to_int(read_contract(CONTRACT, "phase()(uint8)"))
