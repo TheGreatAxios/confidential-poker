@@ -756,19 +756,21 @@ contract PokerGame is IBiteSupplicant, RNG {
         require(address(this).balance >= minimumCtxReserve() + ctxCallbackValueWei, InsufficientCtxReserve());
 
         uint256 activeCount = 0;
+        uint256 revealCount = 0;
         for (uint256 i = 0; i < players.length; i++) {
             if (players[i].isActive) activeCount++;
+            if (players[i].teEncryptedHoleCards.length > 0) revealCount++;
         }
         require(activeCount > 0, NotEnoughPlayers());
-        uint256 allowedGas = _showdownCallbackGasLimit(activeCount);
+        require(revealCount > 0, NoCardsDealt());
+        uint256 allowedGas = _showdownCallbackGasLimit(revealCount);
 
-        bytes[] memory encryptedArgs = new bytes[](activeCount);
-        bytes[] memory plaintextArgs = new bytes[](activeCount);
+        bytes[] memory encryptedArgs = new bytes[](revealCount);
+        bytes[] memory plaintextArgs = new bytes[](revealCount);
         uint256 j = 0;
 
         for (uint256 i = 0; i < players.length; i++) {
-            if (players[i].isActive) {
-                require(players[i].teEncryptedHoleCards.length > 0, NoCardsDealt());
+            if (players[i].teEncryptedHoleCards.length > 0) {
                 encryptedArgs[j] = players[i].teEncryptedHoleCards;
                 plaintextArgs[j] = abi.encode(i);
                 j++;
@@ -904,8 +906,9 @@ contract PokerGame is IBiteSupplicant, RNG {
         pot = 0;
         emit Winner(winner, amount, handName);
         emit PotAwarded(winner, amount);
-        bool ok = sklToken.transfer(winner, amount);
-        require(ok, TransferFailed());
+        uint256 winnerIdx = _playerIndex(winner);
+        require(winnerIdx != type(uint256).max, NotAPlayer());
+        players[winnerIdx].stack += amount;
     }
 
     function _evaluateAndDistribute(address[] memory activePlayers, uint256 activeCount) internal {

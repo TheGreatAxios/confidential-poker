@@ -52,7 +52,7 @@ export function PlayerHandPanel({ gameState }: PlayerHandPanelProps) {
 
       {gameState.handComplete && (
         <div className={`mt-3 text-xs font-semibold uppercase tracking-[0.16em] ${humanPlayer.isWinner ? "text-emerald-300" : "text-poker-text-dim"}`}>
-          {humanPlayer.isWinner ? "Hand Won" : "Hand Complete"}
+          {humanPlayer.isWinner ? "Winner" : "Hand Complete"}
         </div>
       )}
     </div>

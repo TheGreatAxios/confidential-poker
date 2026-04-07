@@ -36,6 +36,11 @@ export function PokerTable({ gameState }: PokerTableProps) {
           <div className="flex translate-y-4 flex-col items-center gap-3 sm:translate-y-6">
             <CommunityCards cards={gameState.communityCards} />
             <PotDisplay pot={gameState.pot} currentBet={gameState.currentBet} />
+            {gameState.handComplete && gameState.lastAction && (
+              <div className="max-w-[300px] rounded-full border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200 shadow-[0_12px_28px_rgba(16,185,129,0.15)] sm:max-w-[420px] sm:text-[11px]">
+                {gameState.lastAction}
+              </div>
+            )}
           </div>
         </div>
 
