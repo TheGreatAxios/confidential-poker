@@ -44,6 +44,12 @@ contract PokerGame is IBiteSupplicant, RNG {
         Showdown // 5: card reveal and pot distribution
     }
 
+    enum PendingCallbackKind {
+        None,
+        CommunityDeal,
+        Showdown
+    }
+
     // ─── Structs ─────────────────────────────────────────────────────────
     struct Player {
         address addr;
@@ -71,9 +77,10 @@ contract PokerGame is IBiteSupplicant, RNG {
     uint256 public constant ACTIVE_PLAYERS_PER_HAND = 2;
     uint256 public constant BUY_IN = 1000 * 10 ** 18; // 1000 SKL (18 decimals)
     uint256 public constant CTX_GAS_BUFFER = 100_000;
-    uint256 public constant MIN_CTX_RESERVE_HANDS = 2;
+    uint256 public constant MIN_CTX_RESERVE_CALLBACKS = 10;
+    uint256 public constant SHOWDOWN_CALLBACK_GAS_LIMIT = 5_000_000;
 
-    /// @notice Minimum gas to reserve for the CTX callback
+    /// @notice Minimum gas baseline for CTX callbacks
     uint256 public minCallbackGas = 500_000;
     uint256 public immutable ctxCallbackValueWei;
 
@@ -87,16 +94,18 @@ contract PokerGame is IBiteSupplicant, RNG {
     uint256 public dealerIndex;
     uint256 public handSelectionCursor;
     uint256 internal rngCursor;
+    bytes private teEncryptedDeck;
     uint8 private deckPosition;
-    uint8[52] private deck;
 
     IERC20 public sklToken;
     Player[] public players;
     uint8[5] public communityCards;
     uint256 public pot;
 
-    mapping(address => bool) private _canCallOnDecrypt;
+    mapping(address => PendingCallbackKind) private _pendingCallbackKinds;
     bool private _showdownPending;
+    bool private _communityDealPending;
+    uint8 private _pendingCommunityCardCount;
 
     // ─── Events ──────────────────────────────────────────────────────────
     event PlayerJoined(address indexed player, uint256 seat);
@@ -142,7 +151,7 @@ contract PokerGame is IBiteSupplicant, RNG {
     error InsufficientCtxReserve();
     error InvalidCtxCallbackValue();
     error AccessDenied();
-    error DeckExhausted();
+    error CallbackPending();
 
     // ─── Modifiers ───────────────────────────────────────────────────────
     modifier onlyOwner() {
@@ -166,6 +175,7 @@ contract PokerGame is IBiteSupplicant, RNG {
                 || phase == GamePhase.River,
             NotBettingPhase()
         );
+        require(!_communityDealPending && !_showdownPending, CallbackPending());
         _;
     }
 
@@ -303,7 +313,9 @@ contract PokerGame is IBiteSupplicant, RNG {
         pot = 0;
         currentBet = 0;
         rngCursor = 1;
-        _resetDeck();
+        uint8[52] memory liveDeck = _buildShuffledDeck();
+        teEncryptedDeck = BITE.encryptTE(BITE.ENCRYPT_TE_ADDRESS, abi.encode(liveDeck));
+        deckPosition = 0;
         _clearCommunityCards();
 
         for (uint256 i = 0; i < players.length; i++) {
@@ -345,8 +357,9 @@ contract PokerGame is IBiteSupplicant, RNG {
         // Deal encrypted hole cards
         for (uint256 i = 0; i < players.length; i++) {
             if (!players[i].isActive) continue;
-            uint8 encodedCard1 = _drawUniqueCard();
-            uint8 encodedCard2 = _drawUniqueCard();
+            uint8 encodedCard1 = liveDeck[deckPosition];
+            uint8 encodedCard2 = liveDeck[deckPosition + 1];
+            deckPosition += 2;
 
             bytes memory teCards = BITE.encryptTE(BITE.ENCRYPT_TE_ADDRESS, abi.encode(encodedCard1, encodedCard2));
 
@@ -381,50 +394,21 @@ contract PokerGame is IBiteSupplicant, RNG {
     function dealFlop() external onlyOwner {
         require(phase == GamePhase.Preflop, "Must be in preflop phase");
         _collectBets();
-
-        communityCards[0] = _drawUniqueCard();
-        communityCards[1] = _drawUniqueCard();
-        communityCards[2] = _drawUniqueCard();
-
-        currentBet = 0;
-        _resetActedFlags();
-        currentTurnIndex = _nextActiveIndexFromDealer();
-
-        phase = GamePhase.Flop;
-        emit FlopDealt(communityCards[0], communityCards[1], communityCards[2]);
-        emit PhaseChanged(GamePhase.Flop);
+        _submitCommunityDeal(3);
     }
 
     /// @notice Deal the turn (1 community card).
     function dealTurn() external onlyOwner {
         require(phase == GamePhase.Flop, "Must be in flop phase");
         _collectBets();
-
-        communityCards[3] = _drawUniqueCard();
-
-        currentBet = 0;
-        _resetActedFlags();
-        currentTurnIndex = _nextActiveIndexFromDealer();
-
-        phase = GamePhase.Turn;
-        emit TurnDealt(communityCards[3]);
-        emit PhaseChanged(GamePhase.Turn);
+        _submitCommunityDeal(1);
     }
 
     /// @notice Deal the river (1 community card).
     function dealRiver() external onlyOwner {
         require(phase == GamePhase.Turn, "Must be in turn phase");
         _collectBets();
-
-        communityCards[4] = _drawUniqueCard();
-
-        currentBet = 0;
-        _resetActedFlags();
-        currentTurnIndex = _nextActiveIndexFromDealer();
-
-        phase = GamePhase.River;
-        emit RiverDealt(communityCards[4]);
-        emit PhaseChanged(GamePhase.River);
+        _submitCommunityDeal(1);
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -433,8 +417,15 @@ contract PokerGame is IBiteSupplicant, RNG {
 
     /// @notice BITE callback — called after threshold decryption of showdown cards.
     function onDecrypt(bytes[] calldata decryptedArguments, bytes[] calldata plaintextArguments) external override {
-        require(_canCallOnDecrypt[msg.sender], AccessDenied());
-        _canCallOnDecrypt[msg.sender] = false;
+        PendingCallbackKind kind = _pendingCallbackKinds[msg.sender];
+        require(kind != PendingCallbackKind.None, AccessDenied());
+        delete _pendingCallbackKinds[msg.sender];
+
+        if (kind == PendingCallbackKind.CommunityDeal) {
+            _completeCommunityDeal(decryptedArguments);
+            return;
+        }
+
         require(_showdownPending, "No pending showdown");
 
         _showdownPending = false;
@@ -498,8 +489,8 @@ contract PokerGame is IBiteSupplicant, RNG {
 
         uint256 idx = _playerIndex(msg.sender);
         uint256 forfeited = players[idx].stack;
-        bool wasBettingPhase =
-            phase == GamePhase.Preflop || phase == GamePhase.Flop || phase == GamePhase.Turn || phase == GamePhase.River;
+        bool wasBettingPhase = phase == GamePhase.Preflop || phase == GamePhase.Flop || phase == GamePhase.Turn
+            || phase == GamePhase.River;
         bool wasCurrentTurn = players.length > 0 && currentTurnIndex == idx;
 
         players[idx].stack = 0;
@@ -649,7 +640,7 @@ contract PokerGame is IBiteSupplicant, RNG {
     }
 
     function minimumCtxReserve() public view returns (uint256) {
-        return ctxCallbackValueWei * MIN_CTX_RESERVE_HANDS;
+        return ctxCallbackValueWei * MIN_CTX_RESERVE_CALLBACKS;
     }
 
     // ─── Internal Helpers ────────────────────────────────────────────────
@@ -733,48 +724,19 @@ contract PokerGame is IBiteSupplicant, RNG {
     function _advancePhaseFromTurn() internal {
         if (phase == GamePhase.Preflop) {
             _collectBets();
-
-            communityCards[0] = _drawUniqueCard();
-            communityCards[1] = _drawUniqueCard();
-            communityCards[2] = _drawUniqueCard();
-
-            currentBet = 0;
-            _resetActedFlags();
-            currentTurnIndex = _nextActiveIndexFromDealer();
-
-            phase = GamePhase.Flop;
-            emit FlopDealt(communityCards[0], communityCards[1], communityCards[2]);
-            emit PhaseChanged(GamePhase.Flop);
+            _submitCommunityDeal(3);
             return;
         }
 
         if (phase == GamePhase.Flop) {
             _collectBets();
-
-            communityCards[3] = _drawUniqueCard();
-
-            currentBet = 0;
-            _resetActedFlags();
-            currentTurnIndex = _nextActiveIndexFromDealer();
-
-            phase = GamePhase.Turn;
-            emit TurnDealt(communityCards[3]);
-            emit PhaseChanged(GamePhase.Turn);
+            _submitCommunityDeal(1);
             return;
         }
 
         if (phase == GamePhase.Turn) {
             _collectBets();
-
-            communityCards[4] = _drawUniqueCard();
-
-            currentBet = 0;
-            _resetActedFlags();
-            currentTurnIndex = _nextActiveIndexFromDealer();
-
-            phase = GamePhase.River;
-            emit RiverDealt(communityCards[4]);
-            emit PhaseChanged(GamePhase.River);
+            _submitCommunityDeal(1);
             return;
         }
 
@@ -789,17 +751,16 @@ contract PokerGame is IBiteSupplicant, RNG {
                 || phase == GamePhase.River,
             NotBettingPhase()
         );
+        require(!_communityDealPending, CallbackPending());
         require(!_showdownPending, ShowdownInProgress());
-        require(address(this).balance >= ctxCallbackValueWei, InsufficientCtxReserve());
-
-        uint256 allowedGas = tx.gasprice == 0 ? minCallbackGas + CTX_GAS_BUFFER : ctxCallbackValueWei / tx.gasprice;
-        require(allowedGas > minCallbackGas, InsufficientCallbackGas());
+        require(address(this).balance >= minimumCtxReserve() + ctxCallbackValueWei, InsufficientCtxReserve());
 
         uint256 activeCount = 0;
         for (uint256 i = 0; i < players.length; i++) {
             if (players[i].isActive) activeCount++;
         }
         require(activeCount > 0, NotEnoughPlayers());
+        uint256 allowedGas = _showdownCallbackGasLimit(activeCount);
 
         bytes[] memory encryptedArgs = new bytes[](activeCount);
         bytes[] memory plaintextArgs = new bytes[](activeCount);
@@ -820,7 +781,7 @@ contract PokerGame is IBiteSupplicant, RNG {
 
         address payable ctxSender = BITE.submitCTX(BITE.SUBMIT_CTX_ADDRESS, allowedGas, encryptedArgs, plaintextArgs);
 
-        _canCallOnDecrypt[ctxSender] = true;
+        _pendingCallbackKinds[ctxSender] = PendingCallbackKind.Showdown;
         ctxSender.transfer(ctxCallbackValueWei);
 
         emit ShowdownInitiated(j);
@@ -918,6 +879,11 @@ contract PokerGame is IBiteSupplicant, RNG {
         phase = GamePhase.Waiting;
         currentBet = 0;
         currentTurnIndex = type(uint256).max;
+        _communityDealPending = false;
+        _showdownPending = false;
+        _pendingCommunityCardCount = 0;
+        teEncryptedDeck = bytes("");
+        deckPosition = 0;
 
         for (uint256 i = 0; i < players.length; i++) {
             players[i].betAmount = 0;
@@ -979,30 +945,88 @@ contract PokerGame is IBiteSupplicant, RNG {
         return HandEvaluator.encodeCard(uint8((card % 13) + 2), uint8(card / 13));
     }
 
-    function _resetDeck() internal {
-        deckPosition = 0;
-
+    function _buildShuffledDeck() internal returns (uint8[52] memory liveDeck) {
         for (uint256 i = 0; i < 52; i++) {
-            deck[i] = _randCard(i);
+            liveDeck[i] = _randCard(i);
         }
 
         for (uint256 i = 51; i > 0; i--) {
             uint256 swapIndex = getNextRandomRange(rngCursor, i + 1);
             rngCursor++;
 
-            uint8 card = deck[i];
-            deck[i] = deck[swapIndex];
-            deck[swapIndex] = card;
+            uint8 card = liveDeck[i];
+            liveDeck[i] = liveDeck[swapIndex];
+            liveDeck[swapIndex] = card;
         }
     }
 
-    function _drawUniqueCard() internal returns (uint8) {
-        if (deckPosition >= deck.length) {
-            revert DeckExhausted();
+    function _communityCallbackGasLimit(uint8 cardCount) internal view returns (uint256) {
+        uint256 estimatedGas = minCallbackGas + (uint256(cardCount) * 25_000) + 75_000;
+        require(estimatedGas > minCallbackGas, InsufficientCallbackGas());
+        return estimatedGas + CTX_GAS_BUFFER;
+    }
+
+    function _showdownCallbackGasLimit(uint256 activeCount) internal pure returns (uint256) {
+        activeCount;
+        return SHOWDOWN_CALLBACK_GAS_LIMIT;
+    }
+
+    function _submitCommunityDeal(uint8 cardCount) internal {
+        require(!_communityDealPending && !_showdownPending, CallbackPending());
+        require(address(this).balance >= minimumCtxReserve() + ctxCallbackValueWei, InsufficientCtxReserve());
+
+        uint256 allowedGas = _communityCallbackGasLimit(cardCount);
+
+        bytes[] memory encryptedArgs = new bytes[](1);
+        encryptedArgs[0] = teEncryptedDeck;
+
+        bytes[] memory plaintextArgs = new bytes[](1);
+        plaintextArgs[0] = bytes("");
+
+        _communityDealPending = true;
+        _pendingCommunityCardCount = cardCount;
+        currentTurnIndex = type(uint256).max;
+
+        address payable ctxSender = BITE.submitCTX(BITE.SUBMIT_CTX_ADDRESS, allowedGas, encryptedArgs, plaintextArgs);
+
+        _pendingCallbackKinds[ctxSender] = PendingCallbackKind.CommunityDeal;
+        ctxSender.transfer(ctxCallbackValueWei);
+    }
+
+    function _completeCommunityDeal(bytes[] calldata decryptedArguments) internal {
+        require(_communityDealPending, CallbackPending());
+        _communityDealPending = false;
+
+        uint8 cardCount = _pendingCommunityCardCount;
+        _pendingCommunityCardCount = 0;
+        uint8[52] memory liveDeck = abi.decode(decryptedArguments[0], (uint8[52]));
+
+        uint256 communityIndex = deckPosition - (ACTIVE_PLAYERS_PER_HAND * 2);
+        for (uint256 i = 0; i < cardCount; i++) {
+            communityCards[communityIndex + i] = liveDeck[deckPosition + i];
+        }
+        deckPosition += cardCount;
+
+        currentBet = 0;
+        _resetActedFlags();
+        currentTurnIndex = _nextActiveIndexFromDealer();
+
+        if (cardCount == 3) {
+            phase = GamePhase.Flop;
+            emit FlopDealt(communityCards[0], communityCards[1], communityCards[2]);
+            emit PhaseChanged(GamePhase.Flop);
+            return;
         }
 
-        uint8 card = deck[deckPosition];
-        deckPosition++;
-        return card;
+        if (phase == GamePhase.Flop) {
+            phase = GamePhase.Turn;
+            emit TurnDealt(communityCards[3]);
+            emit PhaseChanged(GamePhase.Turn);
+            return;
+        }
+
+        phase = GamePhase.River;
+        emit RiverDealt(communityCards[4]);
+        emit PhaseChanged(GamePhase.River);
     }
 }

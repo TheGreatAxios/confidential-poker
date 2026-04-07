@@ -24,5 +24,6 @@ Solidity smart contracts for the AI Poker Night application, built with Foundry.
 - Follow existing Solidity style and patterns
 - Use Foundry testing patterns (forge-std)
 - Run `forge fmt` before committing
+- On SKALE, do not derive BITE CTX callback gas from `tx.gasprice`; use deterministic gas limits based on callback work plus buffer, and treat callback funding as a separate native-value reserve
 - No comments unless explicitly requested
 - No emojis unless explicitly requested

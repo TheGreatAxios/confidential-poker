@@ -9,19 +9,16 @@ import {PublicKey} from "@skalenetwork/bite-solidity/BITE.sol";
 contract PokerGameHarness is PokerGame {
     constructor(address _sklToken, uint256 _ctxCallbackValueWei) payable PokerGame(_sklToken, _ctxCallbackValueWei) {}
 
-    function resetDeckForTest(uint256 cursor) external {
+    function buildDeckForTest(uint256 cursor) external returns (uint8[52] memory) {
         rngCursor = cursor;
-        _resetDeck();
-    }
-
-    function drawCardForTest() external returns (uint8) {
-        return _drawUniqueCard();
+        return _buildShuffledDeck();
     }
 }
 
 contract PokerGameTest is Test {
     uint256 internal constant CALLBACK_VALUE = 1 ether;
     uint256 internal constant BUY_IN = 1000 * 10 ** 18;
+    uint256 internal constant MIN_CTX_RESERVE = CALLBACK_VALUE * 10;
     MockSKL internal token;
     PokerGame internal game;
     PokerGameHarness internal harness;
@@ -30,8 +27,8 @@ contract PokerGameTest is Test {
 
     function setUp() external {
         token = new MockSKL();
-        game = new PokerGame{value: CALLBACK_VALUE * 2}(address(token), CALLBACK_VALUE);
-        harness = new PokerGameHarness{value: CALLBACK_VALUE * 2}(address(token), CALLBACK_VALUE);
+        game = new PokerGame{value: MIN_CTX_RESERVE * 2}(address(token), CALLBACK_VALUE);
+        harness = new PokerGameHarness{value: MIN_CTX_RESERVE * 2}(address(token), CALLBACK_VALUE);
 
         token.mint(alice, BUY_IN);
         token.mint(bob, BUY_IN);
@@ -45,7 +42,7 @@ contract PokerGameTest is Test {
 
     function testConstructorRequiresMinimumReserve() external {
         vm.expectRevert(PokerGame.InsufficientCtxReserve.selector);
-        new PokerGame{value: CALLBACK_VALUE}(address(token), CALLBACK_VALUE);
+        new PokerGame{value: MIN_CTX_RESERVE - 1}(address(token), CALLBACK_VALUE);
     }
 
     function testSecondSeatCannotStartGameWithoutCtxReserve() external {
@@ -59,26 +56,13 @@ contract PokerGameTest is Test {
         game.sitDown(_viewerKey(2));
     }
 
-    function testDeckResetProduces52UniqueCardsAndReshuffles() external {
-        harness.resetDeckForTest(1);
-
+    function testShuffledDeckContains52UniqueCards() external {
+        uint8[52] memory deck = harness.buildDeckForTest(1);
         bool[64] memory seen;
         for (uint256 i = 0; i < 52; i++) {
-            uint8 card = harness.drawCardForTest();
+            uint8 card = deck[i];
             assertFalse(seen[card]);
             seen[card] = true;
-        }
-
-        vm.expectRevert(PokerGame.DeckExhausted.selector);
-        harness.drawCardForTest();
-
-        harness.resetDeckForTest(53);
-
-        bool[64] memory seenAfterReset;
-        for (uint256 i = 0; i < 52; i++) {
-            uint8 card = harness.drawCardForTest();
-            assertFalse(seenAfterReset[card]);
-            seenAfterReset[card] = true;
         }
     }
 
