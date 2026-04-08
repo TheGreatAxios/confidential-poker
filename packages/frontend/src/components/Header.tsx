@@ -1,5 +1,6 @@
 
 import { Shield, Wifi, WifiOff, AlertTriangle } from "lucide-react";
+import skaleLogo from "../../logo.jpg";
 
 interface HeaderProps {
   isConnected: boolean;
@@ -12,21 +13,16 @@ export function Header({ isConnected, error }: HeaderProps) {
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
         {/* Logo & Title */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-            <svg
-              viewBox="0 0 48 48"
-              className="h-6 w-6"
-              role="img"
-              aria-label="SKALE Logo"
-            >
-              <path d="M24 4L39 12V28L24 36L9 28V12L24 4Z" fill="#00FFC8" />
-              <path d="M17 19L24 15L31 19L24 23L17 19Z" fill="#0E1418" />
-              <path d="M17 24L24 20L31 24L24 28L17 24Z" fill="#0E1418" />
-            </svg>
+          <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-white/5">
+            <img
+              src={skaleLogo}
+              alt="SKALE Logo"
+              className="h-full w-full object-cover"
+            />
           </div>
           <div>
             <h1 className="text-[15px] font-bold font-poker text-white leading-tight tracking-tight">
-              Texas Hold&apos;Em on SKALE
+              Texas Hold&apos;Em on SKALE (Demo)
             </h1>
           </div>
         </div>

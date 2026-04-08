@@ -8,9 +8,55 @@ interface AgentAvatarProps {
 }
 
 export function AgentAvatar({ agent }: AgentAvatarProps) {
+  const seatBadges = [
+    agent.isDealer
+      ? {
+          key: "dealer",
+          label: "Dealer",
+          className:
+            "border-poker-dark bg-poker-gold text-poker-dark shadow-[0_4px_14px_rgba(240,180,41,0.35)]",
+        }
+      : null,
+    agent.isSmallBlind
+      ? {
+          key: "small-blind",
+          label: "Small Blind",
+          className:
+            "border-sky-300/50 bg-sky-400/15 text-sky-100 shadow-[0_6px_16px_rgba(56,189,248,0.2)]",
+        }
+      : null,
+    agent.isBigBlind
+      ? {
+          key: "big-blind",
+          label: "Big Blind",
+          className:
+            "border-rose-300/50 bg-rose-400/15 text-rose-100 shadow-[0_6px_16px_rgba(251,113,133,0.2)]",
+        }
+      : null,
+  ].filter((badge): badge is { key: string; label: string; className: string } => badge !== null);
+
   return (
-    <div className="flex flex-col items-center gap-1">
+    <div className="flex flex-col items-center gap-1.5">
+      <div className="text-center">
+        <p className="max-w-[88px] truncate text-[11px] font-semibold leading-tight text-white sm:max-w-[104px] sm:text-xs">
+          {agent.name}
+        </p>
+      </div>
+
       <div className="relative">
+        {seatBadges.length > 0 && (
+          <div className="absolute right-full top-1/2 mr-2.5 flex min-w-max -translate-y-1/2 flex-col items-end gap-1">
+            {seatBadges.map((badge) => (
+              <div
+                key={badge.key}
+                className={`flex items-center justify-center rounded-full border px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] whitespace-nowrap ${badge.className}`}
+              >
+                {badge.label}
+              </div>
+            ))}
+          </div>
+        )}
+
         {agent.status === "acting" && (
           <div className="absolute inset-[-10px] rounded-full border-2 border-poker-gold/70 shadow-[0_0_32px_rgba(240,180,41,0.55)] animate-pulse" />
         )}
@@ -46,35 +92,11 @@ export function AgentAvatar({ agent }: AgentAvatarProps) {
               </div>
             </div>
           )}
-
-          {agent.isDealer && (
-            <div className="absolute -bottom-3 -right-6 flex items-center justify-center rounded-full border border-poker-dark bg-poker-gold px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-poker-dark shadow-[0_4px_14px_rgba(240,180,41,0.35)]">
-              Dealer
-            </div>
-          )}
-
-          {agent.isSmallBlind && (
-            <div className="absolute -left-16 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full border border-sky-300/50 bg-sky-400/15 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-sky-100 shadow-[0_6px_16px_rgba(56,189,248,0.2)]">
-              Small Blind
-            </div>
-          )}
-
-          {agent.isBigBlind && (
-            <div className="absolute -right-16 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full border border-rose-300/50 bg-rose-400/15 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-rose-100 shadow-[0_6px_16px_rgba(251,113,133,0.2)]">
-              Big Blind
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Agent Name */}
-      <div className="text-center">
-        <p className="max-w-[72px] truncate text-[11px] font-semibold leading-tight text-white sm:max-w-[86px] sm:text-xs">
-          {agent.name}
-        </p>
-      </div>
+      <ChipStack amount={agent.chips} color={agent.color} />
 
-      {/* Cards */}
       {agent.cards.length > 0 && (
         <div className="flex gap-0.5">
           {agent.cards.map((card, i) => (
@@ -83,17 +105,12 @@ export function AgentAvatar({ agent }: AgentAvatarProps) {
         </div>
       )}
 
-      {/* Chat Bubble */}
       {agent.message && agent.status !== "busted" && (
         <div className="chat-bubble hidden animate-slide-up text-gray-300 md:block">
           {agent.message}
         </div>
       )}
 
-      {/* Chips */}
-      <ChipStack amount={agent.chips} color={agent.color} />
-
-      {/* Status Badge */}
       {agent.status === "folded" && (
         <span className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">
           Folded
