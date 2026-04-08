@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import "@reown/appkit/react";
+import { createElement, useEffect, useState } from "react";
 import {
   useAccount,
   usePublicClient,
@@ -18,6 +17,7 @@ import { FRONTEND_CONFIG } from "@/lib/config";
 import { isContractDeployed } from "@/lib/contracts";
 import { addSKALEChain } from "@/providers";
 import { generateViewerKeyPair, loadViewerKey, persistViewerKey } from "@/lib/viewer-key";
+import { ensureAppKit } from "@/lib/appkit";
 
 type Step = "idle" | "approving" | "joining" | "done";
 
@@ -41,6 +41,26 @@ export function JoinPanel({
   const [step, setStep] = useState<Step>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
+  const [isAppKitReady, setIsAppKitReady] = useState(isConnected);
+
+  useEffect(() => {
+    if (isConnected) {
+      setIsAppKitReady(true);
+      return;
+    }
+
+    let cancelled = false;
+
+    void ensureAppKit().then(() => {
+      if (!cancelled) {
+        setIsAppKitReady(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isConnected]);
 
   const { data: onChainBuyIn } = useReadContract({
     chainId: FRONTEND_CONFIG.chainId,
@@ -179,7 +199,16 @@ export function JoinPanel({
             {statusLabel}
           </button>
         ) : (
-          <appkit-button />
+          isAppKitReady ? (
+            createElement("appkit-button")
+          ) : (
+            <button
+              disabled
+              className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-poker-text-muted opacity-70"
+            >
+              Loading wallet...
+            </button>
+          )
         )}
 
         {txHash && (

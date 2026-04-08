@@ -12,35 +12,6 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (!id.includes("node_modules")) {
-            return;
-          }
-
-          if (id.includes("@reown/appkit") || id.includes("@walletconnect")) {
-            return "wallet";
-          }
-
-          if (id.includes("wagmi") || id.includes("viem")) {
-            return "web3";
-          }
-
-          if (id.includes("@tanstack/react-query")) {
-            return "query";
-          }
-
-          if (id.includes("framer-motion")) {
-            return "motion";
-          }
-
-          if (id.includes("lucide-react")) {
-            return "icons";
-          }
-        },
-      },
-    },
   },
   define: {
     "process.env.NEXT_PUBLIC_RPC_URL": JSON.stringify(

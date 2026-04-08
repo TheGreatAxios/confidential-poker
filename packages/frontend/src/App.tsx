@@ -1,14 +1,18 @@
+import { lazy, Suspense } from "react";
 import { useGameState } from "@/hooks/useGameState";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { PokerTable } from "@/components/PokerTable";
 import { GameControls } from "@/components/GameControls";
 import { FaucetPanel } from "@/components/FaucetPanel";
-import { JoinPanel } from "@/components/JoinPanel";
 import { PlayerHandPanel } from "@/components/PlayerHandPanel";
 import { ShowdownSummary } from "@/components/ShowdownSummary";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAccount } from "wagmi";
+
+const JoinPanel = lazy(() =>
+  import("@/components/JoinPanel").then((module) => ({ default: module.JoinPanel })),
+);
 
 export default function Home() {
   const { gameState, isConnected, error, joinHumanPlayer, leaveHumanPlayer } = useGameState();
@@ -38,15 +42,21 @@ export default function Home() {
           transition={{ duration: 0.5, delay: 0.2 }}
         >
           {gameState.humanPlayer?.viewerKey === null && (
-            <JoinPanel
-              mode="rejoin"
-              canCashOut={gameState.phase === "waiting"}
-              onJoined={joinHumanPlayer}
-              onLeft={leaveHumanPlayer}
-            />
+            <Suspense fallback={null}>
+              <JoinPanel
+                mode="rejoin"
+                canCashOut={gameState.phase === "waiting"}
+                onJoined={joinHumanPlayer}
+                onLeft={leaveHumanPlayer}
+              />
+            </Suspense>
           )}
 
-          {!gameState.humanPlayer && <JoinPanel onJoined={joinHumanPlayer} />}
+          {!gameState.humanPlayer && (
+            <Suspense fallback={null}>
+              <JoinPanel onJoined={joinHumanPlayer} />
+            </Suspense>
+          )}
 
           {!isConnected && isWalletConnected && <FaucetPanel />}
 
