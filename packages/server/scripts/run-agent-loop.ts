@@ -101,15 +101,19 @@ class AgentLoop {
   private contract: string;
   private running: boolean = true;
   private handCount: number = 0;
+  private personality: typeof AGENT_PERSONALITIES[keyof typeof AGENT_PERSONALITIES];
+  private archetype: AgentArchetype;
 
-  constructor(cfg: NetworkConfig, agent: Player, bots: Player[]) {
+  constructor(cfg: NetworkConfig, agent: Player, bots: Player[], archetype: AgentArchetype) {
     this.cfg = cfg;
     this.agent = agent;
     this.bots = bots;
+    this.archetype = archetype;
+    this.personality = AGENT_PERSONALITIES[archetype];
     this.contract = POKER_CONTRACT;
 
     this.allPlayers = [
-      { name: '🤖 Agent', ...agent },
+      { name: `${this.personality.emoji} ${this.personality.name}`, ...agent },
       ...bots.map(b => ({ name: `🃏 ${b.name}`, ...b })),
     ];
 
@@ -170,6 +174,8 @@ class AgentLoop {
     console.log(`   Network: ${this.cfg.name}`);
     console.log(`   Contract: ${this.contract}`);
     console.log(`   Agent: ${this.agent.address}`);
+    console.log(`   Personality: ${this.personality.name} ${this.personality.emoji}`);
+    console.log(`   Aggression: ${this.personality.aggression}, Tightness: ${this.personality.tightness}, Bluff: ${this.personality.bluff}`);
     console.log();
 
     await this.ensureSeated();
@@ -312,14 +318,15 @@ class AgentLoop {
     const stackHuman = Number(stack) / Math.pow(10, this.cfg.token_decimals);
     const potHuman = Number(pot) / Math.pow(10, this.cfg.token_decimals);
 
-    console.log(`   🎯 My turn — stack: ${stackHuman}, to call: ${toCallHuman}, pot: ${potHuman}`);
+    console.log(`   🎯 My turn (${this.personality.name}) — stack: ${stackHuman}, to call: ${toCallHuman}, pot: ${potHuman}`);
 
-    let action: string;
-    let args: any[] = [];
+    const { aggression, tightness, bluff } = this.personality;
     const rand = Math.random();
+    let action: string = 'check';
+    let args: any[] = [];
 
     if (toCall === 0n) {
-      if (rand < 0.5) {
+      if (rand < 1 - aggression * 0.8) {
         action = 'check';
         console.log('   → Check');
       } else {
@@ -332,25 +339,28 @@ class AgentLoop {
     } else {
       const canAfford = stack >= toCall;
       if (!canAfford) {
-        if (stack > 0 && rand < 0.6) {
+        if (stack > 0 && rand < aggression) {
           action = 'call';
           console.log(`   → Call ALL-IN`);
         } else {
           action = 'fold';
           console.log('   → Fold');
         }
-      } else if (toCall > 100n * BigInt(10 ** this.cfg.token_decimals) && rand < 0.2) {
+      } else if (toCall > 100n * BigInt(10 ** this.cfg.token_decimals) && rand < tightness) {
         action = 'fold';
         console.log('   → Fold (too expensive)');
-      } else if (rand < 0.7) {
+      } else if (rand < 1 - aggression * 0.5) {
         action = 'call';
         console.log(`   → Call`);
-      } else {
+      } else if (rand < 1 - bluff * 0.3) {
         action = 'raise';
         const raiseUnit = 5n * BigInt(10 ** this.cfg.token_decimals);
         const raiseAmt = [1, 2, 3][Math.floor(Math.random() * 3)] * raiseUnit;
         args = [raiseAmt];
         console.log(`   → Raise`);
+      } else {
+        action = 'call';
+        console.log(`   → Call`);
       }
     }
 
@@ -412,17 +422,64 @@ class AgentLoop {
   }
 }
 
+const AGENT_PERSONALITIES = {
+  shark: { name: 'Sharky', emoji: '🦈', aggression: 0.75, tightness: 0.8, bluff: 0.1 },
+  fox: { name: 'Sly', emoji: '🦊', aggression: 0.55, tightness: 0.45, bluff: 0.45 },
+  owl: { name: 'Professor', emoji: '🦉', aggression: 0.35, tightness: 0.9, bluff: 0.05 },
+  bull: { name: 'Thunder', emoji: '🐂', aggression: 0.9, tightness: 0.2, bluff: 0.4 },
+  cat: { name: 'Whiskers', emoji: '🐱', aggression: 0.5, tightness: 0.5, bluff: 0.35 },
+  wolf: { name: 'Alpha', emoji: '🐺', aggression: 0.55, tightness: 0.55, bluff: 0.25 },
+} as const;
+
+type AgentArchetype = keyof typeof AGENT_PERSONALITIES;
+
+function parseArgs() {
+  const args = process.argv.slice(2);
+  let network = 'base-sepolia';
+  let agentArchetype: AgentArchetype = 'shark';
+  
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--network' && args[i + 1]) {
+      network = args[i + 1];
+      i++;
+    } else if (args[i] === '--agent' && args[i + 1]) {
+      const a = args[i + 1].toLowerCase() as AgentArchetype;
+      if (a in AGENT_PERSONALITIES) {
+        agentArchetype = a;
+      } else {
+        console.log(`❌ Unknown agent: ${a}`);
+        console.log(`   Available: ${Object.keys(AGENT_PERSONALITIES).join(', ')}`);
+        process.exit(1);
+      }
+      i++;
+    } else if (!args[i].startsWith('--')) {
+      network = args[i];
+    }
+  }
+  
+  return { network, agentArchetype };
+}
+
 async function main() {
-  const networkName = process.argv[2] || 'base-sepolia';
-  if (!(networkName in NETWORKS)) {
-    console.log(`❌ Unknown network: ${networkName}`);
+  const { network, agentArchetype } = parseArgs();
+  
+  if (!(network in NETWORKS)) {
+    console.log(`❌ Unknown network: ${network}`);
     console.log(`   Available: ${Object.keys(NETWORKS).join(', ')}`);
     process.exit(1);
   }
 
-  const cfg = NETWORKS[networkName];
+  const cfg = NETWORKS[network];
   const data = await loadData();
-  const agentLoop = new AgentLoop(cfg, data.agent, data.bots);
+  
+  console.log('='.repeat(50));
+  console.log(`🤖 Agent Loop — ${AGENT_PERSONALITIES[agentArchetype].name} (${AGENT_PERSONALITIES[agentArchetype].emoji})`);
+  console.log(`   Network: ${cfg.name}`);
+  console.log(`   Agent: ${data.agent.address}`);
+  console.log('='.repeat(50));
+  console.log();
+  
+  const agentLoop = new AgentLoop(cfg, data.agent, data.bots, agentArchetype);
 
   process.on('SIGINT', () => {
     console.log('\n🛑 Stopping agent loop...');

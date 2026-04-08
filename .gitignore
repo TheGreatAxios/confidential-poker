@@ -8,3 +8,5 @@ dist/
 __pycache__
 .tsconfig.tsbuildinfo
 tsconfig.tsbuildinfo
+*.py
+poker-deploy.json
