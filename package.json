@@ -1,6 +1,6 @@
 {
   "name": "confidential-poker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Confidential Poker — Texas Hold'em with AI agents on SKALE",
   "scripts": {
@@ -11,6 +11,12 @@
     "build:frontend": "cd packages/frontend && bun run build",
     "build:server": "cd packages/server && bun run build"
   },
-  "keywords": ["poker", "ai", "texas-holdem", "skale", "blockchain"],
+  "keywords": [
+    "poker",
+    "ai",
+    "texas-holdem",
+    "skale",
+    "blockchain"
+  ],
   "license": "MIT"
 }
