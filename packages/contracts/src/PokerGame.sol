@@ -658,6 +658,7 @@ contract PokerGame is IBiteSupplicant, RNG {
 
     function _collectBets() internal {
         for (uint256 i = 0; i < players.length; i++) {
+            pot += players[i].betAmount;
             players[i].betAmount = 0;
         }
     }

@@ -5,8 +5,8 @@ function defineAddress(address: string): `0x${string}` {
 }
 
 export const FRONTEND_CONFIG = {
-  pokerTableAddress: defineAddress("0x36923F1c58a7a4640F1918dac2F5CE732Cd0ea46"),
-  tokenAddress: defineAddress("0x81421011c20d270551351780CaB4A7344F2c3329"),
+  pokerTableAddress: defineAddress("0xFcD02AD6B0A4A25a61779ED4fD9b5C71e0F03834"),
+  tokenAddress: defineAddress("0x4a5A4CE7270C4a35f67427eA85641eB83f316725"),
   chainId: 324705682,
   rpcUrl: "https://base-sepolia-testnet.skalenodes.com/v1/base-testnet",
   explorerUrl: "https://base-sepolia-testnet-explorer.skalenodes.com/",

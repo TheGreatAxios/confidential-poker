@@ -1,53 +1,42 @@
 // ─── Wagmi Configuration for SKALE Base Sepolia ─────────────────────────────────
-//
-// Defines the custom SKALE chain and wagmi config for RainbowKit.
-// Falls back to hardcoded values when env vars are absent.
 
-import { cookieStorage, createStorage, http } from "wagmi";
-import { defineChain } from "viem";
-import { getDefaultConfig } from "@rainbow-me/rainbowkit";
-import { FRONTEND_CONFIG } from "@/lib/config";
+import { createAppKit } from '@reown/appkit/react'
+import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
+import { http } from 'wagmi'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { FRONTEND_CONFIG } from '@/lib/config'
 
-// ── SKALE Base Sepolia Chain Definition ────────────────────────────────────────
+export const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'demo-project-id'
 
-export const skaleBaseSepolia = defineChain({
+const skaleBaseSepolia = {
   id: FRONTEND_CONFIG.chainId,
-  name: "SKALE Base Sepolia",
-  nativeCurrency: {
-    name: "SKALE",
-    symbol: "sFUEL",
-    decimals: 18,
-  },
-  blockTime: 1_000,
-  rpcUrls: {
-    default: {
-      http: [FRONTEND_CONFIG.rpcUrl],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: "SKALE Explorer",
-      url: FRONTEND_CONFIG.explorerUrl.replace(/\/$/, ""),
-    },
-  },
-});
-
-// ── Wagmi Config ────────────────────────────────────────────────────────────────
-
-export function createWagmiConfig() {
-  return getDefaultConfig({
-    appName: "AI Poker Night",
-    // WalletConnect Cloud project ID — get one at https://cloud.walletconnect.com
-    // Works without a real ID for injected wallets (MetaMask, etc.)
-    projectId:
-      import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "demo-project-id",
-    chains: [skaleBaseSepolia],
-    transports: {
-      [skaleBaseSepolia.id]: http(FRONTEND_CONFIG.rpcUrl),
-    },
-    storage: createStorage({
-      storage: cookieStorage,
-    }),
-    ssr: false,
-  });
+  name: 'SKALE Base Sepolia',
+  nativeCurrency: { name: 'SKALE', symbol: 'sFUEL', decimals: 18 },
+  rpcUrls: { default: { http: [FRONTEND_CONFIG.rpcUrl] } },
 }
+
+const wagmiAdapter = new WagmiAdapter({
+  ssr: false,
+  networks: [skaleBaseSepolia],
+  projectId,
+})
+
+createAppKit({
+  adapters: [wagmiAdapter],
+  networks: [skaleBaseSepolia],
+  projectId,
+  metadata: {
+    name: 'AI Poker Night',
+    description: 'Confidential Poker with AI Agents on SKALE',
+    url: 'https://poker.skale.space',
+    icons: ['https://avatars.githubusercontent.com/u/37784886'],
+  },
+})
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 3_000, refetchInterval: 5_000 },
+  },
+})
+
+export { wagmiAdapter }
