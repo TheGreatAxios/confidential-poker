@@ -4,7 +4,6 @@ import { Footer } from "@/components/Footer";
 import { PokerTable } from "@/components/PokerTable";
 import { GameControls } from "@/components/GameControls";
 import { FaucetPanel } from "@/components/FaucetPanel";
-import { AgentStats } from "@/components/AgentStats";
 import { JoinPanel } from "@/components/JoinPanel";
 import { PlayerHandPanel } from "@/components/PlayerHandPanel";
 import { ShowdownSummary } from "@/components/ShowdownSummary";
@@ -67,9 +66,6 @@ export default function Home() {
             )}
           </AnimatePresence>
         </motion.div>
-
-        {/* Agent Stats Panel */}
-        <AgentStats agents={gameState.agents} />
       </main>
 
       <Footer />

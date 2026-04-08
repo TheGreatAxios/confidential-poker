@@ -1,6 +1,7 @@
 import { formatUnits, parseUnits } from "viem";
 
 export const TOKEN_DECIMALS = 18;
+export const TOKEN_SYMBOL = "SKL";
 
 export function formatTokenAmount(
   value: bigint,
@@ -17,6 +18,18 @@ export function formatTokenAmount(
   const localizedWhole = BigInt(whole || "0").toLocaleString();
 
   return trimmedFraction ? `${localizedWhole}.${trimmedFraction}` : localizedWhole;
+}
+
+export function formatTokenDisplay(
+  value: bigint,
+  options?: {
+    decimals?: number;
+    maxFractionDigits?: number;
+    symbol?: string;
+  },
+): string {
+  const symbol = options?.symbol ?? TOKEN_SYMBOL;
+  return `${formatTokenAmount(value, options)} ${symbol}`;
 }
 
 export function parseTokenAmount(

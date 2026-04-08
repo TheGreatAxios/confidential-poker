@@ -48,20 +48,20 @@ export function AgentAvatar({ agent }: AgentAvatarProps) {
           )}
 
           {agent.isDealer && (
-            <div className="absolute -bottom-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full border border-poker-dark bg-poker-gold text-[10px] font-black text-poker-dark shadow-[0_4px_14px_rgba(240,180,41,0.35)]">
-              D
+            <div className="absolute -bottom-3 -right-6 flex items-center justify-center rounded-full border border-poker-dark bg-poker-gold px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-poker-dark shadow-[0_4px_14px_rgba(240,180,41,0.35)]">
+              Dealer
             </div>
           )}
 
           {agent.isSmallBlind && (
-            <div className="absolute -left-7 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full border border-sky-300/50 bg-sky-400/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-sky-100 shadow-[0_6px_16px_rgba(56,189,248,0.2)]">
-              SB
+            <div className="absolute -left-16 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full border border-sky-300/50 bg-sky-400/15 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-sky-100 shadow-[0_6px_16px_rgba(56,189,248,0.2)]">
+              Small Blind
             </div>
           )}
 
           {agent.isBigBlind && (
-            <div className="absolute -right-8 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full border border-rose-300/50 bg-rose-400/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-rose-100 shadow-[0_6px_16px_rgba(251,113,133,0.2)]">
-              BB
+            <div className="absolute -right-16 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full border border-rose-300/50 bg-rose-400/15 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-rose-100 shadow-[0_6px_16px_rgba(251,113,133,0.2)]">
+              Big Blind
             </div>
           )}
         </div>

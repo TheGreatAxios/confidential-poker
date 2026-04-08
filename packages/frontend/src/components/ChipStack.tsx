@@ -1,4 +1,4 @@
-import { formatTokenAmount } from "@/lib/token-format";
+import { formatTokenDisplay } from "@/lib/token-format";
 
 interface ChipStackProps {
   amount: bigint;
@@ -6,7 +6,7 @@ interface ChipStackProps {
 }
 
 export function ChipStack({ amount, color = "#f0b429" }: ChipStackProps) {
-  const formatted = formatTokenAmount(amount);
+  const formatted = formatTokenDisplay(amount);
 
   return (
     <div className="flex items-center gap-1.5">

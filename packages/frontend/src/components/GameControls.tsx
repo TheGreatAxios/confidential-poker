@@ -4,7 +4,7 @@ import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import type { GameState } from "@/lib/types";
 import { POKER_TABLE_ABI, POKER_TABLE_ADDRESS } from "@/lib/contracts";
 import { FRONTEND_CONFIG } from "@/lib/config";
-import { formatTokenAmount, parseTokenAmount } from "@/lib/token-format";
+import { formatTokenAmount, formatTokenDisplay, parseTokenAmount } from "@/lib/token-format";
 
 interface GameControlsProps {
   gameState: GameState;
@@ -58,6 +58,7 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
     gameState.humanPlayer.seatIndex === gameState.dealerIndex;
   const canDealNextHand = gameState.humanPlayer !== null && gameState.canStartNextHand;
   const isPanelLayout = layout === "panel";
+  const checkOrCallLabel = canCheckNow ? "Check" : `Call ${formatTokenDisplay(callAmount)}`;
   const sendAndWait = async (hash: `0x${string}`) => {
     const receipt = await publicClient!.waitForTransactionReceipt({
       hash,
@@ -215,85 +216,154 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
   };
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className={`flex flex-col gap-3 ${isPanelLayout ? "items-start" : "items-center"}`}>
       {canAct && (
         <div className="rounded-full border border-poker-gold/40 bg-poker-gold/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-poker-gold shadow-[0_8px_24px_rgba(240,180,41,0.12)]">
           Your Turn
         </div>
       )}
-      <div className={`w-full ${isPanelLayout ? "space-y-3" : "grid gap-3"}`}>
-        <div className={`flex flex-wrap items-center ${isPanelLayout ? "justify-start" : "justify-center"} gap-2 sm:gap-3`}>
-          <button
-            className={SECONDARY_BUTTON_CLASS}
-            onClick={handleFold}
-            disabled={acting || !canAct}
-          >
-            Fold
-          </button>
+      <div className={`w-full ${isPanelLayout ? "space-y-2.5" : "grid gap-3"}`}>
+        {isPanelLayout ? (
+          <>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <button
+                className={`${SECONDARY_BUTTON_CLASS} w-full min-w-0`}
+                onClick={handleFold}
+                disabled={acting || !canAct}
+              >
+                Fold
+              </button>
 
-        {canCheckNow ? (
-          <button
-            className={SECONDARY_BUTTON_CLASS}
-            onClick={handleCheck}
-            disabled={acting || !canAct}
-          >
-            Check
-          </button>
+              <button
+                className={`${SECONDARY_BUTTON_CLASS} w-full min-w-0`}
+                onClick={canCheckNow ? handleCheck : handleCall}
+                disabled={acting || !canAct}
+              >
+                {checkOrCallLabel}
+              </button>
+
+              <button
+                className={`${RED_BUTTON_CLASS} w-full min-w-0`}
+                onClick={handleAllIn}
+                disabled={acting || !canAct}
+              >
+                ALL IN
+              </button>
+            </div>
+
+            <div className={`grid gap-2 ${canDealNextHand ? "sm:grid-cols-[minmax(0,1.35fr),minmax(0,1fr),minmax(0,1.1fr)]" : "sm:grid-cols-[minmax(0,1.45fr),minmax(0,1fr)]"}`}>
+              <div className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-2 py-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={raiseAmountInput}
+                  onChange={(e) => setRaiseAmountInput(e.target.value)}
+                  className="w-24 rounded-lg border border-gray-700 bg-gray-800 px-3 py-3 text-center font-mono text-base font-semibold text-white focus:border-poker-gold/50 focus:outline-none sm:w-28"
+                />
+                <button
+                  className={`${GOLD_BUTTON_CLASS} min-w-0 flex-1 text-sm`}
+                  onClick={handleRaise}
+                  disabled={acting || !canAct || !isRaiseAmountValid}
+                >
+                  Raise / Bet
+                </button>
+              </div>
+
+              <button
+                className={`${AMBER_BUTTON_CLASS} w-full min-w-0`}
+                onClick={handleLeave}
+                disabled={acting}
+              >
+                {canCashOut ? "Leave Table" : "Forfeit & Leave"}
+              </button>
+
+              {canDealNextHand && (
+                <button
+                  className={`${SECONDARY_BUTTON_CLASS} w-full min-w-0`}
+                  onClick={handleDealNextHand}
+                  disabled={acting}
+                >
+                  {gameState.handComplete ? "Play Another Hand" : "Play Again"}
+                </button>
+              )}
+            </div>
+          </>
         ) : (
-          <button
-            className={SECONDARY_BUTTON_CLASS}
-            onClick={handleCall}
-            disabled={acting || !canAct}
-          >
-            Call {formatTokenAmount(callAmount)}
-          </button>
+          <>
+            <div className={`flex flex-wrap items-center ${isPanelLayout ? "justify-start" : "justify-center"} gap-2 sm:gap-3`}>
+              <button
+                className={SECONDARY_BUTTON_CLASS}
+                onClick={handleFold}
+                disabled={acting || !canAct}
+              >
+                Fold
+              </button>
+
+              {canCheckNow ? (
+                <button
+                  className={SECONDARY_BUTTON_CLASS}
+                  onClick={handleCheck}
+                  disabled={acting || !canAct}
+                >
+                  Check
+                </button>
+              ) : (
+                <button
+                  className={SECONDARY_BUTTON_CLASS}
+                  onClick={handleCall}
+                  disabled={acting || !canAct}
+                >
+                  Call {formatTokenDisplay(callAmount)}
+                </button>
+              )}
+            </div>
+
+            <div className={`flex flex-wrap items-center ${isPanelLayout ? "justify-start" : "justify-center"} gap-2 sm:gap-3`}>
+              <div className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-2 py-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={raiseAmountInput}
+                  onChange={(e) => setRaiseAmountInput(e.target.value)}
+                  className="w-24 rounded-lg border border-gray-700 bg-gray-800 px-3 py-3 text-center font-mono text-base font-semibold text-white focus:border-poker-gold/50 focus:outline-none sm:w-32"
+                />
+                <button
+                  className={`${GOLD_BUTTON_CLASS} min-w-[148px] text-sm`}
+                  onClick={handleRaise}
+                  disabled={acting || !canAct || !isRaiseAmountValid}
+                >
+                  Raise / Bet
+                </button>
+              </div>
+
+              <button
+                className={RED_BUTTON_CLASS}
+                onClick={handleAllIn}
+                disabled={acting || !canAct}
+              >
+                ALL IN
+              </button>
+
+              <button
+                className={AMBER_BUTTON_CLASS}
+                onClick={handleLeave}
+                disabled={acting}
+              >
+                {canCashOut ? "Leave Table" : "Forfeit & Leave"}
+              </button>
+
+              {canDealNextHand && (
+                <button
+                  className={`${SECONDARY_BUTTON_CLASS} min-w-[172px]`}
+                  onClick={handleDealNextHand}
+                  disabled={acting}
+                >
+                  {gameState.handComplete ? "Play Another Hand" : "Play Again"}
+                </button>
+              )}
+            </div>
+          </>
         )}
-        </div>
-
-        <div className={`flex flex-wrap items-center ${isPanelLayout ? "justify-start" : "justify-center"} gap-2 sm:gap-3`}>
-          <div className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-2 py-2">
-          <input
-            type="text"
-            inputMode="decimal"
-            value={raiseAmountInput}
-            onChange={(e) => setRaiseAmountInput(e.target.value)}
-            className="w-24 rounded-lg border border-gray-700 bg-gray-800 px-3 py-3 text-center font-mono text-base font-semibold text-white focus:border-poker-gold/50 focus:outline-none sm:w-32"
-          />
-          <button
-            className={`${GOLD_BUTTON_CLASS} min-w-[148px] text-sm`}
-            onClick={handleRaise}
-            disabled={acting || !canAct || !isRaiseAmountValid}
-          >
-            Raise / Bet
-          </button>
-        </div>
-
-        <button
-          className={RED_BUTTON_CLASS}
-          onClick={handleAllIn}
-          disabled={acting || !canAct}
-          >
-            ALL IN
-          </button>
-
-          <button
-            className={AMBER_BUTTON_CLASS}
-            onClick={handleLeave}
-            disabled={acting}
-          >
-            {canCashOut ? "Leave Table" : "Forfeit & Leave"}
-          </button>
-
-          {canDealNextHand && (
-            <button
-              className={`${SECONDARY_BUTTON_CLASS} min-w-[172px]`}
-              onClick={handleDealNextHand}
-              disabled={acting}
-            >
-              {gameState.handComplete ? "Play Another Hand" : "Play Again"}
-            </button>
-          )}
-        </div>
       </div>
 
       {!canAct && !gameState.handComplete && !canDealNextHand && (
@@ -302,7 +372,7 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
 
       {canAct && !isRaiseAmountValid && (
         <p className={`text-xs text-gray-500 ${isPanelLayout ? "self-start" : "text-center"}`}>
-          Raise must be at least {formatTokenAmount(gameState.minRaise)}.
+          Raise must be at least {formatTokenDisplay(gameState.minRaise)}.
         </p>
       )}
 

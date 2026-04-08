@@ -1,4 +1,4 @@
-import { formatTokenAmount } from "@/lib/token-format";
+import { formatTokenDisplay, TOKEN_SYMBOL } from "@/lib/token-format";
 
 interface PotDisplayProps {
   pot: bigint;
@@ -8,25 +8,18 @@ interface PotDisplayProps {
 export function PotDisplay({ pot, currentBet }: PotDisplayProps) {
   return (
     <div className="flex flex-col items-center gap-2 animate-fade-in">
-      {/* Pot */}
-      <div className="pot-glow flex items-center gap-2 px-4 py-2 rounded-full bg-poker-gold/10 border border-poker-gold/20">
+      <div className="pot-glow flex items-center gap-2 rounded-full border border-poker-gold/20 bg-poker-gold/10 px-4 py-2">
         <span className="text-poker-gold text-lg">💰</span>
-        <div className="text-center">
-          <p className="text-[10px] text-poker-gold/60 uppercase tracking-wider">
-            Pot
-          </p>
-          <p className="text-sm sm:text-base font-bold text-poker-gold font-mono">
-            {formatTokenAmount(pot)}
-          </p>
-        </div>
+        <p className="font-mono text-sm font-bold text-poker-gold sm:text-base">
+          Pot {formatTokenDisplay(pot)}
+        </p>
       </div>
 
-      {/* Current Bet */}
       {currentBet > 0n && (
         <p className="text-xs text-gray-400">
           Current bet:{" "}
           <span className="text-white font-mono font-semibold">
-            {formatTokenAmount(currentBet)}
+            {formatTokenDisplay(currentBet, { symbol: TOKEN_SYMBOL })}
           </span>
         </p>
       )}
