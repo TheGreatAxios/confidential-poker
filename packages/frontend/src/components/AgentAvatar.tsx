@@ -10,50 +10,67 @@ interface AgentAvatarProps {
 export function AgentAvatar({ agent }: AgentAvatarProps) {
   return (
     <div className="flex flex-col items-center gap-1">
-      {/* Avatar Circle */}
-      <div
-        className={`relative h-12 w-12 rounded-full border-2 text-xl transition-all duration-300 sm:h-16 sm:w-16 sm:text-3xl ${
+      <div className="relative">
+        {agent.status === "acting" && (
+          <div className="absolute inset-[-10px] rounded-full border-2 border-poker-gold/70 shadow-[0_0_32px_rgba(240,180,41,0.55)] animate-pulse" />
+        )}
+        {agent.isWinner && (
+          <div className="absolute inset-[-14px] rounded-full border border-emerald-300/60 shadow-[0_0_36px_rgba(52,211,153,0.45)]" />
+        )}
+
+        {/* Avatar Circle */}
+        <div
+          className={`relative h-12 w-12 rounded-full border-2 text-xl transition-all duration-300 sm:h-16 sm:w-16 sm:text-3xl ${
           agent.status === "busted"
             ? "bg-gray-800 border-gray-700 opacity-50"
             : agent.isWinner
-            ? "bg-emerald-900/40 border-emerald-400 shadow-[0_0_24px_rgba(52,211,153,0.35)]"
+            ? "bg-emerald-900/50 border-emerald-300 shadow-[0_0_24px_rgba(52,211,153,0.35)]"
             : agent.status === "acting"
-            ? "bg-gray-800 border-poker-gold glow-gold"
+            ? "bg-amber-950/90 border-poker-gold glow-gold"
             : agent.status === "folded"
             ? "bg-gray-800 border-gray-600 opacity-70"
             : agent.status === "all-in"
             ? "bg-red-900/30 border-red-500 animate-pulse"
             : "bg-gray-800 border-gray-600"
         } flex items-center justify-center`}
-      >
-        <span>{agent.emoji}</span>
+        >
+          <span>{agent.emoji}</span>
 
-        {/* Thinking indicator */}
-        {agent.isThinking && (
-          <div className="absolute -top-1 -right-1">
-            <div className="thinking-dots flex gap-0.5">
-              <span className="w-1 h-1 rounded-full bg-poker-gold" />
-              <span className="w-1 h-1 rounded-full bg-poker-gold" />
-              <span className="w-1 h-1 rounded-full bg-poker-gold" />
+          {/* Thinking indicator */}
+          {agent.isThinking && (
+            <div className="absolute -top-1 -right-1">
+              <div className="thinking-dots flex gap-0.5">
+                <span className="w-1 h-1 rounded-full bg-poker-gold" />
+                <span className="w-1 h-1 rounded-full bg-poker-gold" />
+                <span className="w-1 h-1 rounded-full bg-poker-gold" />
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Dealer chip */}
-        {agent.isDealer && (
-          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-poker-gold text-poker-dark text-[10px] font-bold flex items-center justify-center border border-poker-dark">
-            D
-          </div>
-        )}
+          {agent.isDealer && (
+            <div className="absolute -bottom-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full border border-poker-dark bg-poker-gold text-[10px] font-black text-poker-dark shadow-[0_4px_14px_rgba(240,180,41,0.35)]">
+              D
+            </div>
+          )}
+
+          {agent.isSmallBlind && (
+            <div className="absolute -left-7 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full border border-sky-300/50 bg-sky-400/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-sky-100 shadow-[0_6px_16px_rgba(56,189,248,0.2)]">
+              SB
+            </div>
+          )}
+
+          {agent.isBigBlind && (
+            <div className="absolute -right-8 top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full border border-rose-300/50 bg-rose-400/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-rose-100 shadow-[0_6px_16px_rgba(251,113,133,0.2)]">
+              BB
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Agent Name */}
       <div className="text-center">
         <p className="max-w-[72px] truncate text-[11px] font-semibold leading-tight text-white sm:max-w-[86px] sm:text-xs">
           {agent.name}
-        </p>
-        <p className="text-[9px] text-gray-500 sm:text-[10px]">
-          {agent.personality}
         </p>
       </div>
 
@@ -93,8 +110,13 @@ export function AgentAvatar({ agent }: AgentAvatarProps) {
         </span>
       )}
       {agent.isWinner && (
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+        <span className="rounded-full border border-emerald-300/35 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-200">
           Winner
+        </span>
+      )}
+      {agent.status === "acting" && (
+        <span className="rounded-full border border-poker-gold/40 bg-poker-gold/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-poker-gold">
+          Acting
         </span>
       )}
     </div>

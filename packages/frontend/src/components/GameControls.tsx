@@ -9,7 +9,15 @@ import { formatTokenAmount, parseTokenAmount } from "@/lib/token-format";
 interface GameControlsProps {
   gameState: GameState;
   onLeft?: () => void;
+  layout?: "default" | "panel";
 }
+
+const ACTION_BUTTON_CLASS =
+  "min-w-[132px] rounded-xl border px-4 py-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+const SECONDARY_BUTTON_CLASS = `${ACTION_BUTTON_CLASS} border-white/20 bg-white/[0.03] text-white hover:bg-white/[0.06]`;
+const GOLD_BUTTON_CLASS = `${ACTION_BUTTON_CLASS} border-poker-gold/30 bg-poker-gold/15 text-poker-gold hover:bg-poker-gold/25`;
+const RED_BUTTON_CLASS = `${ACTION_BUTTON_CLASS} border-poker-red/30 bg-poker-red/15 text-poker-red hover:bg-poker-red/25`;
+const AMBER_BUTTON_CLASS = `${ACTION_BUTTON_CLASS} border-amber-400/30 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20`;
 
 function getActionErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
@@ -21,7 +29,7 @@ function getActionErrorMessage(error: unknown): string {
   return "Action failed.";
 }
 
-export function GameControls({ gameState, onLeft }: GameControlsProps) {
+export function GameControls({ gameState, onLeft, layout = "default" }: GameControlsProps) {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
@@ -49,10 +57,7 @@ export function GameControls({ gameState, onLeft }: GameControlsProps) {
     gameState.humanPlayer !== null &&
     gameState.humanPlayer.seatIndex === gameState.dealerIndex;
   const canDealNextHand = gameState.humanPlayer !== null && gameState.canStartNextHand;
-  const viewerKeyLabel = gameState.humanPlayer?.viewerKey
-    ? `${gameState.humanPlayer.viewerKey.slice(0, 12)}...${gameState.humanPlayer.viewerKey.slice(-10)}`
-    : null;
-
+  const isPanelLayout = layout === "panel";
   const sendAndWait = async (hash: `0x${string}`) => {
     const receipt = await publicClient!.waitForTransactionReceipt({
       hash,
@@ -210,15 +215,16 @@ export function GameControls({ gameState, onLeft }: GameControlsProps) {
   };
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      {viewerKeyLabel && (
-        <div className="text-[11px] tracking-[0.08em] uppercase text-poker-text-dim">
-          Viewer Key {viewerKeyLabel}
+    <div className="flex flex-col items-center gap-3">
+      {canAct && (
+        <div className="rounded-full border border-poker-gold/40 bg-poker-gold/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-poker-gold shadow-[0_8px_24px_rgba(240,180,41,0.12)]">
+          Your Turn
         </div>
       )}
-      <div className="flex w-full flex-wrap items-center justify-center gap-2 sm:gap-3">
+      <div className={`w-full ${isPanelLayout ? "space-y-3" : "grid gap-3"}`}>
+        <div className={`flex flex-wrap items-center ${isPanelLayout ? "justify-start" : "justify-center"} gap-2 sm:gap-3`}>
           <button
-            className="min-w-[92px] rounded-lg border border-gray-600/50 bg-gray-700/50 px-3 py-2 text-sm font-semibold text-gray-300 transition-colors hover:bg-gray-600/50 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
+            className={SECONDARY_BUTTON_CLASS}
             onClick={handleFold}
             disabled={acting || !canAct}
           >
@@ -227,7 +233,7 @@ export function GameControls({ gameState, onLeft }: GameControlsProps) {
 
         {canCheckNow ? (
           <button
-            className="min-w-[92px] rounded-lg border border-poker-blue/30 bg-poker-blue/20 px-3 py-2 text-sm font-semibold text-poker-blue transition-colors hover:bg-poker-blue/30 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
+            className={SECONDARY_BUTTON_CLASS}
             onClick={handleCheck}
             disabled={acting || !canAct}
           >
@@ -235,77 +241,78 @@ export function GameControls({ gameState, onLeft }: GameControlsProps) {
           </button>
         ) : (
           <button
-            className="min-w-[92px] rounded-lg border border-poker-green/30 bg-poker-green/20 px-3 py-2 text-sm font-semibold text-poker-green transition-colors hover:bg-poker-green/30 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
+            className={SECONDARY_BUTTON_CLASS}
             onClick={handleCall}
             disabled={acting || !canAct}
           >
             Call {formatTokenAmount(callAmount)}
           </button>
         )}
+        </div>
 
-        <div className="flex items-center gap-2">
+        <div className={`flex flex-wrap items-center ${isPanelLayout ? "justify-start" : "justify-center"} gap-2 sm:gap-3`}>
+          <div className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-2 py-2">
           <input
             type="text"
             inputMode="decimal"
             value={raiseAmountInput}
             onChange={(e) => setRaiseAmountInput(e.target.value)}
-            className="w-16 rounded-lg border border-gray-700 bg-gray-800 px-2 py-2 text-center font-mono text-sm text-white focus:border-poker-gold/50 focus:outline-none sm:w-20"
+            className="w-24 rounded-lg border border-gray-700 bg-gray-800 px-3 py-3 text-center font-mono text-base font-semibold text-white focus:border-poker-gold/50 focus:outline-none sm:w-32"
           />
           <button
-            className="min-w-[92px] rounded-lg border border-poker-gold/30 bg-poker-gold/20 px-3 py-2 text-sm font-semibold text-poker-gold transition-colors hover:bg-poker-gold/30 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
+            className={`${GOLD_BUTTON_CLASS} min-w-[148px] text-sm`}
             onClick={handleRaise}
             disabled={acting || !canAct || !isRaiseAmountValid}
           >
-            Raise
+            Raise / Bet
           </button>
         </div>
 
         <button
-          className="min-w-[92px] rounded-lg border border-poker-red/30 bg-poker-red/20 px-3 py-2 text-sm font-bold text-poker-red transition-colors hover:bg-poker-red/30 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
+          className={RED_BUTTON_CLASS}
           onClick={handleAllIn}
           disabled={acting || !canAct}
-        >
-          ALL IN
-        </button>
+          >
+            ALL IN
+          </button>
 
-        <button
-          className="min-w-[120px] rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-200 transition-colors hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
-          onClick={handleLeave}
-          disabled={acting}
-        >
-          {canCashOut ? "Leave Table" : "Forfeit & Leave"}
-        </button>
-
-        {canDealNextHand && (
           <button
-            className="min-w-[140px] rounded-lg border border-poker-gold/40 bg-poker-gold/15 px-3 py-2 text-sm font-semibold text-poker-gold transition-colors hover:bg-poker-gold/25 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
-            onClick={handleDealNextHand}
+            className={AMBER_BUTTON_CLASS}
+            onClick={handleLeave}
             disabled={acting}
           >
-            {gameState.handComplete ? "Play Another Hand" : "Play Again"}
+            {canCashOut ? "Leave Table" : "Forfeit & Leave"}
           </button>
-        )}
+
+          {canDealNextHand && (
+            <button
+              className={`${SECONDARY_BUTTON_CLASS} min-w-[172px]`}
+              onClick={handleDealNextHand}
+              disabled={acting}
+            >
+              {gameState.handComplete ? "Play Another Hand" : "Play Again"}
+            </button>
+          )}
+        </div>
       </div>
 
       {!canAct && !gameState.handComplete && !canDealNextHand && (
-        <p className="text-center text-xs text-gray-500">Waiting for the other player...</p>
+        <p className={`text-xs text-gray-500 ${isPanelLayout ? "self-start" : "text-center"}`}>Waiting for the other player...</p>
       )}
 
       {canAct && !isRaiseAmountValid && (
-        <p className="text-center text-xs text-gray-500">
+        <p className={`text-xs text-gray-500 ${isPanelLayout ? "self-start" : "text-center"}`}>
           Raise must be at least {formatTokenAmount(gameState.minRaise)}.
         </p>
       )}
 
       {canDealNextHand && (
-        <p className="text-center text-xs text-gray-500">
+        <p className={`text-xs text-gray-500 ${isPanelLayout ? "self-start" : "text-center"}`}>
           {isDealer ? "You can start the next hand now." : "Any seated player can start the next hand now."}
         </p>
       )}
 
-      {message && (
-        <p className="text-center text-xs text-gray-400">{message}</p>
-      )}
+      {message && <p className={`text-xs text-gray-400 ${isPanelLayout ? "self-start" : "text-center"}`}>{message}</p>}
     </div>
   );
 }

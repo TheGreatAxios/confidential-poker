@@ -37,7 +37,7 @@ export function PokerTable({ gameState }: PokerTableProps) {
             <CommunityCards cards={gameState.communityCards} />
             <PotDisplay pot={gameState.pot} currentBet={gameState.currentBet} />
             {gameState.handComplete && gameState.lastAction && (
-              <div className="max-w-[300px] rounded-full border border-emerald-300/30 bg-emerald-500/10 px-4 py-2 text-center text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-200 shadow-[0_12px_28px_rgba(16,185,129,0.15)] sm:max-w-[420px] sm:text-[11px]">
+              <div className="max-w-[320px] rounded-2xl border border-emerald-300/35 bg-emerald-500/12 px-5 py-3 text-center text-[11px] font-bold tracking-[0.08em] text-emerald-100 shadow-[0_16px_40px_rgba(16,185,129,0.18)] sm:max-w-[480px] sm:text-sm">
                 {gameState.lastAction}
               </div>
             )}

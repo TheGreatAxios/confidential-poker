@@ -350,6 +350,16 @@ export function useGameState() {
         ? findWinningPlayerIds(revealablePlayers, table.communityCards)
         : [];
     const winners = eventWinnerIds.length > 0 ? eventWinnerIds : inferredWinnerIds;
+    const handPlayerIndexes = players.flatMap((player, index) => (player?.hadCardsThisHand ? [index] : []));
+    const orderedHandPlayerIndexes =
+      dealer !== null && handPlayerIndexes.length > 0
+        ? [
+            ...handPlayerIndexes.filter((index) => players[index]?.address.toLowerCase() === dealer),
+            ...handPlayerIndexes.filter((index) => players[index]?.address.toLowerCase() !== dealer),
+          ]
+        : handPlayerIndexes;
+    const smallBlindIndex = orderedHandPlayerIndexes[0] ?? null;
+    const bigBlindIndex = orderedHandPlayerIndexes[1] ?? null;
 
     const agents = players.flatMap((player, i) => {
       if (!player) {
@@ -381,6 +391,8 @@ export function useGameState() {
           status,
           currentBet: player.currentBet,
           isDealer: dealer === player.address.toLowerCase(),
+          isSmallBlind: smallBlindIndex === i,
+          isBigBlind: bigBlindIndex === i,
           isThinking: !handComplete && currentTurnIndex === i,
           isWinner: winners?.includes(`agent-${i}`) ?? false,
           cardsRevealed: revealedCards.length === 2,
@@ -412,7 +424,7 @@ export function useGameState() {
     });
     const winnerSummary =
       handComplete && winningNames.length > 0
-        ? `${winningNames.join(" & ")} won${handResolution.winnerHandName ? ` with ${handResolution.winnerHandName}` : ""}${handResolution.winnerAmount !== null ? ` for ${formatTokenAmount(handResolution.winnerAmount)}` : ""}.`
+        ? `Winner: ${winningNames.join(" & ")}${handResolution.winnerHandName ? ` with ${handResolution.winnerHandName}` : ""}${handResolution.winnerAmount !== null ? ` for ${formatTokenAmount(handResolution.winnerAmount)} SKL` : ""}`
         : null;
 
     return {

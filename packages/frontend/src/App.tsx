@@ -7,6 +7,7 @@ import { FaucetPanel } from "@/components/FaucetPanel";
 import { AgentStats } from "@/components/AgentStats";
 import { JoinPanel } from "@/components/JoinPanel";
 import { PlayerHandPanel } from "@/components/PlayerHandPanel";
+import { ShowdownSummary } from "@/components/ShowdownSummary";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAccount } from "wagmi";
 
@@ -19,25 +20,16 @@ export default function Home() {
       <Header isConnected={isConnected} error={error} />
 
       <main className="flex flex-1 flex-col items-center justify-center gap-5 px-3 py-4 sm:px-4 sm:py-6">
-        {/* Game Phase Indicator */}
-        <motion.div
-          className="flex flex-wrap items-center justify-center gap-2 sm:gap-3"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <span className="text-[11px] text-poker-text-muted uppercase tracking-[0.15em] font-medium">
-            Hand #{gameState.handNumber}
-          </span>
-          <span className="px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-poker-gold/10 text-poker-gold border border-poker-gold/20 shadow-gold-sm">
-            {gameState.phase.toUpperCase()}
-          </span>
-        </motion.div>
-
         {/* Poker Table */}
         <PokerTable gameState={gameState} />
 
-        {gameState.humanPlayer && <PlayerHandPanel gameState={gameState} />}
+        {gameState.humanPlayer && (
+          <PlayerHandPanel
+            gameState={gameState}
+            controls={<GameControls gameState={gameState} onLeft={leaveHumanPlayer} layout="panel" />}
+          />
+        )}
+        <ShowdownSummary gameState={gameState} />
 
         {/* Player Controls */}
         <motion.div
@@ -55,11 +47,7 @@ export default function Home() {
             />
           )}
 
-          {gameState.humanPlayer ? (
-            <GameControls gameState={gameState} onLeft={leaveHumanPlayer} />
-          ) : (
-            <JoinPanel onJoined={joinHumanPlayer} />
-          )}
+          {!gameState.humanPlayer && <JoinPanel onJoined={joinHumanPlayer} />}
 
           {!isConnected && isWalletConnected && <FaucetPanel />}
 

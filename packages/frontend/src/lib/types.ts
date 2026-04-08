@@ -44,6 +44,8 @@ export interface Agent {
   status: PlayerStatus;
   currentBet: bigint;
   isDealer: boolean;
+  isSmallBlind: boolean;
+  isBigBlind: boolean;
   isThinking: boolean;
   isWinner: boolean;
   cardsRevealed: boolean;

@@ -37,9 +37,6 @@ export function AgentStats({ agents }: AgentStatsProps) {
                   {agent.name}
                 </span>
               </div>
-              <div className="text-[10px] font-mono text-gray-400">
-                {(agent.winRate * 100).toFixed(0)}% WR
-              </div>
               <div className="text-xs font-bold font-mono text-gray-200">
                 {formatTokenAmount(agent.chips)}
               </div>

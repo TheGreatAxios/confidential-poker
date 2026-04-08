@@ -22,7 +22,7 @@ export function AgentSeat({ agent, isActive, position }: AgentSeatProps) {
   return (
     <div
       className={`${POSITION_CLASSES[position]} z-10 transition-all duration-300 ${
-        isActive ? "scale-105" : ""
+        isActive ? "scale-[1.12]" : "scale-100"
       }`}
     >
       <AgentAvatar agent={agent} />
