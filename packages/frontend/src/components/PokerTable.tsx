@@ -36,9 +36,19 @@ export function PokerTable({ gameState }: PokerTableProps) {
           <div className="flex translate-y-4 flex-col items-center gap-3 sm:translate-y-6">
             <CommunityCards cards={gameState.communityCards} />
             <PotDisplay pot={gameState.pot} currentBet={gameState.currentBet} />
-            {gameState.handComplete && gameState.lastAction && (
-              <div className="max-w-[320px] rounded-2xl border border-emerald-300/35 bg-emerald-500/12 px-5 py-3 text-center text-[11px] font-bold tracking-[0.08em] text-emerald-100 shadow-[0_16px_40px_rgba(16,185,129,0.18)] sm:max-w-[480px] sm:text-sm">
-                {gameState.lastAction}
+            {gameState.handComplete && gameState.handSummary && (
+              <div className="max-w-[340px] rounded-2xl border border-emerald-300/35 bg-emerald-500/12 px-5 py-3 text-center shadow-[0_16px_40px_rgba(16,185,129,0.18)] sm:max-w-[500px]">
+                <div className="text-[10px] font-bold tracking-[0.16em] text-emerald-200 uppercase">
+                  {gameState.handSummary.endedBy === "showdown" ? "Showdown Result" : "Hand Result"}
+                </div>
+                <div className="mt-1 text-[12px] font-bold tracking-[0.04em] text-emerald-100 sm:text-sm">
+                  {gameState.handSummary.headline}
+                </div>
+                {gameState.handSummary.detail && (
+                  <div className="mt-1 text-[10px] font-medium text-emerald-100/85 sm:text-xs">
+                    {gameState.handSummary.detail}
+                  </div>
+                )}
               </div>
             )}
           </div>

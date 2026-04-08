@@ -59,6 +59,18 @@ export function PlayerHandPanel({ gameState, controls }: PlayerHandPanelProps) {
             </div>
           </div>
 
+          {gameState.handSummary && (
+            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+              <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-poker-text-dim">
+                Round Summary
+              </div>
+              <div className="mt-1 text-xs font-semibold text-white">{gameState.handSummary.headline}</div>
+              {gameState.handSummary.detail && (
+                <div className="mt-1 text-[11px] text-poker-text-dim">{gameState.handSummary.detail}</div>
+              )}
+            </div>
+          )}
+
           {controls && <div className="mt-4">{controls}</div>}
         </div>
       </div>

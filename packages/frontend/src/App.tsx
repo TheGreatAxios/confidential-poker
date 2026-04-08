@@ -59,7 +59,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.3 }}
-                className="text-center text-xs italic text-poker-text-dim"
+                className="text-center text-sm font-semibold text-white"
               >
                 {gameState.lastAction}
               </motion.div>

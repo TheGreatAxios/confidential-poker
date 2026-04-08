@@ -324,10 +324,11 @@ export function useGameState() {
       typeof turnIndexRead === "bigint" && turnIndexRead !== NO_TURN ? Number(turnIndexRead) : null;
     const isTableEmpty = table.playerCount === 0n;
     const isWaiting = table.phase === "waiting";
+    const activePlayerCount = players.filter(player => player?.isActive).length;
     const handComplete =
       table.phase === "showdown" ||
       handResolution.handComplete ||
-      (isWaiting && table.communityCards.length > 0 && players.some((player) => player?.hadCardsThisHand));
+      (activePlayerCount === 1 && players.some((player) => player?.hadCardsThisHand));
 
     const revealablePlayers = players.flatMap((player) => {
       if (!player) {
@@ -345,11 +346,23 @@ export function useGameState() {
 
       return handResolution.winnerAddresses.includes(player.address.toLowerCase()) ? [`agent-${i}`] : [];
     });
+
+    // If only one active player remains, they are the winner by default
+    const foldWinnerIds = activePlayerCount === 1 && handComplete
+      ? players.flatMap((player, i) => player?.isActive ? [`agent-${i}`] : [])
+      : [];
+
     const inferredWinnerIds =
-      handComplete && revealablePlayers.length > 0
+      handComplete && revealablePlayers.length > 0 && table.phase === "showdown"
         ? findWinningPlayerIds(revealablePlayers, table.communityCards)
         : [];
-    const winners = eventWinnerIds.length > 0 ? eventWinnerIds : inferredWinnerIds;
+
+    const winners = eventWinnerIds.length > 0
+      ? eventWinnerIds
+      : foldWinnerIds.length > 0
+        ? foldWinnerIds
+        : inferredWinnerIds;
+    const winnerSet = new Set(winners);
     const handPlayerIndexes = players.flatMap((player, index) => (player?.hadCardsThisHand ? [index] : []));
     const orderedHandPlayerIndexes =
       dealer !== null && handPlayerIndexes.length > 0
@@ -380,6 +393,12 @@ export function useGameState() {
         }
       }
 
+      let handOutcome: GameState["agents"][number]["handOutcome"] = null;
+      const isWinner = winnerSet.has(`agent-${i}`);
+      if (handComplete && player.hadCardsThisHand && status !== "busted") {
+        handOutcome = isWinner ? "winner" : (!player.isActive ? "folded" : "lost");
+      }
+
       return [
         {
           id: `agent-${i}`,
@@ -394,13 +413,15 @@ export function useGameState() {
           isSmallBlind: smallBlindIndex === i,
           isBigBlind: bigBlindIndex === i,
           isThinking: !handComplete && currentTurnIndex === i,
-          isWinner: winners?.includes(`agent-${i}`) ?? false,
+          isWinner,
           cardsRevealed: revealedCards.length === 2,
           message: null,
           seatIndex: i,
           winRate: 0,
           handsPlayed: Number(table.handNumber),
           color: COLORS[i % COLORS.length] ?? "#6b7280",
+          handComplete,
+          handOutcome,
         },
       ];
     });
@@ -415,16 +436,38 @@ export function useGameState() {
     const humanAgent = humanSeatIndex >= 0 ? agents[humanSeatIndex] : null;
     const humanRevealedCards =
       humanPlayerState ? revealedCardsByAddress[humanPlayerState.address.toLowerCase()] ?? [] : [];
-    const winningNames = players.flatMap((player) => {
-      if (!player || !handResolution.winnerAddresses.includes(player.address.toLowerCase())) {
-        return [];
-      }
-
-      return [`${player.address.slice(0, 6)}...${player.address.slice(-4)}`];
-    });
+    const winnerNames = agents.filter((agent) => agent.isWinner).map((agent) => agent.name);
     const winnerSummary =
-      handComplete && winningNames.length > 0
-        ? `Winner: ${winningNames.join(" & ")}${handResolution.winnerHandName ? ` with ${handResolution.winnerHandName}` : ""}${handResolution.winnerAmount !== null ? ` for ${formatTokenAmount(handResolution.winnerAmount)} SKL` : ""}`
+      handComplete && winnerNames.length > 0
+        ? `Winner: ${winnerNames.join(" & ")}${handResolution.winnerHandName ? ` with ${handResolution.winnerHandName}` : ""}${handResolution.winnerAmount !== null ? ` for ${formatTokenAmount(handResolution.winnerAmount)} SKL` : ""}`
+        : handComplete
+          ? "Hand complete."
+          : null;
+    const revealedShowdownPlayers = agents.filter((agent) => agent.cardsRevealed && agent.cards.length === 2).length;
+    const endedBy: NonNullable<GameState["handSummary"]>["endedBy"] =
+      handComplete
+        ? revealedShowdownPlayers >= 2
+          ? "showdown"
+          : winnerNames.length > 0
+            ? "folds"
+            : "unknown"
+        : "unknown";
+    const handSummary =
+      handComplete
+        ? {
+            headline:
+              winnerNames.length > 0
+                ? `${winnerNames.join(" & ")} won the hand`
+                : "Hand complete",
+            detail:
+              endedBy === "showdown"
+                ? `${handResolution.winnerHandName ? `Winning hand: ${handResolution.winnerHandName}. ` : ""}${handResolution.winnerAmount !== null ? `Payout ${formatTokenAmount(handResolution.winnerAmount)} SKL.` : "Showdown resolved."}`
+                : endedBy === "folds"
+                  ? `${handResolution.winnerAmount !== null ? `Payout ${formatTokenAmount(handResolution.winnerAmount)} SKL. ` : ""}All other players folded.`
+                  : "Waiting for result events to finalize details.",
+            winnerNames,
+            endedBy,
+          }
         : null;
 
     return {
@@ -439,6 +482,7 @@ export function useGameState() {
       handNumber: Number(table.handNumber),
       roundNumber: 0,
       lastAction: winnerSummary,
+      handSummary,
       winners: winners && winners.length > 0 ? winners : null,
       canStartNextHand: isWaiting && players.filter((player) => player && player.chips > 0n).length >= 2,
       handComplete,

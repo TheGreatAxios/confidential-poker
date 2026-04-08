@@ -54,6 +54,8 @@ export interface Agent {
   winRate: number;
   handsPlayed: number;
   color: string;
+  handComplete: boolean;
+  handOutcome: "winner" | "lost" | "folded" | null;
 }
 
 export interface GameState {
@@ -68,6 +70,12 @@ export interface GameState {
   handNumber: number;
   roundNumber: number;
   lastAction: string | null;
+  handSummary: {
+    headline: string;
+    detail: string | null;
+    winnerNames: string[];
+    endedBy: "showdown" | "folds" | "unknown";
+  } | null;
   winners: string[] | null;
   canStartNextHand: boolean;
   handComplete: boolean;

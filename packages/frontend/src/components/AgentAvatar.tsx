@@ -127,8 +127,18 @@ export function AgentAvatar({ agent }: AgentAvatarProps) {
         </span>
       )}
       {agent.isWinner && (
-        <span className="rounded-full border border-emerald-300/35 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-200">
-          Winner
+        <span className="animate-pulse rounded-full border border-emerald-300/50 bg-emerald-400/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-100 shadow-lg">
+          🏆 Winner
+        </span>
+      )}
+      {agent.handOutcome === "lost" && (
+        <span className="rounded-full border border-rose-300/35 bg-rose-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-rose-200">
+          Lost Hand
+        </span>
+      )}
+      {agent.handOutcome === "folded" && (
+        <span className="rounded-full border border-amber-300/35 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100">
+          Folded
         </span>
       )}
       {agent.status === "acting" && (
