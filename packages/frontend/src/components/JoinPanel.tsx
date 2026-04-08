@@ -17,17 +17,20 @@ import {
 import { FRONTEND_CONFIG } from "@/lib/config";
 import { isContractDeployed } from "@/lib/contracts";
 import { addSKALEChain } from "@/providers";
+import { generateViewerKeyPair, loadViewerKey, persistViewerKey } from "@/lib/viewer-key";
 
 type Step = "idle" | "approving" | "joining" | "done";
 
 interface JoinPanelProps {
-  onJoined?: () => void;
+  onJoined?: (joinedAddress: `0x${string}`) => void;
+  onLeft?: () => void;
   mode?: "join" | "rejoin";
   canCashOut?: boolean;
 }
 
 export function JoinPanel({
   onJoined,
+  onLeft: _onLeft,
   mode = "join",
   canCashOut = false,
 }: JoinPanelProps) {
@@ -89,12 +92,20 @@ export function JoinPanel({
   const needsApproval = tokenAllowance !== undefined && tokenAllowance < activeBuyIn;
 
   const handleJoin = async () => {
-    await addSKALEChain()
-    
+    await addSKALEChain();
+
     if (!isContractDeployed(POKER_TABLE_ADDRESS)) {
       setMessage("Poker table contract is not deployed.");
       return;
     }
+
+    if (!address) {
+      setMessage("Connect wallet to join.");
+      return;
+    }
+
+    const viewerKey = loadViewerKey(address) ?? generateViewerKeyPair();
+    persistViewerKey(address, viewerKey);
 
     setStep("approving");
     try {
@@ -120,7 +131,7 @@ export function JoinPanel({
         address: POKER_TABLE_ADDRESS,
         abi: POKER_TABLE_ABI,
         functionName: "sitDown",
-        args: ["0x"],
+        args: [{ x: viewerKey.x, y: viewerKey.y }],
       });
       setTxHash(joinHash);
 
@@ -134,7 +145,7 @@ export function JoinPanel({
       }
 
       setStep("done");
-      onJoined?.();
+      onJoined?.(address);
     } catch (err: any) {
       setMessage(err.message || "Transaction failed");
       setStep("idle");

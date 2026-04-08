@@ -6,27 +6,30 @@ import { WagmiProvider } from 'wagmi'
 import { createAppKit, AppKitProvider } from '@reown/appkit/react'
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
 import { FRONTEND_CONFIG } from '@/lib/config'
+import type { AppKitNetwork } from '@reown/appkit-common'
+import type { CreateAppKit } from '@reown/appkit/react'
 
 export const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'demo-project-id'
 
-const skaleBaseSepolia = {
+const skaleBaseSepolia: AppKitNetwork = {
   id: FRONTEND_CONFIG.chainId,
   name: 'SKALE Base Sepolia',
   nativeCurrency: { name: 'CREDITS', symbol: 'CREDITS', decimals: 18 },
   rpcUrls: { default: { http: [FRONTEND_CONFIG.rpcUrl] } },
 }
 
+const networks: [AppKitNetwork] = [skaleBaseSepolia]
+
 const wagmiAdapter = new WagmiAdapter({
   ssr: false,
-  networks: [skaleBaseSepolia],
+  networks,
   projectId,
 })
 
 const isDev = import.meta.env.DEV
-
-createAppKit({
+const appKitConfig: CreateAppKit = {
   adapters: [wagmiAdapter],
-  networks: [skaleBaseSepolia],
+  networks,
   projectId,
   metadata: {
     name: 'Texas Hold\'em on SKALE',
@@ -34,7 +37,9 @@ createAppKit({
     url: isDev ? 'http://localhost:5173' : 'https://poker.skale.space',
     icons: ['https://avatars.githubusercontent.com/u/37784886'],
   },
-})
+}
+
+createAppKit(appKitConfig)
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -52,7 +57,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={wagmiAdapter.wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <AppKitProvider>{children}</AppKitProvider>
+        <AppKitProvider {...appKitConfig}>{children}</AppKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
   )
