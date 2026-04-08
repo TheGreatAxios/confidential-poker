@@ -4,18 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "gen-wallets": "tsx scripts/gen-wallets.ts",
-    "run-game": "tsx scripts/run-game.ts",
-    "run-agent": "tsx scripts/run-agent-loop.ts",
-    "run-agent:shark": "tsx scripts/run-agent-loop.ts --agent shark",
-    "run-agent:fox": "tsx scripts/run-agent-loop.ts --agent fox",
-    "run-agent:owl": "tsx scripts/run-agent-loop.ts --agent owl",
-    "run-agent:bull": "tsx scripts/run-agent-loop.ts --agent bull",
-    "run-agent:cat": "tsx scripts/run-agent-loop.ts --agent cat",
-    "run-agent:wolf": "tsx scripts/run-agent-loop.ts --agent wolf"
+    "dev": "bun --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target node",
+    "start": "bun run src/index.ts",
+    "gen-wallets": "bun run scripts/gen-wallets.ts",
+    "run-game": "bun run scripts/run-game.ts",
+    "run-agent": "bun run scripts/run-agent-loop.ts",
+    "run-agent:shark": "bun run scripts/run-agent-loop.ts --agent shark",
+    "run-agent:fox": "bun run scripts/run-agent-loop.ts --agent fox",
+    "run-agent:owl": "bun run scripts/run-agent-loop.ts --agent owl",
+    "run-agent:bull": "bun run scripts/run-agent-loop.ts --agent bull",
+    "run-agent:cat": "bun run scripts/run-agent-loop.ts --agent cat",
+    "run-agent:wolf": "bun run scripts/run-agent-loop.ts --agent wolf"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",
@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
-    "typescript": "^5.7.3",
+    "bun-types": "^1.1.0",
     "@noble/curves": "^1.7.0"
   }
 }

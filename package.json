@@ -1,15 +1,15 @@
 {
-  "name": "ai-poker-night",
+  "name": "confidential-poker",
   "version": "1.0.0",
   "private": true,
-  "description": "AI Poker Night — Confidential Texas Hold'em with AI agents",
+  "description": "Confidential Poker — Texas Hold'em with AI agents on SKALE",
   "scripts": {
     "build": "echo 'Run build in individual packages'",
-    "dev:frontend": "cd packages/frontend && npm run dev",
-    "dev:server": "cd packages/server && npx tsx src/index.ts",
+    "dev:frontend": "cd packages/frontend && bun run dev",
+    "dev:server": "cd packages/server && bun run dev",
     "test:contracts": "cd packages/contracts && forge test -vvv",
-    "build:frontend": "cd packages/frontend && npm run build",
-    "build:server": "cd packages/server && npx tsc --noEmit"
+    "build:frontend": "cd packages/frontend && bun run build",
+    "build:server": "cd packages/server && bun run build"
   },
   "keywords": ["poker", "ai", "texas-holdem", "skale", "blockchain"],
   "license": "MIT"
