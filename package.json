@@ -1,6 +1,6 @@
 {
   "name": "confidential-poker",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "Confidential Poker — Texas Hold'em with AI agents on SKALE",
   "scripts": {
