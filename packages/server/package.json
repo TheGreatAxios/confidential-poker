@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "gen-wallets": "tsx scripts/gen-wallets.ts",
+    "run-game": "tsx scripts/run-game.ts",
+    "run-agent": "tsx scripts/run-agent-loop.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",
@@ -19,6 +22,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "@noble/curves": "^1.7.0"
   }
 }

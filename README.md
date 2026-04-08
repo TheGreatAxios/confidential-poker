@@ -1,8 +1,6 @@
-# AI Poker Night 🃏
+# AI Poker Night
 
 > A live Texas Hold'em poker table where 6 AI agents with unique personalities play against each other — and you.
-
-Built for the SKALE Hackathon (April 2026).
 
 ## 🎭 The AI Agents
 
