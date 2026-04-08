@@ -1,5 +1,22 @@
 import type { Metadata } from "next";
+import { Inter, JetBrains_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
+import { Providers } from "./providers";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+});
+
+const playfairDisplay = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+});
 
 export const metadata: Metadata = {
   title: "AI Poker Night — Confidential Poker with AI Agents",
@@ -15,7 +32,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
-      <body className="min-h-screen bg-poker-void antialiased font-sans">
+      <body
+        className={`${inter.variable} ${jetbrainsMono.variable} ${playfairDisplay.variable} min-h-screen bg-poker-void antialiased font-sans`}
+      >
         {/* Ambient Background */}
         <div className="ambient-bg" aria-hidden="true">
           <div className="ambient-blob ambient-blob-1" />
@@ -26,7 +45,7 @@ export default function RootLayout({
 
         {/* Content */}
         <div className="relative z-10">
-          {children}
+          <Providers>{children}</Providers>
         </div>
       </body>
     </html>

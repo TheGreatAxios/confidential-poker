@@ -9,18 +9,20 @@ import { FaucetPanel } from "@/components/FaucetPanel";
 import { AgentStats } from "@/components/AgentStats";
 import { JoinPanel } from "@/components/JoinPanel";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAccount } from "wagmi";
 
 export default function Home() {
-  const { gameState, isConnected, error } = useGameState();
+  const { gameState, isConnected, error, joinHumanPlayer } = useGameState();
+  const { isConnected: isWalletConnected } = useAccount();
 
   return (
     <div className="flex min-h-screen flex-col">
       <Header isConnected={isConnected} error={error} />
 
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-6 gap-5">
+      <main className="flex flex-1 flex-col items-center justify-center gap-5 px-3 py-4 sm:px-4 sm:py-6">
         {/* Game Phase Indicator */}
         <motion.div
-          className="flex items-center gap-3"
+          className="flex flex-wrap items-center justify-center gap-2 sm:gap-3"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -31,11 +33,6 @@ export default function Home() {
           <span className="px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-poker-gold/10 text-poker-gold border border-poker-gold/20 shadow-gold-sm">
             {gameState.phase.toUpperCase()}
           </span>
-          {!isConnected && (
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-amber-500/8 text-amber-400/80 border border-amber-500/15">
-              Demo Mode
-            </span>
-          )}
         </motion.div>
 
         {/* Poker Table */}
@@ -43,7 +40,7 @@ export default function Home() {
 
         {/* Player Controls */}
         <motion.div
-          className="flex flex-col sm:flex-row items-center gap-4"
+          className="flex w-full max-w-5xl flex-col items-stretch gap-3 sm:items-center"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
@@ -51,10 +48,10 @@ export default function Home() {
           {gameState.humanPlayer ? (
             <GameControls gameState={gameState} />
           ) : (
-            <JoinPanel />
+            <JoinPanel onJoined={joinHumanPlayer} />
           )}
 
-          {!isConnected && <FaucetPanel />}
+          {!isConnected && isWalletConnected && <FaucetPanel />}
 
           {/* Last Action */}
           <AnimatePresence mode="wait">
@@ -65,7 +62,7 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.3 }}
-                className="text-xs text-poker-text-dim italic"
+                className="text-center text-xs italic text-poker-text-dim"
               >
                 {gameState.lastAction}
               </motion.div>

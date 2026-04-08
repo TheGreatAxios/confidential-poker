@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",
-    "@skalenetwork/bite": "^0.7.2",
+    "@skalenetwork/bite": "0.8.1-develop.0",
     "@x402/core": "^2.9.0",
     "@x402/evm": "^2.9.0",
     "@x402/hono": "^2.9.0",

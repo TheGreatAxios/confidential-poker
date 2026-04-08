@@ -9,6 +9,7 @@ optimizer_runs = 1
 remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
     "@skalenetwork/bite-solidity/=lib/bite-solidity/contracts/",
+    "@dirtroad/skale-rng/=lib/skale-rng/",
 ]
 
 # BITE V2 Sandbox 2 — requires Istanbul EVM per SKALE docs
@@ -23,6 +24,7 @@ optimizer_runs = 1
 remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
     "@skalenetwork/bite-solidity/=lib/bite-solidity/contracts/",
+    "@dirtroad/skale-rng/=lib/skale-rng/",
 ]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

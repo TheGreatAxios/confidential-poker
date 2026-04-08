@@ -26,6 +26,7 @@ library HandEvaluator {
         uint8 secondary;     // kicker / pair rank
         uint8 tertiary;      // second kicker
         uint8 quaternary;    // third kicker
+        uint8 quinary;       // fourth kicker
     }
 
     uint8 public constant RANK_TWO   = 2;
@@ -137,49 +138,63 @@ library HandEvaluator {
 
         // Straight Flush / Royal Flush
         if (isFlush && isStraight) {
-            return EvalResult(HAND_STRAIGHT_FLUSH, straightHigh, 0, 0, 0);
+            return EvalResult(HAND_STRAIGHT_FLUSH, straightHigh, 0, 0, 0, 0);
         }
 
         // Four of a Kind
         if (fourRank != 0) {
-            return EvalResult(HAND_FOUR_OF_A_KIND, fourRank, kickers[0], 0, 0);
+            return EvalResult(HAND_FOUR_OF_A_KIND, fourRank, kickers[0], 0, 0, 0);
         }
 
         // Full House
         if (threeRank != 0 && (pairRank1 != 0 || pairRank2 != 0)) {
             uint8 pairR = pairRank1 != 0 ? pairRank1 : pairRank2;
-            return EvalResult(HAND_FULL_HOUSE, threeRank, pairR, 0, 0);
+            return EvalResult(HAND_FULL_HOUSE, threeRank, pairR, 0, 0, 0);
         }
 
         // Flush
         if (isFlush) {
-            return EvalResult(HAND_FLUSH, cards[0], cards[1], cards[2], cards[3]);
+            return EvalResult(
+                HAND_FLUSH,
+                rankOf(cards[0]),
+                rankOf(cards[1]),
+                rankOf(cards[2]),
+                rankOf(cards[3]),
+                rankOf(cards[4])
+            );
         }
 
         // Straight
         if (isStraight) {
-            return EvalResult(HAND_STRAIGHT, straightHigh, 0, 0, 0);
+            return EvalResult(HAND_STRAIGHT, straightHigh, 0, 0, 0, 0);
         }
 
         // Three of a Kind
         if (threeRank != 0) {
-            return EvalResult(HAND_THREE_OF_A_KIND, threeRank, kickers[0], kickers[1], 0);
+            return EvalResult(HAND_THREE_OF_A_KIND, threeRank, kickers[0], kickers[1], 0, 0);
         }
 
         // Two Pair
         if (pairRank1 != 0 && pairRank2 != 0) {
             uint8 highPair = pairRank1 > pairRank2 ? pairRank1 : pairRank2;
             uint8 lowPair = pairRank1 > pairRank2 ? pairRank2 : pairRank1;
-            return EvalResult(HAND_TWO_PAIR, highPair, lowPair, kickers[0], 0);
+            return EvalResult(HAND_TWO_PAIR, highPair, lowPair, kickers[0], 0, 0);
         }
 
         // One Pair
         if (pairRank1 != 0) {
-            return EvalResult(HAND_ONE_PAIR, pairRank1, kickers[0], kickers[1], kickers[2]);
+            return EvalResult(HAND_ONE_PAIR, pairRank1, kickers[0], kickers[1], kickers[2], 0);
         }
 
         // High Card
-        return EvalResult(HAND_HIGH_CARD, cards[0], cards[1], cards[2], cards[3]);
+        return EvalResult(
+            HAND_HIGH_CARD,
+            rankOf(cards[0]),
+            rankOf(cards[1]),
+            rankOf(cards[2]),
+            rankOf(cards[3]),
+            rankOf(cards[4])
+        );
     }
 
     /// @notice Check if all 5 cards have the same suit
@@ -229,6 +244,7 @@ library HandEvaluator {
         if (a.secondary != b.secondary) return a.secondary > b.secondary;
         if (a.tertiary != b.tertiary) return a.tertiary > b.tertiary;
         if (a.quaternary != b.quaternary) return a.quaternary > b.quaternary;
+        if (a.quinary != b.quinary) return a.quinary > b.quinary;
         return false; // equal
     }
 
@@ -242,7 +258,8 @@ library HandEvaluator {
                a.primary == b.primary &&
                a.secondary == b.secondary &&
                a.tertiary == b.tertiary &&
-               a.quaternary == b.quaternary;
+               a.quaternary == b.quaternary &&
+               a.quinary == b.quinary;
     }
 
     /// @notice Convenience: encode a card with named suit constants

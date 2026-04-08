@@ -78,7 +78,8 @@ def gen_wallet():
 
 def main():
     RPC = "https://base-sepolia-testnet.skalenodes.com/v1/base-testnet"
-    CONTRACT = "0x7BA5171a294C24E1b689b483361c8D771cE10272"
+    CONTRACT = "0x0D5d9697bda657c1ba2D1882dcF7BB20903D3aDC"
+    MOCK_SKL = "0x4C1928684B7028C2805FA1d12aCEd5c839A8D42C"
     AGENT_KEY = "0x8d15c36c01a8a72179d65da71a1a8cb82c9b907ee1f2fc5fe8c271dd4ccf19be"
     AGENT_ADDR = "0x2F3Ca9f2aA0Ec5c0ea7A23D05E5083E09A54e238"
     
@@ -104,7 +105,13 @@ def main():
         bots.append(bot)
         print(f"  {addr}")
     
-    data = {"rpc": RPC, "contract": CONTRACT, "agent": agent, "bots": bots}
+    data = {
+        "rpc": RPC,
+        "contract": CONTRACT,
+        "mock_skl": MOCK_SKL,
+        "agent": agent,
+        "bots": bots,
+    }
     out = Path("/data/.nanobot/persistent/scratchpad/poker-deploy.json")
     out.write_text(json.dumps(data, indent=2))
     print(f"\n✅ All wallets generated. Saved to {out}")

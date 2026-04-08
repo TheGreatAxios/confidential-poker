@@ -1,8 +1,10 @@
 node_modules/
-.next/
 dist/
 .cache/
 .env
 .env.local
 *.log
 .DS_Store
+__pycache__
+.tsconfig.tsbuildinfo
+tsconfig.tsbuildinfo
