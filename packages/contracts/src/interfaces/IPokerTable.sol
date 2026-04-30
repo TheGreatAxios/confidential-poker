@@ -1,55 +1,42 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.27;
 
-import { PublicKey } from "@skalenetwork/bite-solidity/types.sol";
+import {PublicKey} from "@skalenetwork/bite-solidity/types.sol";
 
-/**
- * @title IPokerTable
- * @notice Interface for interacting with a factory-deployed poker table.
- *         Provides table configuration, state queries, balance management,
- *         and player action endpoints for the Router and Factory.
- */
 interface IPokerTable {
-    // ─── Table Configuration (immutable) ─────────────────────────────────
     function buyIn() external view returns (uint256);
     function smallBlind() external view returns (uint256);
     function bigBlind() external view returns (uint256);
     function maxPlayers() external view returns (uint256);
-    function withdrawalFeeBps() external view returns (uint256);
-    function earlyQuitFeeBps() external view returns (uint256);
-    function factory() external view returns (address);
     function tableName() external view returns (string memory);
 
-    // ─── Table State ──────────────────────────────────────────────────────
-    function isTableEnded() external view returns (bool);
-    function getPhase() external view returns (uint8);
-    function getPot() external view returns (uint256);
-    function getPlayerCount() external view returns (uint256);
-    function getTableBalance() external view returns (uint256);
-    function isPlayerSeated(address player) external view returns (bool);
+    function phase() external view returns (uint8);
+    function pot() external view returns (uint256);
+    function playerCount() external view returns (uint256);
 
-    // ─── Player Balance ───────────────────────────────────────────────────
-    function getPlayerBalance(address player) external view returns (
-        uint256 deposited,
-        uint256 winnings,
-        uint256 withdrawn,
-        bool isPlaying
-    );
-
-    // ─── Player Actions ───────────────────────────────────────────────────
-    function joinTable(PublicKey calldata viewerKey) external payable;
+    function sitDown(PublicKey calldata viewerKey) external;
     function leaveTable() external;
-    function withdrawWinnings() external;
+    function requestLeave() external;
+    function cancelLeave() external;
 
-    // ─── Events ───────────────────────────────────────────────────────────
-    /// @notice Emitted when a player joins a table
-    event TableJoined(address indexed player, uint256 amount);
-    /// @notice Emitted when a player leaves an active table (10% early quit fee)
-    event TableLeft(address indexed player, uint256 totalBalance, uint256 fee, uint256 payout);
-    /// @notice Emitted when a player withdraws after table ended (1% withdrawal fee)
-    event WinningsWithdrawn(address indexed player, uint256 totalBalance, uint256 fee, uint256 payout);
-    /// @notice Emitted when a fee is collected and sent to the factory
-    event FeeCollected(address indexed table, uint256 amount, bool isEarlyQuit);
-    /// @notice Emitted when the factory/owner ends the table session
-    event TableEnded();
+    function fold() external;
+    function check() external;
+    function call() external;
+    function raise(uint256 amount) external;
+
+    function dealNewHand() external;
+    function dealNext() external;
+    function resolveHand() external;
+    function forfeitAndLeave() external;
+
+    event PlayerJoined(address indexed player, uint256 seat);
+    event PlayerLeft(address indexed player, uint256 returned);
+    event LeaveRequested(address indexed player);
+    event PlayerFolded(address indexed player);
+    event PlayerChecked(address indexed player);
+    event PlayerCalled(address indexed player, uint256 amount);
+    event PlayerRaised(address indexed player, uint256 totalBet);
+    event Winner(address indexed player, uint256 amount, string handName);
+    event PotAwarded(address indexed player, uint256 amount);
+    event HandComplete();
 }

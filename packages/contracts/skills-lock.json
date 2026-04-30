@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "develop-secure-contracts": {
+      "source": "OpenZeppelin/openzeppelin-skills",
+      "sourceType": "github",
+      "skillPath": "skills/develop-secure-contracts/SKILL.md",
+      "computedHash": "ae9dd50cccc65e67e042d70d4af2623b36563b73ea6513754a1f3f3fb7e6331e"
+    },
+    "programmable-privacy": {
+      "source": "skalenetwork/skills",
+      "sourceType": "github",
+      "skillPath": "skills/programmable-privacy/SKILL.md",
+      "computedHash": "e223c1a58da3a20422a6a2359a3480dadce79534a9da8e0b4a52a37c3f655e74"
+    },
+    "setup-solidity-contracts": {
+      "source": "OpenZeppelin/openzeppelin-skills",
+      "sourceType": "github",
+      "skillPath": "skills/setup-solidity-contracts/SKILL.md",
+      "computedHash": "9c0e45a4afb334c5460811d1c2db5ba7d7756f9e401b250921322c6aab86be64"
+    }
+  }
+}

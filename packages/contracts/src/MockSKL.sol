@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.27;
 
-/**
- * @title MockSKL
- * @notice Mock ERC20 token for tipping AI agents in the Poker Night game.
- *         Includes a faucet that dispenses 1000 tokens per call.
- */
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract MockSKL is ERC20 {
     uint256 public constant FAUCET_AMOUNT = 1000 * 10 ** 18;
@@ -22,18 +17,14 @@ contract MockSKL is ERC20 {
         _mint(0xE2BD4119c3ACDBdF6ca3478D4f1e0e5515376767, INITIAL_ALLOCATION);
     }
 
-    /// @notice Faucet: gives caller 1000 tokens, once per hour
     function faucet() external {
-        require(
-            block.timestamp >= lastFaucetTime[msg.sender] + faucetCooldown,
-            "Faucet cooldown not elapsed"
-        );
+        // forge-lint: disable-next-line(block-timestamp)
+        require(block.timestamp >= lastFaucetTime[msg.sender] + faucetCooldown, "Faucet cooldown not elapsed");
         lastFaucetTime[msg.sender] = block.timestamp;
         _mint(msg.sender, FAUCET_AMOUNT);
         emit FaucetDripped(msg.sender, FAUCET_AMOUNT);
     }
 
-    /// @notice Mint tokens (only owner for testing convenience)
     function mint(address to, uint256 amount) external {
         _mint(to, amount);
     }
