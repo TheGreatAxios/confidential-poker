@@ -10,3 +10,7 @@ __pycache__
 tsconfig.tsbuildinfo
 *.py
 poker-deploy.json
+.agents
+.claude
+.kilo
+.windsurf
