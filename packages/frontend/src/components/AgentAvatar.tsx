@@ -67,7 +67,9 @@ export function AgentAvatar({ agent }: AgentAvatarProps) {
         {/* Avatar Circle */}
         <div
           className={`relative h-12 w-12 rounded-full border-2 text-xl transition-all duration-300 sm:h-16 sm:w-16 sm:text-3xl ${
-          agent.status === "busted"
+          agent.status === "leaving"
+            ? "bg-amber-950/40 border-amber-300/60 opacity-80"
+          : agent.status === "busted"
             ? "bg-gray-800 border-gray-700 opacity-50"
             : agent.isWinner
             ? "bg-emerald-900/50 border-emerald-300 shadow-[0_0_24px_rgba(52,211,153,0.35)]"
@@ -119,6 +121,11 @@ export function AgentAvatar({ agent }: AgentAvatarProps) {
       {agent.status === "all-in" && (
         <span className="text-[10px] text-red-400 font-semibold uppercase tracking-wider animate-pulse">
           ALL IN
+        </span>
+      )}
+      {agent.status === "leaving" && (
+        <span className="rounded-full border border-amber-300/35 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100">
+          Leaving
         </span>
       )}
       {agent.status === "busted" && (

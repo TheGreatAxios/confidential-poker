@@ -26,9 +26,9 @@ export function PlayerHandPanel({ gameState, controls }: PlayerHandPanelProps) {
           : "Waiting for the next action.";
 
   return (
-    <div className="w-full max-w-5xl rounded-[28px] border border-white/10 bg-white/[0.04] px-5 py-5 shadow-[0_24px_70px_rgba(0,0,0,0.38)] backdrop-blur-sm sm:px-6">
-      <div className="flex flex-col gap-5 md:flex-row md:items-stretch">
-        <div className="rounded-2xl border border-white/8 bg-black/10 px-5 py-5 md:flex md:w-[340px] md:flex-none md:flex-col md:items-center md:justify-center">
+    <div className="w-full max-w-5xl shrink-0 rounded-[24px] border border-white/10 bg-white/[0.04] px-4 py-4 shadow-[0_18px_54px_rgba(0,0,0,0.34)] backdrop-blur-sm sm:px-5">
+      <div className="flex flex-col gap-4 md:flex-row md:items-stretch">
+        <div className="rounded-2xl border border-white/8 bg-black/10 px-4 py-4 md:flex md:w-[340px] md:flex-none md:flex-col md:items-center md:justify-center">
           <div className="md:text-center">
             <div className="text-[11px] uppercase tracking-[0.16em] text-poker-text-dim">
               Your Hand
@@ -36,7 +36,7 @@ export function PlayerHandPanel({ gameState, controls }: PlayerHandPanelProps) {
             <div className="mt-1 text-sm font-semibold text-white">{handStatusLabel}</div>
           </div>
 
-          <div className="mt-5 flex min-h-[180px] items-center gap-3 md:justify-center">
+          <div className="mt-4 flex min-h-[128px] items-center gap-3 md:justify-center">
             {humanPlayer.cards.length > 0 ? (
               humanPlayer.cards.map((card, index) => (
                 <Card key={`${card.rank}-${card.suit}-${index}`} card={card} index={index} size="large" />
@@ -51,9 +51,10 @@ export function PlayerHandPanel({ gameState, controls }: PlayerHandPanelProps) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/8 bg-black/10 px-4 py-4 md:min-w-0 md:flex-1">
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-white/8 pb-3 text-sm">
-            <div className="font-mono text-white">{formatTokenDisplay(humanPlayer.chips)}</div>
+        <div className="rounded-2xl border border-white/8 bg-black/10 px-4 py-3 md:min-w-0 md:flex-1">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-white/8 pb-2 text-sm">
+            <div className="font-mono text-white">Stack {formatTokenDisplay(humanPlayer.chips)}</div>
+            <div className="font-mono text-poker-gold">Wallet chips {formatTokenDisplay(humanPlayer.chipTokenBalance)}</div>
             <div className={`${humanPlayer.isWinner ? "text-emerald-200" : "text-poker-text-dim"}`}>
               {humanPlayer.isWinner ? "Winner" : handStatusLabel}
             </div>
@@ -71,7 +72,7 @@ export function PlayerHandPanel({ gameState, controls }: PlayerHandPanelProps) {
             </div>
           )}
 
-          {controls && <div className="mt-4">{controls}</div>}
+          {controls && <div className="mt-3">{controls}</div>}
         </div>
       </div>
     </div>

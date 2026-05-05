@@ -1,18 +1,21 @@
-// ─── Contract ABI & Address for the Poker Table ─────────────────────────────────
+// ─── Contract ABI & Addresses ─────────────────────────────────
 //
 // Duplicated from the server's abis.ts so the frontend package stays independent.
 // The ABI defines the public interface of the on-chain poker contract.
 import { FRONTEND_CONFIG } from "@/lib/config";
 
-export const POKER_TABLE_ADDRESS =
-  FRONTEND_CONFIG.pokerTableAddress as `0x${string}`;
+export const POKER_FACTORY_ADDRESS =
+  FRONTEND_CONFIG.factoryAddress as `0x${string}`;
 
-export const TOKEN_ADDRESS = FRONTEND_CONFIG.tokenAddress as `0x${string}`;
+export const CHIP_TOKEN_ADDRESS =
+  FRONTEND_CONFIG.chipTokenAddress as `0x${string}`;
+
+export const TOKEN_ADDRESS = FRONTEND_CONFIG.underlyingTokenAddress as `0x${string}`;
 
 /** 1000 tokens with 18 decimals — must match contract BUY_IN constant */
 export const BUY_IN = 1_000_000_000_000_000_000_000n;
 
-export const POKER_TABLE_ABI = [
+const POKER_GAME_BASE_ABI = [
   {
     "type": "constructor",
     "inputs": [
@@ -1501,6 +1504,147 @@ export const POKER_TABLE_ABI = [
     "name": "TransferFailed",
     "inputs": []
   }
+] as const;
+
+const POKER_GAME_EXTENSION_ABI = [
+  {
+    type: "function",
+    name: "gameToken",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "isLeaveRequested",
+    inputs: [{ name: "player", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "requestLeave",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "cancelLeave",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "tableName",
+    inputs: [],
+    outputs: [{ name: "", type: "string" }],
+    stateMutability: "view",
+  },
+  {
+    type: "event",
+    name: "PotAwarded",
+    inputs: [
+      { name: "player", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "LeaveRequested",
+    inputs: [{ name: "player", type: "address", indexed: true }],
+    anonymous: false,
+  },
+] as const;
+
+export const POKER_GAME_ABI = [
+  ...POKER_GAME_BASE_ABI,
+  ...POKER_GAME_EXTENSION_ABI,
+] as const;
+
+export const POKER_FACTORY_ABI = [
+  {
+    type: "function",
+    name: "createTable",
+    inputs: [
+      { name: "buyIn", type: "uint256" },
+      { name: "smallBlind", type: "uint256" },
+      { name: "bigBlind", type: "uint256" },
+      { name: "maxPlayers", type: "uint256" },
+      { name: "tableName", type: "string" },
+    ],
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "payable",
+  },
+  {
+    type: "function",
+    name: "getAllTables",
+    inputs: [],
+    outputs: [{ name: "", type: "address[]" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getTableInfo",
+    inputs: [{ name: "table", type: "address" }],
+    outputs: [
+      { name: "buyInAmount", type: "uint256" },
+      { name: "smallBlindAmount", type: "uint256" },
+      { name: "bigBlindAmount", type: "uint256" },
+      { name: "playerCount", type: "uint256" },
+      { name: "potAmount", type: "uint256" },
+      { name: "phaseValue", type: "uint8" },
+      { name: "name", type: "string" },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "CTX_CALLBACK_VALUE_WEI",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "event",
+    name: "TableCreated",
+    inputs: [
+      { name: "table", type: "address", indexed: true },
+      { name: "creator", type: "address", indexed: true },
+      { name: "tableName", type: "string", indexed: false },
+      { name: "buyIn", type: "uint256", indexed: false },
+      { name: "smallBlind", type: "uint256", indexed: false },
+      { name: "bigBlind", type: "uint256", indexed: false },
+      { name: "maxPlayers", type: "uint256", indexed: false },
+    ],
+    anonymous: false,
+  },
+] as const;
+
+export const CHIP_TOKEN_ABI = [
+  {
+    type: "function",
+    name: "UNDERLYING",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "deposit",
+    inputs: [{ name: "amount", type: "uint256" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "withdraw",
+    inputs: [{ name: "amount", type: "uint256" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
 ] as const;
 
 /** ERC-20 ABI for token interactions */

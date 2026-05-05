@@ -1,1 +1,2 @@
-// Unused - this is a Vite app
+// Unused - this is a Vite app.
+export default {};

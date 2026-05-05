@@ -17,6 +17,20 @@ export function ShowdownSummary({ gameState }: ShowdownSummaryProps) {
       <div className="mb-3 text-center text-[11px] font-bold uppercase tracking-[0.22em] text-poker-text-dim">
         Revealed Hands
       </div>
+      {gameState.sidePots.length > 0 && (
+        <div className="mb-4 rounded-xl border border-poker-gold/20 bg-poker-gold/10 px-3 py-2">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-poker-gold">
+            Awarded pot events
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {gameState.sidePots.map((pot, index) => (
+              <span key={`${pot.amount}-${index}`} className="rounded-full border border-poker-gold/25 px-2 py-1 font-mono text-[11px] text-poker-gold">
+                Pot {index + 1}: {pot.winnerIds.length > 1 ? "Split" : "Won"} {pot.amount.toLocaleString()}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="grid gap-3 md:grid-cols-2">
         {revealedAgents.map((agent) => (
           <div

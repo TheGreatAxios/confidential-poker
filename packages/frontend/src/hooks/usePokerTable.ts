@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import { useReadContracts } from "wagmi";
 import {
-  POKER_TABLE_ABI,
-  POKER_TABLE_ADDRESS,
+  POKER_GAME_ABI,
   isContractDeployed,
 } from "@/lib/contracts";
+import { FRONTEND_CONFIG } from "@/lib/config";
 import type { GamePhase, Card } from "@/lib/types";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────────
@@ -71,6 +71,7 @@ export interface PokerTableState {
   handNumber: bigint;
   playerCount: bigint;
   communityCards: Card[];
+  chipTokenAddress: `0x${string}` | null;
   /** Contract reads were successful */
   isSuccess: boolean;
   /** Contract reads are loading */
@@ -83,40 +84,52 @@ export interface PokerTableState {
 
 // ── Hook ────────────────────────────────────────────────────────────────────────
 
-export function usePokerTable(): PokerTableState {
-  const contractReady = isContractDeployed(POKER_TABLE_ADDRESS);
+export function usePokerTable(tableAddress: `0x${string}`): PokerTableState {
+  const contractReady = isContractDeployed(tableAddress);
 
   const { data, isLoading, isError, error, refetch } = useReadContracts({
     contracts: [
       {
-        address: POKER_TABLE_ADDRESS,
-        abi: POKER_TABLE_ABI,
+        chainId: FRONTEND_CONFIG.chainId,
+        address: tableAddress,
+        abi: POKER_GAME_ABI,
         functionName: "phase",
       },
       {
-        address: POKER_TABLE_ADDRESS,
-        abi: POKER_TABLE_ABI,
+        chainId: FRONTEND_CONFIG.chainId,
+        address: tableAddress,
+        abi: POKER_GAME_ABI,
         functionName: "pot",
       },
       {
-        address: POKER_TABLE_ADDRESS,
-        abi: POKER_TABLE_ABI,
+        chainId: FRONTEND_CONFIG.chainId,
+        address: tableAddress,
+        abi: POKER_GAME_ABI,
         functionName: "currentBet",
       },
       {
-        address: POKER_TABLE_ADDRESS,
-        abi: POKER_TABLE_ABI,
+        chainId: FRONTEND_CONFIG.chainId,
+        address: tableAddress,
+        abi: POKER_GAME_ABI,
         functionName: "handNumber",
       },
       {
-        address: POKER_TABLE_ADDRESS,
-        abi: POKER_TABLE_ABI,
+        chainId: FRONTEND_CONFIG.chainId,
+        address: tableAddress,
+        abi: POKER_GAME_ABI,
         functionName: "playerCount",
       },
       {
-        address: POKER_TABLE_ADDRESS,
-        abi: POKER_TABLE_ABI,
+        chainId: FRONTEND_CONFIG.chainId,
+        address: tableAddress,
+        abi: POKER_GAME_ABI,
         functionName: "getCommunityCards",
+      },
+      {
+        chainId: FRONTEND_CONFIG.chainId,
+        address: tableAddress,
+        abi: POKER_GAME_ABI,
+        functionName: "gameToken",
       },
     ],
     query: {
@@ -135,6 +148,7 @@ export function usePokerTable(): PokerTableState {
         handNumber: 0n,
         playerCount: 0n,
         communityCards: [],
+        chipTokenAddress: null,
         isSuccess: false,
         isLoading,
         error: error ?? null,
@@ -149,6 +163,9 @@ export function usePokerTable(): PokerTableState {
     const handNumber = data[3]?.result as bigint | undefined;
     const playerCount = data[4]?.result as bigint | undefined;
     const rawCommunity = data[5]?.result as number[] | undefined;
+    const chipTokenAddress = typeof data[6]?.result === "string"
+      ? data[6].result as `0x${string}`
+      : null;
 
     // Map community cards (uint8[5]) to Card objects
     const communityCards: Card[] = [];
@@ -166,6 +183,7 @@ export function usePokerTable(): PokerTableState {
       handNumber: handNumber ?? 0n,
       playerCount: playerCount ?? 0n,
       communityCards,
+      chipTokenAddress,
       isSuccess: true,
       isLoading,
       error: null,

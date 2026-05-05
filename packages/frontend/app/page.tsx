@@ -17,7 +17,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header isConnected={isConnected} error={error} />
+      <Header error={error} />
 
       <main className="flex flex-1 flex-col items-center justify-center gap-5 px-3 py-4 sm:px-4 sm:py-6">
         {/* Game Phase Indicator */}

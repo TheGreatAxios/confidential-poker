@@ -1,4 +1,3 @@
-import { FRONTEND_CONFIG } from "@/lib/config";
 import { wagmiAdapter, projectId, skaleBaseSepolia } from "@/providers";
 
 let initialized = false;

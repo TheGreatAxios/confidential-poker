@@ -4,24 +4,26 @@ import { createElement, useEffect, useState } from "react";
 import {
   useAccount,
   usePublicClient,
-  useReadContract,
   useWriteContract,
 } from "wagmi";
 import {
-  POKER_TABLE_ABI,
-  POKER_TABLE_ADDRESS,
-  TOKEN_ADDRESS,
-  ERC20_ABI,
+  POKER_GAME_ABI,
 } from "@/lib/contracts";
 import { FRONTEND_CONFIG } from "@/lib/config";
 import { isContractDeployed } from "@/lib/contracts";
 import { addSKALEChain } from "@/providers";
 import { generateViewerKeyPair, loadViewerKey, persistViewerKey } from "@/lib/viewer-key";
 import { ensureAppKit } from "@/lib/appkit";
+import { useChipToken } from "@/hooks/useChipToken";
+import type { TableInfo } from "@/lib/types";
+import { formatTokenDisplay } from "@/lib/token-format";
 
-type Step = "idle" | "approving" | "joining" | "done";
+type Step = "idle" | "approving-underlying" | "depositing" | "approving-game" | "joining" | "done";
 
 interface JoinPanelProps {
+  tableAddress: `0x${string}`;
+  chipTokenAddress: `0x${string}` | null;
+  tableInfo?: TableInfo | null;
   onJoined?: (joinedAddress: `0x${string}`) => void;
   onLeft?: () => void;
   mode?: "join" | "rejoin";
@@ -29,14 +31,21 @@ interface JoinPanelProps {
 }
 
 export function JoinPanel({
+  tableAddress,
+  chipTokenAddress,
+  tableInfo,
   onJoined,
   onLeft: _onLeft,
   mode = "join",
-  canCashOut = false,
+  canCashOut: _canCashOut = false,
 }: JoinPanelProps) {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
+  const chipToken = useChipToken({
+    chipTokenAddress: chipTokenAddress ?? FRONTEND_CONFIG.chipTokenAddress,
+    gameAddress: tableAddress,
+  });
 
   const [step, setStep] = useState<Step>("idle");
   const [message, setMessage] = useState<string | null>(null);
@@ -62,60 +71,22 @@ export function JoinPanel({
     };
   }, [isConnected]);
 
-  const { data: onChainBuyIn } = useReadContract({
-    chainId: FRONTEND_CONFIG.chainId,
-    address: POKER_TABLE_ADDRESS,
-    abi: POKER_TABLE_ABI,
-    functionName: "BUY_IN",
-    query: { enabled: isContractDeployed(POKER_TABLE_ADDRESS) },
-  });
-
-  const { data: tokenSymbol } = useReadContract({
-    chainId: FRONTEND_CONFIG.chainId,
-    address: TOKEN_ADDRESS,
-    abi: ERC20_ABI,
-    functionName: "symbol",
-    query: { enabled: isContractDeployed(TOKEN_ADDRESS) },
-  });
-
-  const { data: tokenDecimals } = useReadContract({
-    chainId: FRONTEND_CONFIG.chainId,
-    address: TOKEN_ADDRESS,
-    abi: ERC20_ABI,
-    functionName: "decimals",
-    query: { enabled: isContractDeployed(TOKEN_ADDRESS) },
-  });
-
-  const { data: tokenAllowance } = useReadContract({
-    chainId: FRONTEND_CONFIG.chainId,
-    address: TOKEN_ADDRESS,
-    abi: ERC20_ABI,
-    functionName: "allowance",
-    args: address ? [address, POKER_TABLE_ADDRESS] : undefined,
-    query: { enabled: isConnected && isContractDeployed(POKER_TABLE_ADDRESS) },
-  });
-
-  const { data: tokenBalance } = useReadContract({
-    chainId: FRONTEND_CONFIG.chainId,
-    address: TOKEN_ADDRESS,
-    abi: ERC20_ABI,
-    functionName: "balanceOf",
-    args: address ? [address] : undefined,
-    query: { enabled: isConnected && isContractDeployed(TOKEN_ADDRESS) },
-  });
-
-  const activeBuyIn = onChainBuyIn ?? 1_000_000_000_000_000_000_000n;
-  const symbol = tokenSymbol ?? "SKL";
-  const decimals = Number(tokenDecimals ?? 18n);
-  const formattedBuyIn = Number(activeBuyIn) / 10 ** decimals;
-  const hasBalance = tokenBalance !== undefined && tokenBalance >= activeBuyIn;
-  const needsApproval = tokenAllowance !== undefined && tokenAllowance < activeBuyIn;
+  const activeBuyIn = tableInfo?.buyIn ?? 1_000_000_000_000_000_000_000n;
+  const hasUnderlyingBalance = chipToken.underlyingBalance >= activeBuyIn;
+  const hasChipBalance = chipToken.chipBalance >= activeBuyIn;
+  const needsDepositApproval = chipToken.depositAllowance < activeBuyIn;
+  const needsGameApproval = chipToken.gameAllowance < activeBuyIn;
 
   const handleJoin = async () => {
     await addSKALEChain();
 
-    if (!isContractDeployed(POKER_TABLE_ADDRESS)) {
+    if (!isContractDeployed(tableAddress)) {
       setMessage("Poker table contract is not deployed.");
+      return;
+    }
+
+    if (!isContractDeployed(chipTokenAddress ?? FRONTEND_CONFIG.chipTokenAddress)) {
+      setMessage("Chip token address is not configured.");
       return;
     }
 
@@ -127,29 +98,38 @@ export function JoinPanel({
     const viewerKey = loadViewerKey(address) ?? generateViewerKeyPair();
     persistViewerKey(address, viewerKey);
 
-    setStep("approving");
     try {
-      if (needsApproval) {
-        setMessage("Approving tokens...");
-        const approveHash = await writeContractAsync({
-          chainId: FRONTEND_CONFIG.chainId,
-          address: TOKEN_ADDRESS,
-          abi: ERC20_ABI,
-          functionName: "approve",
-          args: [POKER_TABLE_ADDRESS, activeBuyIn],
-        });
-        setTxHash(approveHash);
+      if (!hasChipBalance) {
+        if (!hasUnderlyingBalance) {
+          throw new Error("Insufficient underlying token balance.");
+        }
 
-        if (!publicClient) throw new Error("No RPC client.");
-        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+        if (needsDepositApproval) {
+          setStep("approving-underlying");
+          setMessage("Approving deposit...");
+          const approveHash = await chipToken.approveUnderlying(activeBuyIn);
+          setTxHash(approveHash);
+        }
+
+        setStep("depositing");
+        setMessage("Depositing chips...");
+        const depositHash = await chipToken.deposit(activeBuyIn);
+        setTxHash(depositHash);
+      }
+
+      if (needsGameApproval) {
+        setStep("approving-game");
+        setMessage("Approving table spend...");
+        const approveHash = await chipToken.approveGame(activeBuyIn);
+        setTxHash(approveHash);
       }
 
       setStep("joining");
       setMessage(mode === "rejoin" ? "Restoring viewer key..." : "Joining table...");
       const joinHash = await writeContractAsync({
         chainId: FRONTEND_CONFIG.chainId,
-        address: POKER_TABLE_ADDRESS,
-        abi: POKER_TABLE_ABI,
+        address: tableAddress,
+        abi: POKER_GAME_ABI,
         functionName: "sitDown",
         args: [{ x: viewerKey.x, y: viewerKey.y }],
       });
@@ -166,20 +146,22 @@ export function JoinPanel({
 
       setStep("done");
       onJoined?.(address);
-    } catch (err: any) {
-      setMessage(err.message || "Transaction failed");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Transaction failed");
       setStep("idle");
     }
   };
 
   const statusLabel = (() => {
-    if (step === "approving") return "Approving...";
+    if (step === "approving-underlying") return "Approving Deposit...";
+    if (step === "depositing") return "Depositing...";
+    if (step === "approving-game") return "Approving Table...";
     if (step === "joining") return mode === "rejoin" ? "Rejoining..." : "Joining...";
     if (step === "done") return mode === "rejoin" ? "Restored" : "Joined";
     return mode === "rejoin" ? "Restore Viewer Key" : "Join Table";
   })();
 
-  const isBusy = step === "approving" || step === "joining";
+  const isBusy = step !== "idle" && step !== "done";
 
   return (
     <div className="w-full max-w-3xl">
@@ -229,14 +211,17 @@ export function JoinPanel({
             <span>
               Buy-in:{" "}
               <span className="font-semibold text-poker-gold">
-                {formattedBuyIn} {symbol}
+                {formatTokenDisplay(activeBuyIn)}
               </span>
             </span>
-            {isConnected && !hasBalance && (
+            {isConnected && !hasUnderlyingBalance && !hasChipBalance && (
               <span className="text-poker-red">Insufficient balance</span>
             )}
-            {isConnected && hasBalance && needsApproval && step === "idle" && (
+            {isConnected && hasUnderlyingBalance && (needsDepositApproval || needsGameApproval) && step === "idle" && (
               <span className="text-yellow-400">Requires approval</span>
+            )}
+            {isConnected && !hasChipBalance && hasUnderlyingBalance && (
+              <span className="text-poker-text-muted">Deposit required</span>
             )}
           </>
         ) : null}
