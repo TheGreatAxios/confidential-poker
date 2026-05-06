@@ -1,59 +1,48 @@
 # AI Poker Night
 
-> A live Texas Hold'em poker table where 6 AI agents with unique personalities play against each other — and you.
+> A live Texas Hold'em poker table where AI agents with unique personalities play against each other — and you.
 
-## 🎭 The AI Agents
-
-| Agent | Personality | Style |
-|-------|------------|-------|
-| 🦈 **The Shark** | Aggressive | Calculated, bluffs rarely but hard |
-| 🦊 **The Fox** | Tricky | Semi-bluffs often, exploits weaknesses |
-| 🦉 **The Owl** | Tight | Mathematical, only plays premium hands |
-| 🐂 **The Bull** | Maniac | Raises constantly, forces decisions |
-| 🐱 **The Cat** | Unpredictable | Mixed strategy, hard to read |
-| 🐺 **The Wolf** | Balanced | GTO-style, adapts to opponents |
-
-## 🏗 Architecture
+## Architecture
 
 ```
 confidential-poker/
 ├── packages/
 │   ├── contracts/     # Foundry — Solidity smart contracts
 │   │   ├── HandEvaluator.sol   # Pure hand evaluation library
-│   │   ├── MockSKL.sol         # ERC20 token for tipping
+│   │   ├── ChipToken.sol       # ERC20 chip token for buy-in/stack
+│   │   ├── PokerFactory.sol    # Factory for deploying poker tables
 │   │   └── PokerGame.sol       # On-chain game state machine
 │   │
-│   ├── server/        # Hono — Game engine + REST API
-│   │   ├── routes/    # health, game, join, faucet, tip
-│   │   └── agents/    # 6 AI personalities + decision engine
-│   │
-│   └── frontend/      # Next.js 14 — Live poker table UI
-│       ├── app/       # App router (layout, page, not-found)
-│       ├── components/# 16 React components
-│       └── hooks/     # useGameState, useFaucet, useTips
+│   └── frontend/      # Vite + React — Live poker table UI (direct-to-chain, no backend)
+│       ├── src/
+│       │   ├── components/ # React components
+│       │   └── hooks/      # wagmi/viem contract hooks
+│       └── app/       # App router (layout, page)
+├── agents/
+│   └── langchain/     # LangChain Deep Agents — Autonomous poker agent (Bun runtime)
+│       ├── skills/    # Agent Skills (agentskills.io) — domain knowledge
+│       └── src/
+│           ├── tools/ # 10 granular on-chain tools
+│           ├── prompts/ # 6 strategy personas
+│           ├── memory/ # Plugin backends (memory/sqlite/postgres)
+│           ├── wallet/ # Secure key management
+│           └── loop/  # Autonomous game loop (event + poll hybrid)
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Node.js 20+
 - Foundry (forge)
 
-### Frontend (Demo Mode)
+### Frontend (Direct-to-Chain)
 ```bash
 cd packages/frontend
 npm install
+cp .env.example .env  # configure RPC URL and contract addresses
 npm run dev
 ```
-Opens at `http://localhost:3000` — works standalone with mock data.
-
-### Server
-```bash
-cd packages/server
-npm install
-npx tsc --noEmit   # verify types
-npx tsx src/index.ts  # starts on port 3001
-```
+Opens at `http://localhost:5173` — connect a wallet and join a table.
 
 ### Contracts
 ```bash
@@ -62,15 +51,17 @@ forge build
 forge test -vvv
 ```
 
-## 🔧 Tech Stack
+### AI Agents (Deployed Separately)
+See `agents/langchain/` for the autonomous poker agents that play on-chain.
+
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
 | Smart Contracts | Solidity, Foundry, OpenZeppelin |
-| Backend | Hono, TypeScript |
-| Frontend | Next.js 14, React 18, Tailwind CSS |
-| AI Engine | Personality-based decision engine with bluff logic |
+| Frontend | React 19, Vite, Tailwind CSS, wagmi, viem |
+| AI Engine | LangChain Deep Agents (deployed independently) |
 
-## 📜 License
+## License
 
 MIT

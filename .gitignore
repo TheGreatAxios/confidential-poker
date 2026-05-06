@@ -16,3 +16,4 @@ poker-deploy.json
 .windsurf
 .pi/agent/sandbox.json
 **/sandbox.json
+.pi/prompts

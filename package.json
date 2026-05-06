@@ -6,10 +6,8 @@
   "scripts": {
     "build": "echo 'Run build in individual packages'",
     "dev:frontend": "cd packages/frontend && bun run dev",
-    "dev:server": "cd packages/server && bun run dev",
     "test:contracts": "cd packages/contracts && forge test -vvv",
-    "build:frontend": "cd packages/frontend && bun run build",
-    "build:server": "cd packages/server && bun run build"
+    "build:frontend": "cd packages/frontend && bun run build"
   },
   "keywords": [
     "poker",

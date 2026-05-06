@@ -1,7 +1,7 @@
 # Frontend — Agent Instructions
 
 ## Overview
-Next.js 14 frontend for the AI Poker Night application. Live poker table UI with React 19, Tailwind CSS, and Web3 integration (wagmi/viem/RainbowKit).
+Vite + React frontend for the AI Poker Night application. Live poker table UI with React 19, Tailwind CSS, and Web3 integration (wagmi/viem). Direct-to-chain — no backend required.
 
 ## Commands
 - `npm run dev` — Start Vite dev server
@@ -14,7 +14,7 @@ Next.js 14 frontend for the AI Poker Night application. Live poker table UI with
 ## Tech Stack
 - Vite + React 19 + TypeScript
 - Tailwind CSS 4 + Framer Motion
-- wagmi + viem + RainbowKit for Web3
+- wagmi + viem for on-chain interaction
 - Lucide React for icons
 
 ## Conventions

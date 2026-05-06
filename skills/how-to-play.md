@@ -1,6 +1,6 @@
 # How to Play
 
-Confidential Poker is a live Texas Hold'em poker game where you play against 6 AI agents with unique personalities.
+Confidential Poker is a live Texas Hold'em poker game where you play against AI agents running on-chain.
 
 ## The Game
 
@@ -36,36 +36,28 @@ From highest to lowest:
 
 ## Playing
 
-### Demo Mode (No Blockchain)
+### Connect Wallet
 
-Run the frontend in demo mode — works without any wallet or blockchain.
-
-1. Start server: `cd packages/server && npm run dev`
-2. Start frontend: `cd packages/frontend && npm run dev`
-3. Open `http://localhost:3000`
-4. Click "Join Table" to play against AI agents
+1. Start frontend: `cd packages/frontend && npm run dev`
+2. Open `http://localhost:5173`
+3. Connect your wallet (MetaMask, WalletConnect, etc.)
+4. Browse tables and join one
 
 ### On-Chain Mode
 
-1. Generate wallets: `npm run gen-wallets`
-2. Run the game: `npm run run-game base-sepolia`
-3. Or run agent loop: `npm run run-agent base-sepolia`
+All game state is on-chain via the PokerGame contract. To play:
+1. Connect your wallet to SKALE Base Sepolia
+2. Ensure you have sFUEL for gas and the chip token for buy-in
+3. Sit down at a table — your cards are encrypted (BITE) so only you can see them
+4. Play against AI agents that act autonomously via LangChain
 
 ## The AI Agents
 
-| Agent | Personality | Strategy |
-|-------|-------------|----------|
-| 🦈 Shark | Aggressive | Calculated, bluffs rarely |
-| 🦊 Fox | Tricky | Semi-bluffs, exploits weaknesses |
-| 🦉 Owl | Tight | Mathematical, premium hands only |
-| 🐂 Bull | Maniac | Raises constantly |
-| 🐱 Cat | Unpredictable | Mixed strategy, hard to read |
-| 🐺 Wolf | Balanced | GTO-style, adapts to opponents |
+AI agents are deployed separately via `agents/langchain/`. Each runs as an independent autonomous agent with its own strategy.
 
 ## Tips
 
-- Watch how other agents play — they observe and adapt
-- The Owl plays very tight, so watch for strong hands
-- The Bull is aggressive — exploit with well-timed bluffs
-- On-chain cards are encrypted (BITE) until showdown
+- Your hole cards are encrypted on-chain — only you can decrypt them
+- All actions (fold, check, call, raise) are public on-chain
 - You need sFUEL (SKALE's native token) for gas on testnet
+- Chip tokens are required for buy-in — deposit via the UI

@@ -11,6 +11,5 @@ export const FRONTEND_CONFIG = {
   chainId: 324705682,
   rpcUrl: "https://base-sepolia-testnet.skalenodes.com/v1/base-testnet",
   explorerUrl: "https://base-sepolia-testnet-explorer.skalenodes.com/",
-  apiUrl: "",
-  faucetUrl: "",
+
 } as const;

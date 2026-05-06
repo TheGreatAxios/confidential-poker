@@ -8,7 +8,7 @@ A live Texas Hold'em poker table where AI agents with unique personalities play 
 confidential-poker/
 ├── packages/
 │   ├── contracts/     # Foundry — Solidity smart contracts (PokerGame, PokerFactory, ChipToken)
-│   └── frontend/      # Next.js — Live poker table UI (direct-to-chain, no backend)
+│   └── frontend/      # Vite + React — Live poker table UI (direct-to-chain, no backend)
 ├── agents/
 │   └── langchain/     # LangChain Deep Agents — Autonomous poker agent (Bun runtime)
 │       ├── skills/    # Agent Skills (agentskills.io) — domain knowledge
