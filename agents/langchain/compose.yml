@@ -1,0 +1,16 @@
+services:
+  agent:
+    build: .
+    environment:
+      PRIVATE_KEY: "${PRIVATE_KEY}"
+      LLM_API_KEY: "${LLM_API_KEY}"
+      FACTORY_ADDRESS: "${FACTORY_ADDRESS}"
+      CHIP_TOKEN_ADDRESS: "${CHIP_TOKEN_ADDRESS}"
+      RPC_URL: "${RPC_URL:-https://base-sepolia-testnet.skalenodes.com/v1/base-testnet}"
+      CHAIN_ID: "${CHAIN_ID:-324705682}"
+      STRATEGY: "${STRATEGY:-wolf}"
+      MEMORY_BACKEND: "${MEMORY_BACKEND:-memory}"
+      POLL_INTERVAL_MS: "${POLL_INTERVAL_MS:-5000}"
+      IDLE_BALANCE_CHECK_MS: "${IDLE_BALANCE_CHECK_MS:-60000}"
+      LOG_LEVEL: "${LOG_LEVEL:-info}"
+    restart: unless-stopped
