@@ -54,6 +54,7 @@ contract PokerGame is IBiteSupplicant, RNG {
     uint256 public immutable BIG_BLIND;
     uint256 public immutable MAX_PLAYERS;
     uint256 public immutable CTX_CALLBACK_VALUE_WEI;
+    address public immutable FACTORY;
     string public tableName;
 
     uint256 public minCallbackGas = 500_000;
@@ -115,6 +116,7 @@ contract PokerGame is IBiteSupplicant, RNG {
     event TurnChanged(uint256 indexed playerIndex, address indexed player);
     event PlayerAction(address indexed player, string action, uint256 amount);
     event HandResult(address[] winners, uint256[] amounts, string[] handNames);
+    event ReserveSwept(uint256 amount);
 
     error NotOwner();
     error NotAPlayer();
@@ -157,6 +159,7 @@ contract PokerGame is IBiteSupplicant, RNG {
     }
 
     constructor(
+        address _factory,
         address _gameToken,
         address _owner,
         uint256 _buyIn,
@@ -166,6 +169,7 @@ contract PokerGame is IBiteSupplicant, RNG {
         uint256 _ctxCallbackValueWei,
         string memory _tableName
     ) payable {
+        require(_factory != address(0), "Zero factory address");
         require(_gameToken != address(0), "Zero token address");
         require(_owner != address(0), "Zero owner address");
         require(_buyIn >= DEFAULT_MIN_BUY_IN && _buyIn <= DEFAULT_MAX_BUY_IN, BuyInOutOfRange());
@@ -174,6 +178,7 @@ contract PokerGame is IBiteSupplicant, RNG {
         require(_maxPlayers >= MIN_PLAYERS && _maxPlayers <= 10, "Invalid max players");
         require(_ctxCallbackValueWei > 0, InvalidCtxCallbackValue());
 
+        FACTORY = _factory;
         owner = _owner;
         gameToken = IERC20(_gameToken);
         BUY_IN = _buyIn;
@@ -184,7 +189,7 @@ contract PokerGame is IBiteSupplicant, RNG {
         tableName = _tableName;
         phase = GamePhase.Waiting;
 
-        require(msg.value >= minimumCtxReserve(), InsufficientCtxReserve());
+        require(msg.value >= minimumCtxReserve() + CTX_CALLBACK_VALUE_WEI, InsufficientCtxReserve());
     }
 
     receive() external payable {}
@@ -811,9 +816,7 @@ contract PokerGame is IBiteSupplicant, RNG {
         );
         require(!_communityDealPending, CallbackPending());
         require(!_showdownPending, ShowdownInProgress());
-        require(
-            address(this).balance >= minimumCtxReserve() + CTX_CALLBACK_VALUE_WEI, InsufficientCtxReserve()
-        );
+        _ensureCTXReserve();
 
         uint256 activeCount;
         uint256 revealCount;
@@ -1040,6 +1043,7 @@ contract PokerGame is IBiteSupplicant, RNG {
         players.pop();
 
         if (players.length == 0) {
+            _sweepReserve();
             dealerIndex = 0;
             currentTurnIndex = type(uint256).max;
             dealer = address(0);
@@ -1167,11 +1171,31 @@ contract PokerGame is IBiteSupplicant, RNG {
     // INTERNAL — BITE / COMMUNITY CARDS
     // ═══════════════════════════════════════════════════════════════════════
 
+    function _ensureCTXReserve() internal {
+        if (address(this).balance >= minimumCtxReserve() + CTX_CALLBACK_VALUE_WEI) return;
+        uint256 short = minimumCtxReserve() + CTX_CALLBACK_VALUE_WEI - address(this).balance;
+        uint256 toPull = short + CTX_CALLBACK_VALUE_WEI * 5;
+        (bool ok,) = FACTORY.call(
+            abi.encodeWithSignature("refillTable(address,uint256)", address(this), toPull)
+        );
+        if (!ok || address(this).balance < minimumCtxReserve() + CTX_CALLBACK_VALUE_WEI) {
+            revert InsufficientCtxReserve();
+        }
+    }
+
+    function _sweepReserve() internal {
+        uint256 balance = address(this).balance;
+        if (balance > 0) {
+            (bool ok,) = payable(FACTORY).call{value: balance}("");
+            if (ok) {
+                emit ReserveSwept(balance);
+            }
+        }
+    }
+
     function _submitCommunityDeal(uint8 cardCount) internal {
         require(!_communityDealPending && !_showdownPending, CallbackPending());
-        require(
-            address(this).balance >= minimumCtxReserve() + CTX_CALLBACK_VALUE_WEI, InsufficientCtxReserve()
-        );
+        _ensureCTXReserve();
 
         uint256 allowedGas = _communityCallbackGasLimit(cardCount);
 

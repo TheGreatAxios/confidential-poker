@@ -12,9 +12,7 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { config } from "../config";
 import { deriveViewerKey, type ViewerKey } from "./viewer-key";
-import { POKER_GAME_ABI } from "../abis/poker-game";
-import { POKER_FACTORY_ABI } from "../abis/poker-factory";
-import { ERC20_ABI } from "../abis/erc20";
+
 
 const SKALE_CHAIN: Chain = {
   id: config.chainId,
@@ -68,6 +66,10 @@ class KeyStore {
       account: this._account,
       chain: SKALE_CHAIN,
     });
+    // SKALE does not support replacing pending transactions (same nonce).
+    // Wait for confirmation before returning so the next signAndSend call
+    // gets a fresh nonce. This avoids "Pending transaction with same nonce already exists" errors.
+    await this._publicClient.waitForTransactionReceipt({ hash });
     return hash;
   }
 
@@ -82,6 +84,7 @@ class KeyStore {
       abi,
       functionName,
       args,
+      account: this._address,
     });
   }
 

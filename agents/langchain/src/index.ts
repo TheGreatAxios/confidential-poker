@@ -19,7 +19,7 @@ async function main() {
   const balance = await ks.getBalance(ks.getAddress());
   console.log(`sFUEL Balance: ${balance.toString()}`);
 
-  const memoryBackend = await createMemoryBackend();
+  await createMemoryBackend();
   console.log(`Memory backend initialized: ${config.memoryBackend}`);
 
   process.on("SIGINT", () => {

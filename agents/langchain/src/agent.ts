@@ -16,6 +16,7 @@ import { getGameState } from "./tools/get-game-state";
 import { submitAction } from "./tools/submit-action";
 import { leaveTable } from "./tools/leave-table";
 import { logAction } from "./tools/log-action";
+import { claimFaucet } from "./tools/claim-faucet";
 
 function createModel() {
   const provider = config.llmProvider.toLowerCase();
@@ -65,6 +66,7 @@ function createModel() {
 
 const allTools = [
   checkBalance,
+  claimFaucet,
   listTables,
   getTableInfo,
   joinTable,
@@ -83,7 +85,7 @@ export function createAgent(memoryBackend: MemoryBackend) {
     model: createModel(),
     tools: allTools as never[],
     systemPrompt,
-    skills: "./skills",
+    skills: ["./skills"],
     checkpointer: memoryBackend.checkpointer as never,
   });
 

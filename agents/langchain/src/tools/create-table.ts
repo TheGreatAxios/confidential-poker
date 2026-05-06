@@ -1,6 +1,6 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { encodeFunctionData, parseEther, type Address } from "viem";
+import { encodeFunctionData, parseEther } from "viem";
 import { getKeyStore } from "../wallet/key-store";
 import { config } from "../config";
 import { POKER_FACTORY_ABI } from "../abis/poker-factory";

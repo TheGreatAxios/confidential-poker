@@ -1,9 +1,9 @@
-import { SqliteSaver } from "@langchain/langgraph";
+import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import type { ActionLog, MemoryBackend } from "./types";
 import Database from "bun:sqlite";
 
 export class SqliteBackend implements MemoryBackend {
-  checkpointer: SqliteSaver;
+  checkpointer: MemorySaver;
   private db: Database;
 
   constructor(dbPath: string) {
@@ -27,7 +27,7 @@ export class SqliteBackend implements MemoryBackend {
         updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     `);
-    this.checkpointer = SqliteSaver.fromConnString(dbPath);
+    this.checkpointer = new MemorySaver();
   }
 
   async logAction(entry: ActionLog): Promise<void> {

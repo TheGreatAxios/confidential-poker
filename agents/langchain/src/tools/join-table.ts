@@ -5,6 +5,7 @@ import { getKeyStore } from "../wallet/key-store";
 import { config } from "../config";
 import { POKER_GAME_ABI } from "../abis/poker-game";
 import { ERC20_ABI } from "../abis/erc20";
+import { ensureChipBalance } from "./claim-faucet";
 
 export const joinTable = tool(
   async ({ tableAddress }: { tableAddress: string }) => {
@@ -14,11 +15,43 @@ export const joinTable = tool(
       const thisAddress = ks.getAddress();
 
       const phase = (await ks.readContract(addr, POKER_GAME_ABI, "phase", [])) as number;
+
+      // Check if we're already at this table (durable join after session loss)
+      const existingCount = (await ks.readContract(addr, POKER_GAME_ABI, "playerCount", [])) as bigint;
+      let alreadySeated = -1;
+      for (let i = 0; i < Number(existingCount); i++) {
+        const pAddr = (await ks.readContract(addr, POKER_GAME_ABI, "getPlayer", [BigInt(i)])) as Address;
+        if (pAddr.toLowerCase() === thisAddress.toLowerCase()) {
+          alreadySeated = i;
+          break;
+        }
+      }
+
+      if (alreadySeated >= 0) {
+        // Already seated — just ready up if in Waiting phase
+        if (phase === 0) {
+          const isReady = (await ks.readContract(addr, POKER_GAME_ABI, "isReady", [thisAddress])) as boolean;
+          if (!isReady) {
+            const readyData = encodeFunctionData({
+              abi: POKER_GAME_ABI,
+              functionName: "readyUp",
+              args: [],
+            });
+            const txHash = await ks.signAndSend(addr, readyData);
+            return JSON.stringify({ txHash, seat: alreadySeated, tableAddress: addr, alreadyJoined: true });
+          }
+          return JSON.stringify({ seat: alreadySeated, tableAddress: addr, alreadyJoined: true });
+        }
+        return JSON.stringify({ seat: alreadySeated, tableAddress: addr, alreadyJoined: true });
+      }
+
       if (phase !== 0) {
         return JSON.stringify({ error: "Table is not in Waiting phase" });
       }
 
       const buyIn = (await ks.readContract(addr, POKER_GAME_ABI, "BUY_IN", [])) as bigint;
+
+      await ensureChipBalance(buyIn);
 
       const chipAllowance = (await ks.readContract(
         config.chipTokenAddress,
@@ -44,8 +77,8 @@ export const joinTable = tool(
       });
       const txHash = await ks.signAndSend(addr, sitDownData);
 
-      const playerCount = (await ks.readContract(addr, POKER_GAME_ABI, "playerCount", [])) as bigint;
-      const seat = Number(playerCount) - 1;
+      const postJoinCount = (await ks.readContract(addr, POKER_GAME_ABI, "playerCount", [])) as bigint;
+      const seat = Number(postJoinCount) - 1;
 
       const readyData = encodeFunctionData({
         abi: POKER_GAME_ABI,

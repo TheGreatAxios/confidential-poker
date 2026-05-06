@@ -1,4 +1,4 @@
-import { watchContractEvent, type Address, type PublicClient } from "viem";
+import type { Address, PublicClient } from "viem";
 import { POKER_GAME_ABI } from "../abis/poker-game";
 
 export interface GameEvents {
@@ -18,7 +18,7 @@ export function startEventWatcher(
   const unwatchHandlers: Array<() => void> = [];
 
   if (events.onTurnChanged) {
-    const unwatch = watchContractEvent(publicClient, {
+    const unwatch = publicClient.watchContractEvent({
       address: tableAddress,
       abi: POKER_GAME_ABI,
       eventName: "TurnChanged",
@@ -38,7 +38,7 @@ export function startEventWatcher(
   }
 
   if (events.onPhaseChanged) {
-    const unwatch = watchContractEvent(publicClient, {
+    const unwatch = publicClient.watchContractEvent({
       address: tableAddress,
       abi: POKER_GAME_ABI,
       eventName: "PhaseChanged",
@@ -58,7 +58,7 @@ export function startEventWatcher(
   }
 
   if (events.onHandComplete) {
-    const unwatch = watchContractEvent(publicClient, {
+    const unwatch = publicClient.watchContractEvent({
       address: tableAddress,
       abi: POKER_GAME_ABI,
       eventName: "HandComplete",
@@ -71,7 +71,7 @@ export function startEventWatcher(
   }
 
   if (events.onPlayerAction) {
-    const unwatch = watchContractEvent(publicClient, {
+    const unwatch = publicClient.watchContractEvent({
       address: tableAddress,
       abi: POKER_GAME_ABI,
       eventName: "PlayerAction",
@@ -92,7 +92,7 @@ export function startEventWatcher(
   }
 
   if (events.onShowdown) {
-    const unwatch = watchContractEvent(publicClient, {
+    const unwatch = publicClient.watchContractEvent({
       address: tableAddress,
       abi: POKER_GAME_ABI,
       eventName: "ShowdownInitiated",
@@ -109,7 +109,7 @@ export function startEventWatcher(
   }
 
   if (events.onPotAwarded) {
-    const unwatch = watchContractEvent(publicClient, {
+    const unwatch = publicClient.watchContractEvent({
       address: tableAddress,
       abi: POKER_GAME_ABI,
       eventName: "PotAwarded",
@@ -141,7 +141,7 @@ export function watchTurnChanged(
   ourAddress: Address,
   callback: (isMyTurn: boolean) => void,
 ) {
-  return watchContractEvent(publicClient, {
+  return publicClient.watchContractEvent({
     address: tableAddress,
     abi: POKER_GAME_ABI,
     eventName: "TurnChanged",

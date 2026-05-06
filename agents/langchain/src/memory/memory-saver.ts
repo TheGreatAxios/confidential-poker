@@ -1,4 +1,4 @@
-import { MemorySaver } from "@langchain/langgraph";
+import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import type { ActionLog, MemoryBackend } from "./types";
 
 export class InMemoryBackend implements MemoryBackend {

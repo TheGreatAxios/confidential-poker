@@ -6,9 +6,6 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract MockSKL is ERC20 {
     uint256 public constant FAUCET_AMOUNT = 1000 * 10 ** 18;
     uint256 public constant INITIAL_ALLOCATION = 100_000_000 * 10 ** 18;
-    uint256 public faucetCooldown = 1 hours;
-    mapping(address => uint256) public lastFaucetTime;
-
     event FaucetDripped(address indexed recipient, uint256 amount);
 
     constructor() ERC20("Mock SKL", "SKL") {
@@ -18,8 +15,6 @@ contract MockSKL is ERC20 {
     }
 
     function faucet() external {
-        require(block.timestamp >= lastFaucetTime[msg.sender] + faucetCooldown, "Faucet cooldown not elapsed");
-        lastFaucetTime[msg.sender] = block.timestamp;
         _mint(msg.sender, FAUCET_AMOUNT);
         emit FaucetDripped(msg.sender, FAUCET_AMOUNT);
     }

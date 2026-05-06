@@ -47,7 +47,9 @@ export async function discoverOrCreate(): Promise<Address> {
     [],
   )) as bigint;
 
-  const reserve = factoryCtxValue * 10n;
+  // Minimum: 11 * CTX_CALLBACK_VALUE_WEI (constructor requires minimumCtxReserve + 1 CTX payment)
+  // The table auto-pulls more from factory via _ensureCTXReserve as needed
+  const reserve = factoryCtxValue * 11n;
   const balance = await ks.getBalance(ourAddress);
 
   if (balance < reserve) {

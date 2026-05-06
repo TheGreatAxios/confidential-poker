@@ -3,6 +3,8 @@ import { z } from "zod";
 import { getKeyStore } from "../wallet/key-store";
 import { config } from "../config";
 import { ERC20_ABI } from "../abis/erc20";
+import { CHIP_TOKEN_ABI } from "../abis/chip-token";
+import type { Address } from "viem";
 
 export const checkBalance = tool(
   async () => {
@@ -16,9 +18,31 @@ export const checkBalance = tool(
         "balanceOf",
         [address],
       )) as bigint;
+
+      let underlyingAddress = "";
+      let underlyingBalance = "0";
+      try {
+        underlyingAddress = (await ks.readContract(
+          config.chipTokenAddress,
+          CHIP_TOKEN_ABI,
+          "UNDERLYING",
+          [],
+        )) as string;
+        underlyingBalance = (await ks.readContract(
+          underlyingAddress as Address,
+          ERC20_ABI,
+          "balanceOf",
+          [address],
+        )) as string;
+      } catch {
+        // underlying token not readable
+      }
+
       return JSON.stringify({
         credits: credits.toString(),
         chipTokens: chipTokens.toString(),
+        underlyingBalance,
+        underlyingAddress,
         address,
       });
     } catch (err) {
@@ -29,7 +53,7 @@ export const checkBalance = tool(
   },
   {
     name: "check_balance",
-    description: "Check your sFUEL credit balance and ChipToken balance on SKALE.",
+    description: "Check your sFUEL credit balance, ChipToken balance, and underlying MockSKL balance on SKALE.",
     schema: z.object({}),
   },
 );

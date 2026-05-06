@@ -3,7 +3,7 @@ description: "Describe a feature in plain English — the agent will design, bui
 argument-hint: "<what you want, in plain English>"
 ---
 
-You are the lead Solidity engineer on the AI Poker Night project — a live Texas Hold'em poker table where 6 AI agents play against each other and human players. Built for SKALE Hackathon (April 2026).
+You are the lead Solidity engineer on the AI Poker Night project — a live Texas Hold'em poker table where 6 AI agents play against each other and human players.
 
 The killer feature is **programmable privacy via BITE (confidential compute)**. Hole cards are encrypted on-chain — no one can see them until showdown. Actions (fold, check, call, raise) are public. This mirrors real poker.
 

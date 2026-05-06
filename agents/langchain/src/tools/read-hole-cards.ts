@@ -1,10 +1,11 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { BITE } from "@skalenetwork/bite";
+import { secp256k1 } from "@noble/curves/secp256k1";
+import { sha256 } from "@noble/hashes/sha256";
+import { decodeAbiParameters, hexToBytes, bytesToHex, type Hex, type Address } from "viem";
 import { getKeyStore } from "../wallet/key-store";
 import { config } from "../config";
 import { POKER_GAME_ABI } from "../abis/poker-game";
-import type { Address } from "viem";
 
 const SUITS = ["Spades", "Hearts", "Diamonds", "Clubs"] as const;
 const RANKS = [
@@ -16,6 +17,53 @@ function decodeCard(encoded: number): string {
   const rank = (encoded % 13) + 2;
   const suit = Math.floor(encoded / 13);
   return `${RANKS[rank - 2]} of ${SUITS[suit]}`;
+}
+
+function toUint8Array(buf: ArrayBuffer): Uint8Array {
+  return new Uint8Array(buf);
+}
+
+async function decryptEncryptedCards(
+  privateKey: Hex,
+  encryptedData: Hex,
+): Promise<[number, number]> {
+  const payload = hexToBytes(encryptedData);
+  if (payload.length < 49) {
+    throw new Error("Encrypted card payload is too short.");
+  }
+
+  const iv = payload.slice(0, 16);
+  const ephemeralPublicKey = payload.slice(16, 49);
+  const ciphertext = payload.slice(49);
+
+  const sharedSecret = secp256k1
+    .getSharedSecret(hexToBytes(privateKey), ephemeralPublicKey, true)
+    .slice(1);
+  const encryptionKey = sha256(sharedSecret);
+
+  // Bun/Node native crypto (Web Crypto API is available in Bun)
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    encryptionKey.buffer as ArrayBuffer,
+    { name: "AES-CBC" },
+    false,
+    ["decrypt"],
+  );
+
+  const decrypted = new Uint8Array(
+    await crypto.subtle.decrypt(
+      { name: "AES-CBC", iv: iv.buffer as ArrayBuffer },
+      cryptoKey,
+      ciphertext.buffer as ArrayBuffer,
+    ),
+  );
+
+  const [card1, card2] = decodeAbiParameters(
+    [{ type: "uint8" }, { type: "uint8" }],
+    bytesToHex(decrypted),
+  );
+
+  return [Number(card1), Number(card2)];
 }
 
 export const readHoleCards = tool(
@@ -58,16 +106,15 @@ export const readHoleCards = tool(
         return JSON.stringify({ error: "No encrypted cards available yet. Cards may not have been dealt." });
       }
 
-      const bite = new BITE(config.rpcUrl);
-      const decrypted = await bite.decryptECIES(encrypted);
-      const decoded = new TextDecoder().decode(
-        new Uint8Array(decrypted as unknown as ArrayBuffer),
-      );
+      const privKey = `0x${config.privateKey.replace("0x", "")}` as Hex;
+      const [card1, card2] = await decryptEncryptedCards(privKey, encrypted);
 
       return JSON.stringify({
         method: "getMyEncryptedCards+ECIES",
-        rawDecoded: decoded,
-        note: "Card encoding may need additional parsing based on BITE output format",
+        card1: decodeCard(card1),
+        card2: decodeCard(card2),
+        card1Encoded: card1,
+        card2Encoded: card2,
       });
     } catch (err) {
       return JSON.stringify({
@@ -77,7 +124,7 @@ export const readHoleCards = tool(
   },
   {
     name: "read_hole_cards",
-    description: "Read your hole cards. Uses getMyHoleCards after showdown or getMyEncryptedCards + BITE ECIES decryption during play.",
+    description: "Read your hole cards. Uses getMyHoleCards after showdown or getMyEncryptedCards + ECIES decryption during play.",
     schema: z.object({
       tableAddress: z.string().describe("Address of the poker table contract"),
     }),

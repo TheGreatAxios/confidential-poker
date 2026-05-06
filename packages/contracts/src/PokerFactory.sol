@@ -22,12 +22,13 @@ contract PokerFactory is Ownable {
     );
     event FeesCollected(address indexed table, uint256 amount, bool isEarlyQuit);
     event FeesWithdrawn(address indexed recipient, uint256 amount);
+    event TableRefilled(address indexed table, uint256 amount);
 
     error TableNotFound(address table);
     error InsufficientPayment(uint256 required, uint256 provided);
     error TransferFailed();
 
-    constructor(address _chipToken, uint256 _ctxCallbackValueWei) Ownable(msg.sender) {
+    constructor(address _chipToken, uint256 _ctxCallbackValueWei) payable Ownable(msg.sender) {
         require(_chipToken != address(0), "Zero address");
         require(_ctxCallbackValueWei > 0, "Zero callback value");
         CHIP_TOKEN = _chipToken;
@@ -41,10 +42,11 @@ contract PokerFactory is Ownable {
         uint256 maxPlayers,
         string calldata tableName
     ) external payable returns (address) {
-        uint256 minReserve = CTX_CALLBACK_VALUE_WEI * 10;
+        uint256 minReserve = CTX_CALLBACK_VALUE_WEI * 11;
         require(msg.value >= minReserve, InsufficientPayment(minReserve, msg.value));
 
         PokerGame table = new PokerGame{value: msg.value}(
+            address(this),
             CHIP_TOKEN,
             msg.sender,
             buyIn,
@@ -114,6 +116,18 @@ contract PokerFactory is Ownable {
         require(isKnownTable[msg.sender], TableNotFound(msg.sender));
         totalFeesCollected += msg.value;
         emit FeesCollected(msg.sender, msg.value, isEarlyQuit);
+    }
+
+    function refillTable(address table, uint256 amount) external {
+        require(isKnownTable[table], TableNotFound(table));
+        require(amount > 0, "Zero amount");
+        uint256 available = address(this).balance;
+        uint256 actual = amount < available ? amount : available;
+        if (actual > 0) {
+            (bool ok,) = payable(table).call{value: actual}("");
+            require(ok, TransferFailed());
+            emit TableRefilled(table, actual);
+        }
     }
 
     function withdrawFees() external onlyOwner {

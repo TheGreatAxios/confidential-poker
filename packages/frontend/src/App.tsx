@@ -99,7 +99,7 @@ function ActiveTable({
             </Suspense>
           )}
 
-          {!gameState.humanPlayer && (
+          {!gameState.humanPlayer && isWalletConnected && (
             <Suspense fallback={null}>
               <JoinPanel
                 tableAddress={tableAddress}
@@ -108,6 +108,17 @@ function ActiveTable({
                 onJoined={joinHumanPlayer}
               />
             </Suspense>
+          )}
+
+          {!gameState.humanPlayer && !isWalletConnected && (
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-poker-text-muted">
+                Spectating
+              </span>
+              <span className="ml-2 text-xs text-poker-text-dim">
+                — Connect wallet to join the table
+              </span>
+            </div>
           )}
 
           {!isConnected && isWalletConnected && <FaucetPanel />}

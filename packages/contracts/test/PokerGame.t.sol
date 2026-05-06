@@ -15,6 +15,7 @@ import {EncryptECIESMock} from "@skalenetwork/bite-solidity/test/EncryptECIESMoc
 
 contract PokerGameHarness is PokerGame {
     constructor(
+        address _factory,
         address _gameToken,
         address _owner,
         uint256 _buyIn,
@@ -26,7 +27,7 @@ contract PokerGameHarness is PokerGame {
     )
         payable
         PokerGame(
-            _gameToken, _owner, _buyIn, _smallBlind, _bigBlind, _maxPlayers, _ctxCallbackValueWei, _tableName
+            _factory, _gameToken, _owner, _buyIn, _smallBlind, _bigBlind, _maxPlayers, _ctxCallbackValueWei, _tableName
         )
     {}
 
@@ -117,7 +118,7 @@ contract ChipTokenTest is Test {
 
 contract PokerFactoryTest is Test {
     uint256 constant CALLBACK_VALUE = 1 ether;
-    uint256 constant MIN_RESERVE = CALLBACK_VALUE * 10;
+    uint256 constant MIN_RESERVE = CALLBACK_VALUE * 11;
     uint256 constant BUY_IN = 1000e18;
     uint256 constant SB = 5e17;
     uint256 constant BB = 1e18;
@@ -176,7 +177,7 @@ contract HandEvaluatorTest is Test, BiteMockSetup {
         _setupBiteMocks();
         token = new MockSKL();
         harness = new PokerGameHarness{value: 20 ether}(
-            address(token), address(this), 1000e18, 5e17, 1e18, 6, 1 ether, "Test"
+            address(this), address(token), address(this), 1000e18, 5e17, 1e18, 6, 1 ether, "Test"
         );
     }
 
@@ -308,7 +309,7 @@ contract SidePotMathTest is Test, BiteMockSetup {
         _setupBiteMocks();
         token = new MockSKL();
         harness = new PokerGameHarness{value: 20 ether}(
-            address(token), address(this), 1000e18, 5e17, 1e18, 6, 1 ether, "SidePot"
+            address(this), address(token), address(this), 1000e18, 5e17, 1e18, 6, 1 ether, "SidePot"
         );
     }
 
@@ -394,7 +395,7 @@ contract SidePotMathTest is Test, BiteMockSetup {
 
 contract PokerGameUnitTest is Test, BiteMockSetup {
     uint256 constant CALLBACK_VALUE = 1 ether;
-    uint256 constant MIN_RESERVE = CALLBACK_VALUE * 10;
+    uint256 constant MIN_RESERVE = CALLBACK_VALUE * 11;
     uint256 constant BUY_IN = 1000e18;
     uint256 constant SB = 5e17;
     uint256 constant BB = 1e18;
@@ -409,7 +410,7 @@ contract PokerGameUnitTest is Test, BiteMockSetup {
         _setupBiteMocks();
         token = new MockSKL();
         game = new PokerGame{value: MIN_RESERVE * 5}(
-            address(token), address(this), BUY_IN, SB, BB, 6, CALLBACK_VALUE, "Unit Test"
+            address(this), address(token), address(this), BUY_IN, SB, BB, 6, CALLBACK_VALUE, "Unit Test"
         );
 
         token.mint(alice, BUY_IN);
@@ -426,12 +427,12 @@ contract PokerGameUnitTest is Test, BiteMockSetup {
 
     function testConstructorRequiresMinReserve() external {
         vm.expectRevert(PokerGame.InsufficientCtxReserve.selector);
-        new PokerGame{value: MIN_RESERVE - 1}(address(token), address(this), BUY_IN, SB, BB, 6, CALLBACK_VALUE, "X");
+        new PokerGame{value: MIN_RESERVE - 1}(address(this), address(token), address(this), BUY_IN, SB, BB, 6, CALLBACK_VALUE, "X");
     }
 
     function testConstructorValidatesBuyIn() external {
         vm.expectRevert(PokerGame.BuyInOutOfRange.selector);
-        new PokerGame{value: MIN_RESERVE}(address(token), address(this), 1e18, SB, BB, 6, CALLBACK_VALUE, "X");
+        new PokerGame{value: MIN_RESERVE}(address(this), address(token), address(this), 1e18, SB, BB, 6, CALLBACK_VALUE, "X");
     }
 
     function testSitDown() external {
@@ -532,7 +533,7 @@ contract PokerGameIntegrationTest is Test, BiteMockSetup {
     using HandEvaluator for uint8[7];
 
     uint256 constant CALLBACK_VALUE = 1 ether;
-    uint256 constant MIN_RESERVE = CALLBACK_VALUE * 10;
+    uint256 constant MIN_RESERVE = CALLBACK_VALUE * 11;
     uint256 constant BUY_IN = 1000e18;
     uint256 constant SB = 5e17;
     uint256 constant BB = 1e18;
@@ -550,7 +551,7 @@ contract PokerGameIntegrationTest is Test, BiteMockSetup {
         _setupBiteMocks();
         token = new MockSKL();
         game = new PokerGame{value: MIN_RESERVE * 5}(
-            address(token), address(this), BUY_IN, SB, BB, 6, CALLBACK_VALUE, "Integration"
+            address(this), address(token), address(this), BUY_IN, SB, BB, 6, CALLBACK_VALUE, "Integration"
         );
 
         token.mint(alice, BUY_IN);

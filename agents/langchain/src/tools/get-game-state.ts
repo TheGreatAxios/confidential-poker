@@ -32,7 +32,6 @@ export const getGameState = tool(
       const currentBet = (await ks.readContract(addr, POKER_GAME_ABI, "currentBet", [])) as bigint;
       const turnIdx = (await ks.readContract(addr, POKER_GAME_ABI, "getCurrentTurnIndex", [])) as bigint;
       const playerCount = (await ks.readContract(addr, POKER_GAME_ABI, "playerCount", [])) as bigint;
-      const activeCount = (await ks.readContract(addr, POKER_GAME_ABI, "activePlayerCount", [])) as bigint;
       const handNumber = (await ks.readContract(addr, POKER_GAME_ABI, "handNumber", [])) as bigint;
       const community = (await ks.readContract(addr, POKER_GAME_ABI, "getCommunityCards", [])) as number[];
 

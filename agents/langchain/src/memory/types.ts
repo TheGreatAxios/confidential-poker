@@ -1,4 +1,4 @@
-import type { Checkpointer } from "@langchain/langgraph";
+import type { BaseCheckpointSaver } from "@langchain/langgraph-checkpoint";
 
 export interface ActionLog {
   handNumber: number;
@@ -11,7 +11,7 @@ export interface ActionLog {
 }
 
 export interface MemoryBackend {
-  checkpointer: Checkpointer;
+  checkpointer: BaseCheckpointSaver;
   logAction(entry: ActionLog): Promise<void>;
   getHandHistory(limit: number): Promise<ActionLog[]>;
   getSessionState(key: string): Promise<string | null>;

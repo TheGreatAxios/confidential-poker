@@ -36,8 +36,8 @@ export const submitAction = tool(
 
       const data = encodeFunctionData({
         abi: POKER_GAME_ABI,
-        functionName: funcName,
-        args,
+        functionName: funcName as "fold" | "check" | "call" | "raise",
+        args: args as readonly unknown[],
       });
 
       const txHash = await ks.signAndSend(addr, data);

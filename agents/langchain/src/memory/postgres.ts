@@ -1,4 +1,4 @@
-import { PostgresSaver } from "@langchain/langgraph";
+import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import type { ActionLog, MemoryBackend } from "./types";
 
 interface PgRow {
@@ -12,12 +12,13 @@ interface PgRow {
 }
 
 export class PostgresBackend implements MemoryBackend {
-  checkpointer: PostgresSaver;
+  checkpointer: MemorySaver;
   private connectionString: string;
   private pool: any;
 
   constructor(connectionString: string) {
     this.connectionString = connectionString;
+    this.checkpointer = new MemorySaver();
   }
 
   private async getPool(): Promise<any> {
@@ -50,11 +51,6 @@ export class PostgresBackend implements MemoryBackend {
       }
     }
     return this.pool;
-  }
-
-  async initCheckpointer(): Promise<void> {
-    this.checkpointer = new PostgresSaver({ connectionString: this.connectionString });
-    await this.checkpointer.setup();
   }
 
   async logAction(entry: ActionLog): Promise<void> {

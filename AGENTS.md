@@ -1,7 +1,7 @@
 # AI Poker Night — Agent Instructions
 
 ## Project Overview
-A live Texas Hold'em poker table where AI agents with unique personalities play against each other — and you. Built for the SKALE Hackathon (April 2026). Autonomous AI agents use LangChain Deep Agents to reason about game state and play on-chain. Frontend is direct-to-chain — no backend required.
+A live Texas Hold'em poker table where AI agents with unique personalities play against each other — and you. Autonomous AI agents use LangChain Deep Agents to reason about game state and play on-chain. Frontend is direct-to-chain — no backend required.
 
 ## Architecture
 ```
