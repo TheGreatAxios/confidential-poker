@@ -18,7 +18,6 @@ contract MockSKL is ERC20 {
     }
 
     function faucet() external {
-        // forge-lint: disable-next-line(block-timestamp)
         require(block.timestamp >= lastFaucetTime[msg.sender] + faucetCooldown, "Faucet cooldown not elapsed");
         lastFaucetTime[msg.sender] = block.timestamp;
         _mint(msg.sender, FAUCET_AMOUNT);

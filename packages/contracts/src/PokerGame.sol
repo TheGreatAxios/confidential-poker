@@ -81,14 +81,19 @@ contract PokerGame is IBiteSupplicant, RNG {
     uint8 private _pendingCommunityCardCount;
 
     mapping(address => bool) public leaveRequested;
+    mapping(address => bool) public isReady;
+    uint256 public readyCount;
     mapping(address => uint256) private _handContribution;
     address[] private _contributingPlayers;
+    address[] private _handResultWinners;
+    uint256[] private _handResultAmounts;
+    string[] private _handResultNames;
 
     event PlayerJoined(address indexed player, uint256 seat);
     event GameStarted(uint256 handNumber, address indexed dealer);
     event CardsDealt(address indexed player);
     event CardsEncrypted(address indexed player, uint256 playerIndex);
-    event PhaseChanged(GamePhase newPhase);
+    event PhaseChanged(GamePhase newPhase, uint256 handNumber);
     event PlayerFolded(address indexed player);
     event PlayerChecked(address indexed player);
     event PlayerCalled(address indexed player, uint256 amount);
@@ -105,6 +110,11 @@ contract PokerGame is IBiteSupplicant, RNG {
     event PlayerLeft(address indexed player, uint256 returned);
     event PlayerForfeited(address indexed player, uint256 forfeited);
     event LeaveRequested(address indexed player);
+    event PlayerReady(address indexed player);
+    event PlayerUnready(address indexed player);
+    event TurnChanged(uint256 indexed playerIndex, address indexed player);
+    event PlayerAction(address indexed player, string action, uint256 amount);
+    event HandResult(address[] winners, uint256[] amounts, string[] handNames);
 
     error NotOwner();
     error NotAPlayer();
@@ -227,6 +237,7 @@ contract PokerGame is IBiteSupplicant, RNG {
     }
 
     function requestLeave() external onlyPlayer {
+        _unready(msg.sender);
         leaveRequested[msg.sender] = true;
         emit LeaveRequested(msg.sender);
     }
@@ -235,10 +246,30 @@ contract PokerGame is IBiteSupplicant, RNG {
         delete leaveRequested[msg.sender];
     }
 
+    function readyUp() external onlyPlayer {
+        require(phase == GamePhase.Waiting, GameInProgress());
+        require(!isReady[msg.sender], "Already ready");
+        require(!leaveRequested[msg.sender], "Leave requested");
+
+        isReady[msg.sender] = true;
+        readyCount++;
+        emit PlayerReady(msg.sender);
+
+        if (readyCount >= MIN_PLAYERS && readyCount == _countPlayersWithStack() && !_communityDealPending && !_showdownPending) {
+            dealNewHand();
+        }
+    }
+
+    function unready() external onlyPlayer {
+        require(phase == GamePhase.Waiting, GameInProgress());
+        _unready(msg.sender);
+    }
+
     function fold() external onlyPlayer isCurrentTurn inBettingPhase {
         players[currentTurnIndex].isActive = false;
         players[currentTurnIndex].hasActed = true;
         emit PlayerFolded(msg.sender);
+        emit PlayerAction(msg.sender, "fold", 0);
         _advanceTurn();
     }
 
@@ -246,6 +277,7 @@ contract PokerGame is IBiteSupplicant, RNG {
         require(players[currentTurnIndex].betAmount >= currentBet, MustCallOrRaise());
         players[currentTurnIndex].hasActed = true;
         emit PlayerChecked(msg.sender);
+        emit PlayerAction(msg.sender, "check", 0);
         _advanceTurn();
     }
 
@@ -264,6 +296,7 @@ contract PokerGame is IBiteSupplicant, RNG {
         }
 
         emit PlayerCalled(msg.sender, actualCall);
+        emit PlayerAction(msg.sender, "call", actualCall);
         _advanceTurn();
     }
 
@@ -292,12 +325,14 @@ contract PokerGame is IBiteSupplicant, RNG {
         players[currentTurnIndex].hasActed = true;
 
         emit PlayerRaised(msg.sender, newBet);
+        emit PlayerAction(msg.sender, "raise", raiseAmount);
         _advanceTurn();
     }
 
     function dealNewHand() public {
         require(phase == GamePhase.Waiting, "Game not waiting");
         require(!_communityDealPending && !_showdownPending, CallbackPending());
+        require(readyCount >= MIN_PLAYERS, "Not enough ready players");
         require(_countPlayersWithStack() >= MIN_PLAYERS, NotEnoughPlayers());
         require(address(this).balance >= minimumCtxReserve(), InsufficientCtxReserve());
 
@@ -330,12 +365,17 @@ contract PokerGame is IBiteSupplicant, RNG {
 
         uint256 activeCount;
         for (uint256 i = 0; i < players.length; i++) {
-            if (players[i].stack > 0) {
+            if (players[i].stack > 0 && isReady[players[i].addr]) {
                 players[i].isActive = true;
                 players[i].hasActed = false;
                 activeCount++;
             }
         }
+
+        for (uint256 i = 0; i < players.length; i++) {
+            isReady[players[i].addr] = false;
+        }
+        readyCount = 0;
         require(activeCount >= MIN_PLAYERS, NotEnoughPlayers());
 
         dealerIndex = _rotateDealer();
@@ -383,7 +423,8 @@ contract PokerGame is IBiteSupplicant, RNG {
 
         phase = GamePhase.Preflop;
         emit GameStarted(handNumber, dealer);
-        emit PhaseChanged(GamePhase.Preflop);
+        emit PhaseChanged(GamePhase.Preflop, handNumber);
+        emit TurnChanged(currentTurnIndex, players[currentTurnIndex].addr);
     }
 
     function dealNext() external {
@@ -432,6 +473,10 @@ contract PokerGame is IBiteSupplicant, RNG {
             emit CardsRevealed(players[playerIdx].addr, card1, card2);
         }
 
+        delete _handResultWinners;
+        delete _handResultAmounts;
+        delete _handResultNames;
+
         uint256 activeCount;
         for (uint256 i = 0; i < players.length; i++) {
             if (players[i].isActive) activeCount++;
@@ -443,6 +488,9 @@ contract PokerGame is IBiteSupplicant, RNG {
                     players[i].stack += pot;
                     emit Winner(players[i].addr, pot, "Last player standing");
                     emit PotAwarded(players[i].addr, pot);
+                    _handResultWinners.push(players[i].addr);
+                    _handResultAmounts.push(pot);
+                    _handResultNames.push("Last player standing");
                     break;
                 }
             }
@@ -450,6 +498,8 @@ contract PokerGame is IBiteSupplicant, RNG {
         } else {
             _distributePots();
         }
+
+        emit HandResult(_handResultWinners, _handResultAmounts, _handResultNames);
 
         _resetWaitingState();
         emit HandComplete();
@@ -463,6 +513,8 @@ contract PokerGame is IBiteSupplicant, RNG {
         require(phase == GamePhase.Waiting, GameInProgress());
         require(!_showdownPending, ShowdownInProgress());
 
+        _unready(msg.sender);
+
         uint256 idx = _playerIndex(msg.sender);
         uint256 stack = players[idx].stack;
 
@@ -475,6 +527,8 @@ contract PokerGame is IBiteSupplicant, RNG {
 
     function forfeitAndLeave() external onlyPlayer {
         require(!_showdownPending, ShowdownInProgress());
+
+        _unready(msg.sender);
 
         uint256 idx = _playerIndex(msg.sender);
 
@@ -716,6 +770,7 @@ contract PokerGame is IBiteSupplicant, RNG {
         }
 
         currentTurnIndex = nextIdx;
+        emit TurnChanged(currentTurnIndex, players[currentTurnIndex].addr);
     }
 
     function _allNonAllInActed() internal view returns (bool) {
@@ -848,6 +903,9 @@ contract PokerGame is IBiteSupplicant, RNG {
             players[idx].stack += amount;
             emit Winner(eligible[0], amount, "");
             emit PotAwarded(eligible[0], amount);
+            _handResultWinners.push(eligible[0]);
+            _handResultAmounts.push(amount);
+            _handResultNames.push("");
             return;
         }
 
@@ -892,6 +950,9 @@ contract PokerGame is IBiteSupplicant, RNG {
             players[winnerIndices[i]].stack += payout;
             emit Winner(players[winnerIndices[i]].addr, payout, i == 0 ? handName : "");
             emit PotAwarded(players[winnerIndices[i]].addr, payout);
+            _handResultWinners.push(players[winnerIndices[i]].addr);
+            _handResultAmounts.push(payout);
+            _handResultNames.push(i == 0 ? handName : "");
         }
     }
 
@@ -1017,12 +1078,21 @@ contract PokerGame is IBiteSupplicant, RNG {
             uint256 idx = i - 1;
             if (leaveRequested[players[idx].addr]) {
                 address playerAddr = players[idx].addr;
+                _unready(playerAddr);
                 uint256 stack = players[idx].stack;
                 delete leaveRequested[playerAddr];
                 _removePlayerAt(idx);
                 gameToken.safeTransfer(playerAddr, stack);
                 emit PlayerLeft(playerAddr, stack);
             }
+        }
+    }
+
+    function _unready(address player) internal {
+        if (isReady[player]) {
+            isReady[player] = false;
+            readyCount--;
+            emit PlayerUnready(player);
         }
     }
 
@@ -1142,18 +1212,19 @@ contract PokerGame is IBiteSupplicant, RNG {
         if (_communityCardsDealt == 3) {
             phase = GamePhase.Flop;
             emit FlopDealt(communityCards[0], communityCards[1], communityCards[2]);
-            emit PhaseChanged(GamePhase.Flop);
+            emit PhaseChanged(GamePhase.Flop, handNumber);
         } else if (_communityCardsDealt == 4) {
             phase = GamePhase.Turn;
             emit TurnDealt(communityCards[3]);
-            emit PhaseChanged(GamePhase.Turn);
+            emit PhaseChanged(GamePhase.Turn, handNumber);
         } else if (_communityCardsDealt == 5) {
             phase = GamePhase.River;
             emit RiverDealt(communityCards[4]);
-            emit PhaseChanged(GamePhase.River);
+            emit PhaseChanged(GamePhase.River, handNumber);
         }
 
         currentTurnIndex = _nextActiveIndex(dealerIndex);
+        emit TurnChanged(currentTurnIndex, players[currentTurnIndex].addr);
 
         if (_allActiveAllIn()) {
             if (_communityCardsDealt < 5) {

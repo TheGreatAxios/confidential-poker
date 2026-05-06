@@ -462,13 +462,20 @@ contract PokerGameUnitTest is Test, BiteMockSetup {
         game.sitDown(_viewerKey(99));
     }
 
+    function _readyUpAll() internal {
+        vm.prank(alice);
+        game.readyUp();
+        vm.prank(bob);
+        game.readyUp();
+    }
+
     function testSitDownRevertsDuringGame() external {
         vm.prank(alice);
         game.sitDown(_viewerKey(1));
         vm.prank(bob);
         game.sitDown(_viewerKey(2));
 
-        game.dealNewHand();
+        _readyUpAll();
 
         vm.prank(carol);
         vm.expectRevert(PokerGame.GameInProgress.selector);
@@ -504,7 +511,7 @@ contract PokerGameUnitTest is Test, BiteMockSetup {
         game.sitDown(_viewerKey(1));
         vm.prank(bob);
         game.sitDown(_viewerKey(2));
-        game.dealNewHand();
+        _readyUpAll();
 
         vm.prank(alice);
         vm.expectRevert(PokerGame.GameInProgress.selector);
@@ -536,6 +543,9 @@ contract PokerGameIntegrationTest is Test, BiteMockSetup {
     address internal bob = address(0xB0B);
     address internal carol = address(0xC4401);
 
+    event PhaseChanged(PokerGame.GamePhase newPhase, uint256 handNumber);
+    event HandResult(address[] winners, uint256[] amounts, string[] handNames);
+
     function setUp() external {
         _setupBiteMocks();
         token = new MockSKL();
@@ -562,6 +572,22 @@ contract PokerGameIntegrationTest is Test, BiteMockSetup {
         return addr;
     }
 
+    function _readyUpAll() internal {
+        vm.prank(alice);
+        game.readyUp();
+        vm.prank(bob);
+        game.readyUp();
+    }
+
+    function _readyUpAll3() internal {
+        vm.prank(alice);
+        game.readyUp();
+        vm.prank(carol);
+        game.readyUp();
+        vm.prank(bob);
+        game.readyUp();
+    }
+
     function _actAsCurrentTurn(string memory action) internal {
         address player = _currentTurnPlayer();
         if (keccak256(bytes(action)) == keccak256(bytes("fold"))) {
@@ -583,7 +609,7 @@ contract PokerGameIntegrationTest is Test, BiteMockSetup {
         vm.prank(bob);
         game.sitDown(_viewerKey(2));
 
-        game.dealNewHand();
+        _readyUpAll();
         assertEq(uint8(game.phase()), 1);
 
         vm.prank(alice);
@@ -622,7 +648,7 @@ contract PokerGameIntegrationTest is Test, BiteMockSetup {
         vm.prank(bob);
         game.sitDown(_viewerKey(2));
 
-        game.dealNewHand();
+        _readyUpAll();
 
         vm.prank(alice);
         game.fold();
@@ -653,7 +679,7 @@ contract PokerGameIntegrationTest is Test, BiteMockSetup {
         vm.prank(carol);
         game.sitDown(_viewerKey(3));
 
-        game.dealNewHand();
+        _readyUpAll3();
         assertEq(uint8(game.phase()), 1);
         assertEq(game.playerCount(), 3);
 
@@ -710,7 +736,7 @@ contract PokerGameIntegrationTest is Test, BiteMockSetup {
         vm.prank(carol);
         game.sitDown(_viewerKey(3));
 
-        game.dealNewHand();
+        _readyUpAll();
 
         vm.prank(carol);
         game.requestLeave();
@@ -736,7 +762,7 @@ contract PokerGameIntegrationTest is Test, BiteMockSetup {
         vm.prank(bob);
         game.sitDown(_viewerKey(2));
 
-        game.dealNewHand();
+        _readyUpAll();
 
         vm.prank(alice);
         game.raise(2e18);
@@ -758,6 +784,284 @@ contract PokerGameIntegrationTest is Test, BiteMockSetup {
         biteMock.sendCallback();
         _actAsCurrentTurn("check");
         _actAsCurrentTurn("check");
+
+        biteMock.sendCallback();
+
+        assertEq(uint8(game.phase()), 0);
+        assertEq(game.pot(), 0);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // READY-UP TESTS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    function testReadyUpFailsIfNotPlayer() external {
+        vm.expectRevert(PokerGame.NotAPlayer.selector);
+        game.readyUp();
+    }
+
+    function testSitDownDoesNotAutoReady() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        assertFalse(game.isReady(alice));
+        assertEq(game.readyCount(), 0);
+    }
+
+    function testPlayerReadyMarksReady() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+
+        vm.prank(alice);
+        game.readyUp();
+        assertTrue(game.isReady(alice));
+        assertEq(game.readyCount(), 1);
+    }
+
+    function testHandDoesNotStartWithoutEnoughReady() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(alice);
+        game.readyUp();
+        assertEq(uint8(game.phase()), 0);
+    }
+
+    function testTwoPlayersReadyAutoStartsHand() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+
+        vm.prank(alice);
+        game.readyUp();
+        assertEq(uint8(game.phase()), 0);
+        assertEq(game.readyCount(), 1);
+
+        vm.prank(bob);
+        game.readyUp();
+        assertEq(uint8(game.phase()), 1);
+        assertEq(game.readyCount(), 0);
+    }
+
+    function testUnreadyPlayerNotInGame() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+
+        vm.prank(alice);
+        game.readyUp();
+        assertTrue(game.isReady(alice));
+
+        vm.prank(alice);
+        game.unready();
+        assertFalse(game.isReady(alice));
+        assertEq(game.readyCount(), 0);
+    }
+
+    function testUnreadyPlayerCannotStartHand() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+
+        vm.prank(alice);
+        game.readyUp();
+        assertEq(game.readyCount(), 1);
+
+        vm.prank(alice);
+        game.unready();
+        assertEq(game.readyCount(), 0);
+
+        vm.prank(bob);
+        game.readyUp();
+        assertEq(uint8(game.phase()), 0);
+        assertEq(game.readyCount(), 1);
+    }
+
+    function testUnreadyPlayerSitsOutHand() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+        vm.prank(carol);
+        game.sitDown(_viewerKey(3));
+
+        _readyUpAll3();
+
+        assertEq(game.playerCount(), 3);
+        assertEq(uint8(game.phase()), 1);
+
+        uint256 active = game.activePlayerCount();
+        assertEq(active, 3);
+    }
+
+    function testUnreadyPlayerCanReadyForNextHand() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+
+        _readyUpAll();
+
+        vm.prank(alice);
+        game.fold();
+        biteMock.sendCallback();
+
+        assertEq(uint8(game.phase()), 0);
+
+        vm.prank(alice);
+        game.readyUp();
+        assertTrue(game.isReady(alice));
+
+        vm.prank(bob);
+        game.readyUp();
+        assertEq(uint8(game.phase()), 1);
+    }
+
+    function testLeaveRequestBlocksReadyUp() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+
+        vm.prank(alice);
+        game.requestLeave();
+
+        vm.prank(alice);
+        vm.expectRevert("Leave requested");
+        game.readyUp();
+    }
+
+    function testReadyPlayerRequestsLeaveAutoUnreadies() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+
+        vm.prank(alice);
+        game.readyUp();
+        assertTrue(game.isReady(alice));
+        assertEq(game.readyCount(), 1);
+
+        vm.prank(alice);
+        game.requestLeave();
+        assertFalse(game.isReady(alice));
+        assertEq(game.readyCount(), 0);
+    }
+
+    function testReadyPlayerLeaveTableCleansUp() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+
+        vm.prank(alice);
+        game.readyUp();
+        assertEq(game.readyCount(), 1);
+
+        vm.prank(alice);
+        game.leaveTable();
+        assertEq(game.readyCount(), 0);
+        assertEq(game.playerCount(), 0);
+    }
+
+    function testReadyPlayerForfeitLeavesCleansUp() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+
+        vm.prank(alice);
+        game.readyUp();
+        assertEq(game.readyCount(), 1);
+
+        vm.prank(bob);
+        game.readyUp();
+        assertEq(game.readyCount(), 0);
+
+        vm.prank(alice);
+        game.forfeitAndLeave();
+        assertEq(game.playerCount(), 1);
+    }
+
+    function testDealNewHandResetsReadyState() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+
+        _readyUpAll();
+
+        assertEq(uint8(game.phase()), 1);
+        assertEq(game.readyCount(), 0);
+        assertFalse(game.isReady(alice));
+        assertFalse(game.isReady(bob));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // RICH EVENT TESTS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    function testTurnChangedEventOnAdvance() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+        _readyUpAll();
+
+        assertEq(game.getCurrentTurnIndex(), 0);
+
+        vm.prank(alice);
+        // forge-lint: disable-next-line(unchecked-call) — game may revert naturally in test
+        game.call();
+
+        assertEq(game.getCurrentTurnIndex(), 1);
+    }
+
+    function testPhaseChangedIncludesHandNumber() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+
+        vm.prank(alice);
+        game.readyUp();
+
+        vm.expectEmit(false, false, false, true);
+        emit PhaseChanged(PokerGame.GamePhase.Preflop, 1);
+        vm.prank(bob);
+        game.readyUp();
+    }
+
+    function testHandResultEventOnFold() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+        _readyUpAll();
+
+        vm.prank(alice);
+        game.fold();
+
+        vm.expectEmit(false, false, false, true);
+        address[] memory winners = new address[](1);
+        winners[0] = bob;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = SB + BB;
+        string[] memory handNames = new string[](1);
+        handNames[0] = "Last player standing";
+        emit HandResult(winners, amounts, handNames);
+        biteMock.sendCallback();
+    }
+
+    function testHandResultEventOnShowdown() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+        _readyUpAll();
+
+        vm.prank(alice);
+        // forge-lint: disable-next-line(unchecked-call) — game may revert naturally in test
+        game.call();
+        vm.prank(bob);
+        game.check();
 
         biteMock.sendCallback();
 

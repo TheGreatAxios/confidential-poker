@@ -1149,6 +1149,12 @@ const POKER_GAME_BASE_ABI = [
         "type": "uint8",
         "indexed": false,
         "internalType": "enum PokerGame.GamePhase"
+      },
+      {
+        "name": "handNumber",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -1555,6 +1561,90 @@ const POKER_GAME_EXTENSION_ABI = [
     type: "event",
     name: "LeaveRequested",
     inputs: [{ name: "player", type: "address", indexed: true }],
+    anonymous: false,
+  },
+  {
+    type: "function",
+    name: "isReady",
+    inputs: [{ name: "player", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "readyCount",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "readyUp",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "unready",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "event",
+    name: "PotAwarded",
+    inputs: [
+      { name: "player", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "LeaveRequested",
+    inputs: [{ name: "player", type: "address", indexed: true }],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "PlayerReady",
+    inputs: [{ name: "player", type: "address", indexed: true }],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "PlayerUnready",
+    inputs: [{ name: "player", type: "address", indexed: true }],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "TurnChanged",
+    inputs: [
+      { name: "playerIndex", type: "uint256", indexed: true },
+      { name: "player", type: "address", indexed: true },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "PlayerAction",
+    inputs: [
+      { name: "player", type: "address", indexed: true },
+      { name: "action", type: "string", indexed: false },
+      { name: "amount", type: "uint256", indexed: false },
+    ],
+    anonymous: false,
+  },
+  {
+    type: "event",
+    name: "HandResult",
+    inputs: [
+      { name: "winners", type: "address[]", indexed: false },
+      { name: "amounts", type: "uint256[]", indexed: false },
+      { name: "handNames", type: "string[]", indexed: false },
+    ],
     anonymous: false,
   },
 ] as const;

@@ -61,6 +61,20 @@ export const POKER_TABLE_ABI = [
     outputs: [],
     stateMutability: 'nonpayable',
   },
+  {
+    type: 'function',
+    name: 'readyUp',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+  {
+    type: 'function',
+    name: 'unready',
+    inputs: [],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
 
   // ── Game Flow (dealer-controlled) ──────────────────────────────────────
   {
@@ -221,6 +235,20 @@ export const POKER_TABLE_ABI = [
     outputs: [{ name: '', type: 'uint256' }],
     stateMutability: 'view',
   },
+  {
+    type: 'function',
+    name: 'isReady',
+    inputs: [{ name: 'player', type: 'address' }],
+    outputs: [{ name: '', type: 'bool' }],
+    stateMutability: 'view',
+  },
+  {
+    type: 'function',
+    name: 'readyCount',
+    inputs: [],
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+  },
 
   // ── Events ─────────────────────────────────────────────────────────────
   {
@@ -318,12 +346,51 @@ export const POKER_TABLE_ABI = [
   {
     type: 'event',
     name: 'PhaseChanged',
-    inputs: [{ name: 'newPhase', type: 'uint8', indexed: false }],
+    inputs: [
+      { name: 'newPhase', type: 'uint8', indexed: false },
+      { name: 'handNumber', type: 'uint256', indexed: false },
+    ],
   },
   {
     type: 'event',
     name: 'HandComplete',
     inputs: [],
+  },
+  {
+    type: 'event',
+    name: 'PlayerReady',
+    inputs: [{ name: 'player', type: 'address', indexed: true }],
+  },
+  {
+    type: 'event',
+    name: 'PlayerUnready',
+    inputs: [{ name: 'player', type: 'address', indexed: true }],
+  },
+  {
+    type: 'event',
+    name: 'TurnChanged',
+    inputs: [
+      { name: 'playerIndex', type: 'uint256', indexed: true },
+      { name: 'player', type: 'address', indexed: true },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'PlayerAction',
+    inputs: [
+      { name: 'player', type: 'address', indexed: true },
+      { name: 'action', type: 'string', indexed: false },
+      { name: 'amount', type: 'uint256', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'HandResult',
+    inputs: [
+      { name: 'winners', type: 'address[]', indexed: false },
+      { name: 'amounts', type: 'uint256[]', indexed: false },
+      { name: 'handNames', type: 'string[]', indexed: false },
+    ],
   },
 ] as const;
 

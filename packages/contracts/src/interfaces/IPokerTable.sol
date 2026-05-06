@@ -28,6 +28,11 @@ interface IPokerTable {
     function dealNext() external;
     function resolveHand() external;
     function forfeitAndLeave() external;
+    function readyUp() external;
+    function unready() external;
+
+    function isReady(address player) external view returns (bool);
+    function readyCount() external view returns (uint256);
 
     event PlayerJoined(address indexed player, uint256 seat);
     event PlayerLeft(address indexed player, uint256 returned);
@@ -39,4 +44,9 @@ interface IPokerTable {
     event Winner(address indexed player, uint256 amount, string handName);
     event PotAwarded(address indexed player, uint256 amount);
     event HandComplete();
+    event PlayerReady(address indexed player);
+    event PlayerUnready(address indexed player);
+    event TurnChanged(uint256 indexed playerIndex, address indexed player);
+    event PlayerAction(address indexed player, string action, uint256 amount);
+    event HandResult(address[] winners, uint256[] amounts, string[] handNames);
 }
