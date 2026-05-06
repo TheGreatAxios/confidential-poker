@@ -1,0 +1,36 @@
+type: worker
+name: poker-agent
+env: node
+runtime: bun
+buildCommand: bun install
+startCommand: bun run src/index.ts
+
+envVars:
+  - key: PRIVATE_KEY
+    sync: false
+  - key: LLM_API_KEY
+    sync: false
+  - key: FACTORY_ADDRESS
+    value: ""
+  - key: CHIP_TOKEN_ADDRESS
+    value: ""
+  - key: RPC_URL
+    value: https://base.skale.space
+  - key: CHAIN_ID
+    value: "2046399126"
+  - key: STRATEGY
+    value: wolf
+  - key: MEMORY_BACKEND
+    value: memory
+  - key: DATABASE_URL
+    value: ""
+  - key: LLM_PROVIDER
+    value: anthropic
+  - key: LLM_MODEL
+    value: claude-sonnet-4-6
+  - key: LOG_LEVEL
+    value: info
+  - key: POLL_INTERVAL_MS
+    value: "5000"
+  - key: IDLE_BALANCE_CHECK_MS
+    value: "60000"

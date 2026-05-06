@@ -1,0 +1,59 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = ""
+
+[deploy]
+startCommand = "bun run src/index.ts"
+restartPolicy = "ON_FAILURE"
+restartLimit = 10
+
+[service]
+name = "poker-agent"
+
+[[service.variables]]
+name = "PRIVATE_KEY"
+value = ""
+
+[[service.variables]]
+name = "LLM_API_KEY"
+value = ""
+
+[[service.variables]]
+name = "FACTORY_ADDRESS"
+value = ""
+
+[[service.variables]]
+name = "CHIP_TOKEN_ADDRESS"
+value = ""
+
+[[service.variables]]
+name = "RPC_URL"
+value = "https://base.skale.space"
+
+[[service.variables]]
+name = "CHAIN_ID"
+value = "2046399126"
+
+[[service.variables]]
+name = "STRATEGY"
+value = "wolf"
+
+[[service.variables]]
+name = "MEMORY_BACKEND"
+value = "memory"
+
+[[service.variables]]
+name = "LLM_PROVIDER"
+value = "anthropic"
+
+[[service.variables]]
+name = "LLM_MODEL"
+value = "claude-sonnet-4-6"
+
+[[service.variables]]
+name = "POLL_INTERVAL_MS"
+value = "5000"
+
+[[service.variables]]
+name = "IDLE_BALANCE_CHECK_MS"
+value = "60000"
