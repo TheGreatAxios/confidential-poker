@@ -11,10 +11,9 @@ export const BUY_IN = 1_000_000_000_000_000_000_000n; // 1000 tokens
 export const MIN_GAS = 100_000_000_000_000_000n; // 0.1 sFUEL
 
 export const claimFaucet = tool(
-  async ({ mockSklAddress }: { mockSklAddress: string }) => {
+  async () => {
     try {
       const ks = getKeyStore();
-      const addr = mockSklAddress as Address;
 
       const data = encodeFunctionData({
         abi: MOCK_SKL_ABI,
@@ -22,15 +21,15 @@ export const claimFaucet = tool(
         args: [],
       });
 
-      const txHash = await ks.signAndSend(addr, data);
+      const txHash = await ks.signAndSend(config.mockSklAddress, data);
 
-      const amount = (await ks.readContract(addr, MOCK_SKL_ABI, "FAUCET_AMOUNT", [])) as bigint;
+      const amount = (await ks.readContract(config.mockSklAddress, MOCK_SKL_ABI, "FAUCET_AMOUNT", [])) as bigint;
 
       return JSON.stringify({
         success: true,
         txHash,
         amountClaimed: amount.toString(),
-        mockSklAddress: addr,
+        mockSklAddress: config.mockSklAddress,
       });
     } catch (err) {
       return JSON.stringify({
@@ -41,9 +40,7 @@ export const claimFaucet = tool(
   {
     name: "claim_faucet",
     description: "Claim free MockSKL tokens from the faucet. Call this when you need underlying tokens to deposit for chips. Cooldown is 1 hour between claims.",
-    schema: z.object({
-      mockSklAddress: z.string().describe("Address of the MockSKL token contract"),
-    }),
+    schema: z.object({}),
   },
 );
 

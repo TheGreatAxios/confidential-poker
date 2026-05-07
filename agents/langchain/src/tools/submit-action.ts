@@ -19,7 +19,7 @@ export const submitAction = tool(
   }: {
     tableAddress: string;
     action: "fold" | "check" | "call" | "raise";
-    raiseAmount?: string;
+    raiseAmount: string | null;
   }) => {
     try {
       const ks = getKeyStore();
@@ -30,14 +30,14 @@ export const submitAction = tool(
         return JSON.stringify({ error: `Invalid action: ${action}` });
       }
 
-      const args: unknown[] = action === "raise"
+      const args: readonly [] | readonly [bigint] = action === "raise"
         ? [BigInt(raiseAmount ?? "0")]
         : [];
 
       const data = encodeFunctionData({
         abi: POKER_GAME_ABI,
         functionName: funcName as "fold" | "check" | "call" | "raise",
-        args: args as readonly unknown[],
+        args,
       });
 
       const txHash = await ks.signAndSend(addr, data);
@@ -60,7 +60,7 @@ export const submitAction = tool(
     schema: z.object({
       tableAddress: z.string().describe("Address of the poker table contract"),
       action: z.enum(["fold", "check", "call", "raise"]).describe("Poker action to submit"),
-      raiseAmount: z.string().optional().describe("Raise amount in wei (required for raise action)"),
+      raiseAmount: z.string().nullable().describe("Raise amount in wei for raise actions, otherwise null"),
     }),
   },
 );

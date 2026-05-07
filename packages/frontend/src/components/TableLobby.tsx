@@ -26,7 +26,7 @@ export function TableLobby({ onSelectTable }: TableLobbyProps) {
           </p>
           {!factoryConfigured && (
             <p className="mt-3 rounded-xl border border-poker-red/25 bg-poker-red/10 px-3 py-2 text-sm text-poker-red">
-              Factory address is not configured. Set VITE_POKER_FACTORY_ADDRESS.
+              Factory address is not configured. Update deployment config.
             </p>
           )}
         </div>

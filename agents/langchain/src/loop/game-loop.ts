@@ -5,16 +5,25 @@ import { createAgent } from "../agent";
 import { createMemoryBackend } from "../memory/factory";
 import { setLogActionBackend } from "../tools/log-action";
 import { discoverOrCreate } from "./discovery";
-import { startEventWatcher, watchTurnChanged } from "./event-watcher";
+import { watchTurnChanged } from "./event-watcher";
 import { createPoller } from "./poller";
 import { getGameState as getGameStateTool } from "../tools/get-game-state";
 import { readHoleCards as readHoleCardsTool } from "../tools/read-hole-cards";
 import { checkBalance as checkBalanceTool } from "../tools/check-balance";
-import { leaveTable as leaveTableTool } from "../tools/leave-table";
 import { joinTable as joinTableTool } from "../tools/join-table";
+import { submitAction as submitActionTool } from "../tools/submit-action";
 import { POKER_GAME_ABI } from "../abis/poker-game";
 import { POKER_FACTORY_ABI } from "../abis/poker-factory";
 import { MIN_GAS } from "../tools/claim-faucet";
+
+type PokerAction = "fold" | "check" | "call" | "raise";
+
+type BettingState = {
+  currentBet?: string;
+  myBet?: string;
+};
+
+const MIN_RAISE_WEI = "500000000000000000";
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -23,6 +32,98 @@ async function sleep(ms: number): Promise<void> {
 function exponentialBackoff(attempt: number): number {
   const delays = [1000, 2000, 4000, 8000, 30000];
   return delays[Math.min(attempt, delays.length - 1)];
+}
+
+function getFallbackAction(state: BettingState): PokerAction {
+  const currentBet = BigInt(state.currentBet ?? "0");
+  const myBet = BigInt(state.myBet ?? "0");
+  return currentBet > myBet ? "call" : "check";
+}
+
+async function submitPokerAction(
+  tableAddress: Address,
+  action: PokerAction,
+  raiseAmount: string | null,
+  label: string,
+): Promise<boolean> {
+  console.log(`Submitting ${label} action: ${action}`);
+  const actionResult = await submitActionTool.invoke({
+    tableAddress,
+    action,
+    raiseAmount,
+  });
+  console.log(`${label} action result: ${actionResult}`);
+
+  const parsed = JSON.parse(actionResult as string) as { error?: unknown };
+  return !parsed.error;
+}
+
+async function submitFallbackAction(tableAddress: Address, state: BettingState) {
+  const action = getFallbackAction(state);
+  await submitPokerAction(tableAddress, action, null, "fallback");
+}
+
+function textFromMessage(message: unknown): string {
+  if (typeof message === "string") return message;
+  if (!message || typeof message !== "object") return "";
+
+  const content = (message as { content?: unknown }).content;
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+
+  return content
+    .map((part) => {
+      if (typeof part === "string") return part;
+      if (!part || typeof part !== "object") return "";
+      const text = (part as { text?: unknown }).text;
+      return typeof text === "string" ? text : "";
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function extractResponseText(response: unknown): string {
+  if (!response || typeof response !== "object") return "";
+  const messages = (response as { messages?: unknown }).messages;
+  if (!Array.isArray(messages)) return "";
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const text = textFromMessage(messages[i]).trim();
+    if (text) return text;
+  }
+
+  return "";
+}
+
+function normalizeRecoveredAction(action: PokerAction, state: BettingState): PokerAction {
+  const currentBet = BigInt(state.currentBet ?? "0");
+  const myBet = BigInt(state.myBet ?? "0");
+  const facingBet = currentBet > myBet;
+
+  if (action === "check" && facingBet) return "call";
+  if (action === "call" && !facingBet) return "check";
+  return action;
+}
+
+function recoverActionFromText(text: string, state: BettingState): { action: PokerAction; raiseAmount: string | null } | null {
+  const normalized = text.toLowerCase();
+  const actionMatch = normalized.match(/\b(fold(?:ed)?|check(?:ed)?|call(?:ed)?|raise(?:d)?|bet)\b/);
+  if (!actionMatch) return null;
+
+  const rawAction = actionMatch[1];
+  const action: PokerAction = rawAction.startsWith("fold")
+    ? "fold"
+    : rawAction.startsWith("check")
+      ? "check"
+      : rawAction.startsWith("call")
+        ? "call"
+        : "raise";
+
+  const recoveredAction = normalizeRecoveredAction(action, state);
+  if (recoveredAction !== "raise") return { action: recoveredAction, raiseAmount: null };
+
+  const amountMatch = text.match(/\b\d{15,}\b/);
+  return { action: "raise", raiseAmount: amountMatch?.[0] ?? MIN_RAISE_WEI };
 }
 
 async function ensureGas(): Promise<void> {
@@ -58,6 +159,49 @@ async function ensureGas(): Promise<void> {
     }
     await sleep(15_000);
   }
+}
+
+async function waitForActionToSettle(
+  poll: () => Promise<{ isMyTurn: boolean; phase: number } | null>,
+): Promise<void> {
+  const deadline = Date.now() + 30_000;
+
+  while (Date.now() < deadline) {
+    const result = await poll();
+    if (!result || !result.isMyTurn || result.phase === 0 || result.phase === 5) {
+      return;
+    }
+    await sleep(1000);
+  }
+}
+
+async function readyUpIfWaiting(tableAddress: Address, playerAddress: Address, reason: string): Promise<boolean> {
+  const ks = getKeyStore();
+  const publicClient = ks.getPublicClient();
+  const phase = (await publicClient.readContract({
+    address: tableAddress,
+    abi: POKER_GAME_ABI,
+    functionName: "phase",
+  })) as number;
+
+  if (phase !== 0) return false;
+
+  const isReady = (await publicClient.readContract({
+    address: tableAddress,
+    abi: POKER_GAME_ABI,
+    functionName: "isReady",
+    args: [playerAddress],
+  })) as boolean;
+
+  if (isReady) return false;
+
+  console.log(reason);
+  const readyData = encodeFunctionData({
+    abi: POKER_GAME_ABI,
+    functionName: "readyUp",
+  });
+  await ks.signAndSend(tableAddress, readyData);
+  return true;
 }
 
 export async function runGameLoop() {
@@ -117,30 +261,7 @@ export async function runGameLoop() {
           seat = -1;
           await memoryBackend.setSessionState(sessionKey, "");
         } else {
-          // Check if table is in Waiting phase and re-ready-up
-          const currentPhase = (await publicClient.readContract({
-            address: tableAddress,
-            abi: POKER_GAME_ABI,
-            functionName: "phase",
-          })) as number;
-
-          if (currentPhase === 0) {
-            const isReady = (await publicClient.readContract({
-              address: tableAddress,
-              abi: POKER_GAME_ABI,
-              functionName: "isReady",
-              args: [ourAddress],
-            })) as boolean;
-
-            if (!isReady) {
-              console.log("Table is waiting — readying up...");
-              const readyData = encodeFunctionData({
-                abi: POKER_GAME_ABI,
-                functionName: "readyUp",
-              });
-              await ks.signAndSend(tableAddress, readyData);
-            }
-          }
+          await readyUpIfWaiting(tableAddress, ourAddress, "Table is waiting — readying up...");
         }
       }
     } catch {
@@ -195,28 +316,7 @@ export async function runGameLoop() {
         if (existingSeat >= 0) {
           console.log(`Already seated at table ${tableAddress} seat ${existingSeat} (restart recovery)`);
           seat = existingSeat;
-          // Ready up if in Waiting phase
-          const phase = await publicClient.readContract({
-            address: tableAddress,
-            abi: POKER_GAME_ABI,
-            functionName: "phase",
-          }) as number;
-          if (phase === 0) {
-            const isReady = await publicClient.readContract({
-              address: tableAddress,
-              abi: POKER_GAME_ABI,
-              functionName: "isReady",
-              args: [ourAddress],
-            }) as boolean;
-            if (!isReady) {
-              console.log("Table is waiting — readying up...");
-              const readyData = encodeFunctionData({
-                abi: POKER_GAME_ABI,
-                functionName: "readyUp",
-              });
-              await ks.signAndSend(tableAddress, readyData);
-            }
-          }
+          await readyUpIfWaiting(tableAddress, ourAddress, "Table is waiting — readying up...");
         } else {
           console.log(`Joining table ${tableAddress}...`);
           const joinResult = await joinTableTool.invoke({ tableAddress });
@@ -253,7 +353,7 @@ export async function runGameLoop() {
       if (!isOurTurnNow) {
         // Enter fallback: event watcher + polling loop
         let turnTriggered = false;
-        let readyUpSent = false;
+        let readyUpInFlight = false;
 
         const unwatchEvent = watchTurnChanged(
           publicClient,
@@ -262,11 +362,6 @@ export async function runGameLoop() {
           () => { turnTriggered = true; },
         );
 
-        const readyData = encodeFunctionData({
-          abi: POKER_GAME_ABI,
-          functionName: "readyUp",
-        });
-
         console.log(`Watching for turn at table ${tableAddress}...`);
         while (!turnTriggered) {
           const pr = await watchPoller.poll();
@@ -274,19 +369,19 @@ export async function runGameLoop() {
             if (pr.isMyTurn && pr.phase >= 1 && pr.phase <= 4) {
               turnTriggered = true;
               pollResult = pr;
-            } else if (pr.phase === 0 && !readyUpSent) {
-              // Hand in Waiting phase and we haven't readied up yet
-              console.log("Readying up for next hand...");
-              readyUpSent = true;
+            } else if (pr.phase === 0 && !readyUpInFlight) {
               try {
-                await ks.signAndSend(tableAddress, readyData);
+                readyUpInFlight = true;
+                await readyUpIfWaiting(tableAddress, ourAddress, "Readying up for next hand...");
                 const pr2 = await watchPoller.poll();
                 if (pr2 && pr2.isMyTurn && pr2.phase >= 1 && pr2.phase <= 4) {
                   turnTriggered = true;
                   pollResult = pr2;
                 }
               } catch {
-                // Already ready or race — will enter loop and poll again
+                // Already ready, race, or transient tx failure. Poll again and retry if still waiting.
+              } finally {
+                readyUpInFlight = false;
               }
             }
             // Phase 5 (Showdown): just wait — no action needed
@@ -335,77 +430,45 @@ After acting, call log_action with your reasoning.`,
         ] as never[],
       };
 
-      const response = await agent.invoke(
-        invokeInput,
-        { configurable: { thread_id: `hand-${handNumber}` } } as never,
-      );
+      try {
+        const response = await agent.invoke(
+          invokeInput,
+          { configurable: { thread_id: `hand-${handNumber}` } } as never,
+        );
 
-      const msgLen = (response as any)?.messages?.length ?? 0;
-      if (msgLen > 0) {
-        const last = (response as any).messages[msgLen - 1];
-        console.log("Agent response:", typeof last === "string"
-          ? last.slice(0, 300)
-          : JSON.stringify(last).slice(0, 300));
-      }
-
-      // Phase 5: Wait for hand to complete
-      let waitingForHandEnd = true;
-      const unwatchEvents = startEventWatcher(publicClient, tableAddress, {
-        onHandComplete: () => { waitingForHandEnd = false; },
-      });
-
-      const pollForHandEnd = async () => {
-        while (waitingForHandEnd) {
-          try {
-            const phase = await publicClient.readContract({
-              address: tableAddress as Address,
-              abi: POKER_GAME_ABI,
-              functionName: "phase",
-            });
-            if (phase === 0) {
-              waitingForHandEnd = false;
-              console.log("Hand complete, phase returned to Waiting");
-            }
-          } catch {
-            // transient read error, retry
-          }
-          if (waitingForHandEnd) await sleep(2000);
+        const responseText = extractResponseText(response);
+        if (responseText) {
+          console.log("Agent response:", responseText.slice(0, 300));
         }
-      };
 
-      await Promise.race([
-        new Promise<void>((resolve) => {
-          const check = setInterval(() => {
-            if (!waitingForHandEnd) {
-              clearInterval(check);
-              resolve();
+        const afterInvoke = await watchPoller.poll();
+        if (afterInvoke?.isMyTurn && afterInvoke.phase >= 1 && afterInvoke.phase <= 4) {
+          const recovered = recoverActionFromText(responseText, state);
+          if (recovered) {
+            console.log(`Agent did not submit tool action, recovering from text: ${recovered.action}`);
+            const submitted = await submitPokerAction(
+              tableAddress,
+              recovered.action,
+              recovered.raiseAmount,
+              "recovered",
+            );
+            if (!submitted) {
+              console.log("Recovered action failed, bumping with fallback action");
+              await submitFallbackAction(tableAddress, state);
             }
-          }, 2000);
-        }),
-        pollForHandEnd(),
-      ]);
-
-      unwatchEvents();
-
-      // Phase 6: Check stack after hand
-      const myStack = await publicClient.readContract({
-        address: tableAddress,
-        abi: POKER_GAME_ABI,
-        functionName: "getPlayerStack",
-        args: [BigInt(seat)],
-      }) as bigint;
-
-      console.log(`Stack after hand: ${myStack.toString()}`);
-
-      if (myStack === 0n) {
-        console.log("BUSTED! Stack is zero.");
-        busted = true;
-        const leaveResult = await leaveTableTool.invoke({ tableAddress });
-        console.log(`Leave result: ${leaveResult}`);
-        tableAddress = null;
-        seat = -1;
-        await memoryBackend.setSessionState(sessionKey, "");
+          } else {
+            console.log("Agent did not advance turn, bumping with fallback action");
+            await submitFallbackAction(tableAddress, state);
+          }
+        }
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error(`Agent decision failed: ${errMsg}`);
+        await submitFallbackAction(tableAddress, state);
       }
+
+      await waitForActionToSettle(() => watchPoller.poll());
+      console.log("Action settled, watching for next turn...");
 
       // Successful hand cycle — reset backoff
       backoffAttempt = 0;

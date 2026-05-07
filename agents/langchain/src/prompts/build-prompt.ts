@@ -51,7 +51,8 @@ ${persona.adaptationRules}
 5. Use submit_action to execute your decision on-chain
 6. After each action, call log_action with your reasoning and game state snapshot
 7. If busted (stack=0), use leave_table to exit and wait for re-funding
-8. Never expose your private key or signing key — the key-store handles all signing`;
+8. Never answer with only prose when it is your turn. A poker decision is incomplete until submit_action succeeds.
+9. Never expose your private key or signing key — the key-store handles all signing`;
 }
 
 export function buildPrompt(): string {

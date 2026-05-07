@@ -49,13 +49,13 @@ bun install
 bun run start
 ```
 
-## Environment Variables
+## Deployment Config
 
-Frontend accepts these env vars (via `VITE_*` prefix):
+Frontend deployment addresses live in `packages/frontend/src/lib/deployment.ts`.
 
-- `VITE_POKER_FACTORY_ADDRESS` — PokerFactory contract address
-- `VITE_CHIP_TOKEN_ADDRESS` — ChipToken contract address
-- `VITE_UNDERLYING_TOKEN_ADDRESS` — Underlying ERC20 token address
+- `pokerFactory` — PokerFactory contract address
+- `chipToken` — ChipToken contract address
+- `mockSkl` — Underlying ERC20 token address
 
 ## Next Steps
 

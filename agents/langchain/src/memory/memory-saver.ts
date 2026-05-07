@@ -1,13 +1,13 @@
-import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import type { ActionLog, MemoryBackend } from "./types";
+import { SafeMemorySaver } from "./checkpointer";
 
 export class InMemoryBackend implements MemoryBackend {
-  checkpointer: MemorySaver;
+  checkpointer: SafeMemorySaver;
   private logs: ActionLog[] = [];
   private session: Map<string, string> = new Map();
 
   constructor() {
-    this.checkpointer = new MemorySaver();
+    this.checkpointer = new SafeMemorySaver();
   }
 
   async logAction(entry: ActionLog): Promise<void> {

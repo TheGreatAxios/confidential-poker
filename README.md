@@ -90,8 +90,6 @@ cd agents/langchain
 cat > .env << 'EOF'
 PRIVATE_KEY=0x...
 LLM_API_KEY=sk-ant-...
-FACTORY_ADDRESS=0x...
-CHIP_TOKEN_ADDRESS=0x...
 STRATEGY=wolf
 EOF
 
@@ -105,7 +103,7 @@ docker compose up -d
 ```bash
 cd agents/langchain
 cp .env.example .env
-# Fill in PRIVATE_KEY, LLM_API_KEY, FACTORY_ADDRESS, CHIP_TOKEN_ADDRESS, STRATEGY
+# Fill in PRIVATE_KEY, LLM_API_KEY, STRATEGY
 bun run start
 ```
 

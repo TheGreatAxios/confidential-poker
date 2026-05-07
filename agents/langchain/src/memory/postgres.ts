@@ -1,5 +1,5 @@
-import { MemorySaver } from "@langchain/langgraph-checkpoint";
 import type { ActionLog, MemoryBackend } from "./types";
+import { SafeMemorySaver } from "./checkpointer";
 
 interface PgRow {
   hand_number: number;
@@ -12,13 +12,13 @@ interface PgRow {
 }
 
 export class PostgresBackend implements MemoryBackend {
-  checkpointer: MemorySaver;
+  checkpointer: SafeMemorySaver;
   private connectionString: string;
   private pool: any;
 
   constructor(connectionString: string) {
     this.connectionString = connectionString;
-    this.checkpointer = new MemorySaver();
+    this.checkpointer = new SafeMemorySaver();
   }
 
   private async getPool(): Promise<any> {

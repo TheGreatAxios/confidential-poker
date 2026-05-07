@@ -10,14 +10,6 @@ envVars:
     sync: false
   - key: LLM_API_KEY
     sync: false
-  - key: FACTORY_ADDRESS
-    value: ""
-  - key: CHIP_TOKEN_ADDRESS
-    value: ""
-  - key: RPC_URL
-    value: https://base.skale.space
-  - key: CHAIN_ID
-    value: "2046399126"
   - key: STRATEGY
     value: wolf
   - key: MEMORY_BACKEND

@@ -16,22 +16,27 @@ export const createTable = tool(
     maxPlayers,
     tableName,
   }: {
-    buyIn: string;
-    smallBlind: string;
-    bigBlind: string;
-    maxPlayers: number;
-    tableName: string;
+    buyIn: string | null;
+    smallBlind: string | null;
+    bigBlind: string | null;
+    maxPlayers: number | null;
+    tableName: string | null;
   }) => {
     try {
       const ks = getKeyStore();
-      const buyInBig = BigInt(buyIn);
-      const sbBig = BigInt(smallBlind);
-      const bbBig = BigInt(bigBlind);
+      const resolvedBuyIn = buyIn ?? "1000000000000000000000";
+      const resolvedSmallBlind = smallBlind ?? "5000000000000000000";
+      const resolvedBigBlind = bigBlind ?? "10000000000000000000";
+      const resolvedMaxPlayers = maxPlayers ?? 6;
+      const resolvedTableName = tableName ?? "Agent Table";
+      const buyInBig = BigInt(resolvedBuyIn);
+      const sbBig = BigInt(resolvedSmallBlind);
+      const bbBig = BigInt(resolvedBigBlind);
 
       const data = encodeFunctionData({
         abi: POKER_FACTORY_ABI,
         functionName: "createTable",
-        args: [buyInBig, sbBig, bbBig, BigInt(maxPlayers), tableName],
+        args: [buyInBig, sbBig, bbBig, BigInt(resolvedMaxPlayers), resolvedTableName],
       });
 
       const txHash = await ks.signAndSend(config.factoryAddress, data, MIN_CTX_RESERVE);
@@ -41,8 +46,8 @@ export const createTable = tool(
         buyIn: buyInBig.toString(),
         smallBlind: sbBig.toString(),
         bigBlind: bbBig.toString(),
-        maxPlayers,
-        tableName,
+        maxPlayers: resolvedMaxPlayers,
+        tableName: resolvedTableName,
       });
     } catch (err) {
       return JSON.stringify({
@@ -54,11 +59,11 @@ export const createTable = tool(
     name: "create_table",
     description: "Create a new poker table via the factory. Requires sFUEL for CTX reserve (~0.1 sFUEL). Defaults: buyIn=1000000000000000000000 (1000e18), smallBlind=5000000000000000000 (5e18), bigBlind=10000000000000000000 (10e18), maxPlayers=6.",
     schema: z.object({
-      buyIn: z.string().default("1000000000000000000000"),
-      smallBlind: z.string().default("5000000000000000000"),
-      bigBlind: z.string().default("10000000000000000000"),
-      maxPlayers: z.number().default(6),
-      tableName: z.string().default("Agent Table"),
+      buyIn: z.string().nullable().describe("Buy-in in wei, or null for 1000e18"),
+      smallBlind: z.string().nullable().describe("Small blind in wei, or null for 5e18"),
+      bigBlind: z.string().nullable().describe("Big blind in wei, or null for 10e18"),
+      maxPlayers: z.number().nullable().describe("Maximum players, or null for 6"),
+      tableName: z.string().nullable().describe("Table name, or null for Agent Table"),
     }),
   },
 );

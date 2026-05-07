@@ -7,7 +7,7 @@ Autonomous Texas Hold'em poker agent that plays on-chain. Uses LangChain Deep Ag
 
 ```bash
 cp .env.example .env
-# Fill in PRIVATE_KEY, LLM_API_KEY, FACTORY_ADDRESS, CHIP_TOKEN_ADDRESS, STRATEGY
+# Fill in PRIVATE_KEY, LLM_API_KEY, STRATEGY
 bun run start
 ```
 
@@ -27,7 +27,7 @@ PRIVATE_KEY=0x... STRATEGY=wolf docker compose up -d
 src/
 ├── abis/       # Contract ABIs (chip-token, erc20, poker-factory, poker-game)
 ├── agent.ts    # createAgent — wires persona prompt + tools into a Deep Agent
-├── config.ts   # Environment config (private key, LLM, RPC, strategy)
+├── config.ts   # Runtime config (private key, LLM, deployment, strategy)
 ├── index.ts    # Entry point — inits wallet, memory, runs game loop
 ├── loop/       # Autonomous loop (discovery, event-watcher, game-loop, poller)
 ├── memory/     # Backends: in-memory / sqlite / postgres
@@ -42,10 +42,6 @@ skills/         # Agent Skills (bankroll, card-encryption, game-play, etc.)
 |----------|----------|---------|-------------|
 | `PRIVATE_KEY` | Yes | — | Agent wallet private key |
 | `LLM_API_KEY` | Yes | — | API key for the LLM provider |
-| `FACTORY_ADDRESS` | Yes | — | PokerFactory contract address |
-| `CHIP_TOKEN_ADDRESS` | Yes | — | ChipToken contract address |
-| `RPC_URL` | No | SKALE Base Sepolia | Chain RPC endpoint |
-| `CHAIN_ID` | No | 324705682 | Chain ID |
 | `STRATEGY` | No | `wolf` | Persona (shark/fox/owl/bull/cat/wolf/custom) |
 | `LLM_PROVIDER` | No | `anthropic` | anthropic, openai, google-genai, etc. |
 | `LLM_MODEL` | No | `claude-sonnet-4-6` | Model name |

@@ -1,33 +1,61 @@
-// ─── Contract ABI & Addresses ─────────────────────────────────
-//
-// Duplicated from the server's abis.ts so the frontend package stays independent.
-// The ABI defines the public interface of the on-chain poker contract.
 import { FRONTEND_CONFIG } from "@/lib/config";
 
-export const POKER_FACTORY_ADDRESS =
-  FRONTEND_CONFIG.factoryAddress as `0x${string}`;
+export const POKER_FACTORY_ADDRESS = FRONTEND_CONFIG.factoryAddress;
 
-export const CHIP_TOKEN_ADDRESS =
-  FRONTEND_CONFIG.chipTokenAddress as `0x${string}`;
+export const CHIP_TOKEN_ADDRESS = FRONTEND_CONFIG.chipTokenAddress;
 
-export const TOKEN_ADDRESS = FRONTEND_CONFIG.underlyingTokenAddress as `0x${string}`;
+export const TOKEN_ADDRESS = FRONTEND_CONFIG.underlyingTokenAddress;
 
-/** 1000 tokens with 18 decimals — must match contract BUY_IN constant */
 export const BUY_IN = 1_000_000_000_000_000_000_000n;
 
-const POKER_GAME_BASE_ABI = [
+export const POKER_GAME_ABI = [
   {
     "type": "constructor",
     "inputs": [
       {
-        "name": "_sklToken",
+        "name": "_factory",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "_gameToken",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_owner",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_buyIn",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_smallBlind",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_bigBlind",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_maxPlayers",
+        "type": "uint256",
+        "internalType": "uint256"
       },
       {
         "name": "_ctxCallbackValueWei",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "_tableName",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "stateMutability": "payable"
@@ -35,19 +63,6 @@ const POKER_GAME_BASE_ABI = [
   {
     "type": "receive",
     "stateMutability": "payable"
-  },
-  {
-    "type": "function",
-    "name": "ACTIVE_PLAYERS_PER_HAND",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -77,6 +92,19 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "function",
+    "name": "CTX_CALLBACK_VALUE_WEI",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "CTX_GAS_BUFFER",
     "inputs": [],
     "outputs": [
@@ -90,7 +118,7 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "function",
-    "name": "MAX_BET",
+    "name": "DEFAULT_MAX_BUY_IN",
     "inputs": [],
     "outputs": [
       {
@@ -103,13 +131,26 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "function",
-    "name": "MAX_BUY_IN",
+    "name": "DEFAULT_MIN_BUY_IN",
     "inputs": [],
     "outputs": [
       {
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "FACTORY",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"
@@ -142,20 +183,7 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "function",
-    "name": "MIN_BUY_IN",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "MIN_CTX_RESERVE_HANDS",
+    "name": "MIN_CTX_RESERVE_CALLBACKS",
     "inputs": [],
     "outputs": [
       {
@@ -169,6 +197,19 @@ const POKER_GAME_BASE_ABI = [
   {
     "type": "function",
     "name": "MIN_PLAYERS",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "SHOWDOWN_CALLBACK_GAS_LIMIT",
     "inputs": [],
     "outputs": [
       {
@@ -227,6 +268,13 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "function",
+    "name": "cancelLeave",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "check",
     "inputs": [],
     "outputs": [],
@@ -247,19 +295,6 @@ const POKER_GAME_BASE_ABI = [
         "name": "",
         "type": "uint8",
         "internalType": "uint8"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "ctxCallbackValueWei",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -292,13 +327,6 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "function",
-    "name": "dealFlop",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "dealNewHand",
     "inputs": [],
     "outputs": [],
@@ -306,14 +334,7 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "function",
-    "name": "dealRiver",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "dealTurn",
+    "name": "dealNext",
     "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -399,6 +420,19 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "function",
+    "name": "gameToken",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IERC20"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getCommunityCards",
     "inputs": [],
     "outputs": [
@@ -438,6 +472,25 @@ const POKER_GAME_BASE_ABI = [
         "name": "",
         "type": "bytes",
         "internalType": "bytes"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getHandContribution",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -544,38 +597,6 @@ const POKER_GAME_BASE_ABI = [
         "name": "",
         "type": "address",
         "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getPlayerAddress",
-    "inputs": [
-      {
-        "name": "idx",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getPlayerCount",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -690,7 +711,7 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "function",
-    "name": "getTEEcards",
+    "name": "getTeCards",
     "inputs": [
       {
         "name": "playerIndex",
@@ -753,25 +774,69 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "function",
-    "name": "handSelectionCursor",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "isCardsRevealed",
     "inputs": [
       {
         "name": "playerIndex",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isLeaveRequested",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isReady",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "leaveRequested",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [
@@ -977,6 +1042,33 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "function",
+    "name": "readyCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "readyUp",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "requestLeave",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "resolveHand",
     "inputs": [],
     "outputs": [],
@@ -1009,16 +1101,23 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "function",
-    "name": "sklToken",
+    "name": "tableName",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "address",
-        "internalType": "contract IERC20"
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "unready",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "event",
@@ -1142,6 +1241,44 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "event",
+    "name": "HandResult",
+    "inputs": [
+      {
+        "name": "winners",
+        "type": "address[]",
+        "indexed": false,
+        "internalType": "address[]"
+      },
+      {
+        "name": "amounts",
+        "type": "uint256[]",
+        "indexed": false,
+        "internalType": "uint256[]"
+      },
+      {
+        "name": "handNames",
+        "type": "string[]",
+        "indexed": false,
+        "internalType": "string[]"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "LeaveRequested",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "PhaseChanged",
     "inputs": [
       {
@@ -1152,6 +1289,31 @@ const POKER_GAME_BASE_ABI = [
       },
       {
         "name": "handNumber",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PlayerAction",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "action",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "amount",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1282,6 +1444,32 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "event",
+    "name": "PlayerReady",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PlayerUnready",
+    "inputs": [
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "PlayerWentAllIn",
     "inputs": [
       {
@@ -1320,6 +1508,19 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "event",
+    "name": "ReserveSwept",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "RiverDealt",
     "inputs": [
       {
@@ -1340,6 +1541,25 @@ const POKER_GAME_BASE_ABI = [
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TurnChanged",
+    "inputs": [
+      {
+        "name": "playerIndex",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "player",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -1394,12 +1614,12 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "error",
-    "name": "CardsAlreadyRevealed",
+    "name": "BuyInOutOfRange",
     "inputs": []
   },
   {
     "type": "error",
-    "name": "CardsNotYetRevealed",
+    "name": "CallbackPending",
     "inputs": []
   },
   {
@@ -1412,6 +1632,11 @@ const POKER_GAME_BASE_ABI = [
         "internalType": "address"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "GameInProgress",
+    "inputs": []
   },
   {
     "type": "error",
@@ -1441,6 +1666,42 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "error",
+    "name": "InsufficientCtxReserve",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidCtxCallbackValue",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidPlayerIndex",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidReturnDataSize",
+    "inputs": [
+      {
+        "name": "precompiledContract",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "expectedMin",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "actual",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "MustCallOrRaise",
     "inputs": []
   },
@@ -1456,17 +1717,7 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "error",
-    "name": "NotAtRiver",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "NotBettingPhase",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NotEnoughForCall",
     "inputs": []
   },
   {
@@ -1502,6 +1753,17 @@ const POKER_GAME_BASE_ABI = [
   },
   {
     "type": "error",
+    "name": "SafeERC20FailedOperation",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "ShowdownInProgress",
     "inputs": []
   },
@@ -1512,232 +1774,955 @@ const POKER_GAME_BASE_ABI = [
   }
 ] as const;
 
-const POKER_GAME_EXTENSION_ABI = [
-  {
-    type: "function",
-    name: "gameToken",
-    inputs: [],
-    outputs: [{ name: "", type: "address" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "isLeaveRequested",
-    inputs: [{ name: "player", type: "address" }],
-    outputs: [{ name: "", type: "bool" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "requestLeave",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
-    type: "function",
-    name: "cancelLeave",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
-    type: "function",
-    name: "tableName",
-    inputs: [],
-    outputs: [{ name: "", type: "string" }],
-    stateMutability: "view",
-  },
-  {
-    type: "event",
-    name: "PotAwarded",
-    inputs: [
-      { name: "player", type: "address", indexed: true },
-      { name: "amount", type: "uint256", indexed: false },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "LeaveRequested",
-    inputs: [{ name: "player", type: "address", indexed: true }],
-    anonymous: false,
-  },
-  {
-    type: "function",
-    name: "isReady",
-    inputs: [{ name: "player", type: "address" }],
-    outputs: [{ name: "", type: "bool" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "readyCount",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "function",
-    name: "readyUp",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
-    type: "function",
-    name: "unready",
-    inputs: [],
-    outputs: [],
-    stateMutability: "nonpayable",
-  },
-  {
-    type: "event",
-    name: "PotAwarded",
-    inputs: [
-      { name: "player", type: "address", indexed: true },
-      { name: "amount", type: "uint256", indexed: false },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "LeaveRequested",
-    inputs: [{ name: "player", type: "address", indexed: true }],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "PlayerReady",
-    inputs: [{ name: "player", type: "address", indexed: true }],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "PlayerUnready",
-    inputs: [{ name: "player", type: "address", indexed: true }],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "TurnChanged",
-    inputs: [
-      { name: "playerIndex", type: "uint256", indexed: true },
-      { name: "player", type: "address", indexed: true },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "PlayerAction",
-    inputs: [
-      { name: "player", type: "address", indexed: true },
-      { name: "action", type: "string", indexed: false },
-      { name: "amount", type: "uint256", indexed: false },
-    ],
-    anonymous: false,
-  },
-  {
-    type: "event",
-    name: "HandResult",
-    inputs: [
-      { name: "winners", type: "address[]", indexed: false },
-      { name: "amounts", type: "uint256[]", indexed: false },
-      { name: "handNames", type: "string[]", indexed: false },
-    ],
-    anonymous: false,
-  },
-] as const;
-
-export const POKER_GAME_ABI = [
-  ...POKER_GAME_BASE_ABI,
-  ...POKER_GAME_EXTENSION_ABI,
-] as const;
-
 export const POKER_FACTORY_ABI = [
   {
-    type: "function",
-    name: "createTable",
-    inputs: [
-      { name: "buyIn", type: "uint256" },
-      { name: "smallBlind", type: "uint256" },
-      { name: "bigBlind", type: "uint256" },
-      { name: "maxPlayers", type: "uint256" },
-      { name: "tableName", type: "string" },
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "_chipToken",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_ctxCallbackValueWei",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
     ],
-    outputs: [{ name: "", type: "address" }],
-    stateMutability: "payable",
+    "stateMutability": "payable"
   },
   {
-    type: "function",
-    name: "getAllTables",
-    inputs: [],
-    outputs: [{ name: "", type: "address[]" }],
-    stateMutability: "view",
+    "type": "receive",
+    "stateMutability": "payable"
   },
   {
-    type: "function",
-    name: "getTableInfo",
-    inputs: [{ name: "table", type: "address" }],
-    outputs: [
-      { name: "buyInAmount", type: "uint256" },
-      { name: "smallBlindAmount", type: "uint256" },
-      { name: "bigBlindAmount", type: "uint256" },
-      { name: "playerCount", type: "uint256" },
-      { name: "potAmount", type: "uint256" },
-      { name: "phaseValue", type: "uint8" },
-      { name: "name", type: "string" },
+    "type": "function",
+    "name": "CHIP_TOKEN",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
     ],
-    stateMutability: "view",
+    "stateMutability": "view"
   },
   {
-    type: "function",
-    name: "CTX_CALLBACK_VALUE_WEI",
-    inputs: [],
-    outputs: [{ name: "", type: "uint256" }],
-    stateMutability: "view",
-  },
-  {
-    type: "event",
-    name: "TableCreated",
-    inputs: [
-      { name: "table", type: "address", indexed: true },
-      { name: "creator", type: "address", indexed: true },
-      { name: "tableName", type: "string", indexed: false },
-      { name: "buyIn", type: "uint256", indexed: false },
-      { name: "smallBlind", type: "uint256", indexed: false },
-      { name: "bigBlind", type: "uint256", indexed: false },
-      { name: "maxPlayers", type: "uint256", indexed: false },
+    "type": "function",
+    "name": "CTX_CALLBACK_VALUE_WEI",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
     ],
-    anonymous: false,
+    "stateMutability": "view"
   },
+  {
+    "type": "function",
+    "name": "collectFee",
+    "inputs": [
+      {
+        "name": "isEarlyQuit",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "createTable",
+    "inputs": [
+      {
+        "name": "buyIn",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "smallBlind",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "bigBlind",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxPlayers",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "tableName",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "getAllTables",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getTable",
+    "inputs": [
+      {
+        "name": "index",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getTableCount",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getTableInfo",
+    "inputs": [
+      {
+        "name": "table",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "buyInAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "smallBlindAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "bigBlindAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "playerCount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "potAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "phaseValue",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "name",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getTablesByBuyIn",
+    "inputs": [
+      {
+        "name": "targetBuyIn",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isKnownTable",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "owner",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "refillTable",
+    "inputs": [
+      {
+        "name": "table",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "renounceOwnership",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "tables",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "totalFeesCollected",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "transferOwnership",
+    "inputs": [
+      {
+        "name": "newOwner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "withdrawFees",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "FeesCollected",
+    "inputs": [
+      {
+        "name": "table",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "isEarlyQuit",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FeesWithdrawn",
+    "inputs": [
+      {
+        "name": "recipient",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "OwnershipTransferred",
+    "inputs": [
+      {
+        "name": "previousOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "newOwner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TableCreated",
+    "inputs": [
+      {
+        "name": "table",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "creator",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "tableName",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "buyIn",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "smallBlind",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "bigBlind",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxPlayers",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "TableRefilled",
+    "inputs": [
+      {
+        "name": "table",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "InsufficientPayment",
+    "inputs": [
+      {
+        "name": "required",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "provided",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OwnableInvalidOwner",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "OwnableUnauthorizedAccount",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TableNotFound",
+    "inputs": [
+      {
+        "name": "table",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TransferFailed",
+    "inputs": []
+  }
 ] as const;
 
 export const CHIP_TOKEN_ABI = [
   {
-    type: "function",
-    name: "UNDERLYING",
-    inputs: [],
-    outputs: [{ name: "", type: "address" }],
-    stateMutability: "view",
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "_underlying",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "_name",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "_symbol",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "nonpayable"
   },
   {
-    type: "function",
-    name: "deposit",
-    inputs: [{ name: "amount", type: "uint256" }],
-    outputs: [],
-    stateMutability: "nonpayable",
+    "type": "function",
+    "name": "UNDERLYING",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IERC20"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
-    type: "function",
-    name: "withdraw",
-    inputs: [{ name: "amount", type: "uint256" }],
-    outputs: [],
-    stateMutability: "nonpayable",
+    "type": "function",
+    "name": "allowance",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "spender",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
+  {
+    "type": "function",
+    "name": "approve",
+    "inputs": [
+      {
+        "name": "spender",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "balanceOf",
+    "inputs": [
+      {
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "decimals",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "deposit",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "name",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "symbol",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "totalSupply",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "transfer",
+    "inputs": [
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "transferFrom",
+    "inputs": [
+      {
+        "name": "from",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "withdraw",
+    "inputs": [
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "Approval",
+    "inputs": [
+      {
+        "name": "owner",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "spender",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Deposited",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Transfer",
+    "inputs": [
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "Withdrawn",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "ERC20InsufficientAllowance",
+    "inputs": [
+      {
+        "name": "spender",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "allowance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "needed",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC20InsufficientBalance",
+    "inputs": [
+      {
+        "name": "sender",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "balance",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "needed",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC20InvalidApprover",
+    "inputs": [
+      {
+        "name": "approver",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC20InvalidReceiver",
+    "inputs": [
+      {
+        "name": "receiver",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC20InvalidSender",
+    "inputs": [
+      {
+        "name": "sender",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ERC20InvalidSpender",
+    "inputs": [
+      {
+        "name": "spender",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InsufficientBalance",
+    "inputs": [
+      {
+        "name": "requested",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "available",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SafeERC20FailedOperation",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroAmount",
+    "inputs": []
+  }
 ] as const;
 
-/** ERC-20 ABI for token interactions */
 export const ERC20_ABI = [
   {
     type: "function",
@@ -1823,7 +2808,6 @@ export const ERC20_ABI = [
   },
 ] as const;
 
-/** Check if a contract address is the zero address (not deployed) */
 export function isContractDeployed(address: string): boolean {
   return (
     address !== "0x0000000000000000000000000000000000000000" &&

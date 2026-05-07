@@ -14,13 +14,11 @@ const RANKS = [
 ] as const;
 
 function decodeCard(encoded: number): string {
-  const rank = (encoded % 13) + 2;
-  const suit = Math.floor(encoded / 13);
-  return `${RANKS[rank - 2]} of ${SUITS[suit]}`;
-}
-
-function toUint8Array(buf: ArrayBuffer): Uint8Array {
-  return new Uint8Array(buf);
+  const rank = encoded & 0x0f;
+  const suit = (encoded >> 4) & 0x03;
+  const rankName = RANKS[rank - 2];
+  const suitName = SUITS[suit];
+  return rankName && suitName ? `${rankName} of ${suitName}` : `Invalid card (${encoded})`;
 }
 
 async function decryptEncryptedCards(

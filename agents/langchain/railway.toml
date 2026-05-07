@@ -19,22 +19,6 @@ name = "LLM_API_KEY"
 value = ""
 
 [[service.variables]]
-name = "FACTORY_ADDRESS"
-value = ""
-
-[[service.variables]]
-name = "CHIP_TOKEN_ADDRESS"
-value = ""
-
-[[service.variables]]
-name = "RPC_URL"
-value = "https://base.skale.space"
-
-[[service.variables]]
-name = "CHAIN_ID"
-value = "2046399126"
-
-[[service.variables]]
 name = "STRATEGY"
 value = "wolf"
 

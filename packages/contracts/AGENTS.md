@@ -24,10 +24,10 @@ Solidity smart contracts for the AI Poker Night application, built with Foundry.
 - `PokerFactory.sol` — Deploys and tracks PokerGame tables
 
 ## Deploy output
-`forge script` logs the following addresses — capture them for frontend + agent config:
-- MockSKL → `VITE_UNDERLYING_TOKEN_ADDRESS`
-- ChipToken → `VITE_CHIP_TOKEN_ADDRESS`
-- PokerFactory → `VITE_POKER_FACTORY_ADDRESS`
+`forge script` logs the following addresses — update package deployment config:
+- MockSKL → `mockSkl`
+- ChipToken → `chipToken`
+- PokerFactory → `pokerFactory`
 
 ## Environment
 - Default target: SKALE Base Sepolia (chain ID 324705682)
