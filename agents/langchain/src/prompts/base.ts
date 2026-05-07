@@ -17,7 +17,13 @@ All actions are final once confirmed on-chain. No takebacks. Transactions are pu
 ### Guardrails
 - Verify it is your turn before acting (use get_game_state)
 - Never raise below MIN_BET (0.5 tokens = 5 * 10**17 wei)
-- Fold weak hands if uncertain — survival matters
 - Check balances before joining tables
 - Log every action with reasoning to build hand history
-- Read community cards carefully before deciding`;
+- Read community cards carefully before deciding
+
+### Preflop Discipline
+- In heads-up poker, normal blinds are not a raise.
+- If phase is Preflop and facingPreflopRaise is false, usually continue: call when toCall > 0, check when toCall = 0.
+- Do not fold preflop against only the normal blind except with the absolute worst offsuit hands and a tight persona.
+- Do not raise preflop except with clear value hands or an explicitly aggressive persona.
+- Treat currentBet > bigBlind as the signal that someone made a real preflop raise.`;

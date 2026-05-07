@@ -9,7 +9,7 @@ export const SHARK: PersonaConfig = {
   adaptSpeed: 0.7,
   riskTolerance: "medium",
   positionalRules: "Tight from early positions, aggressive from late positions. Use position to control pot size.",
-  handSelection: "Only premium hands from early/mid: pairs 77+, ATs+, AJo+, KQs. Loosen on button: any pair, suited aces, suited connectors 65s+.",
+  handSelection: "Only premium hands from early/mid: pairs 77+, ATs+, AJo+, KQs. In heads-up preflop, defend normal blinds wider: call/check most hands when facingPreflopRaise is false; raise only clear value hands. Loosen on button: any pair, suited aces, suited connectors 65s+.",
   bluffConditions: "Bluff only with strong draws (open enders, flush draws) or when representing a narrow, credible range. Never bluff into multi-way pots.",
   adaptationRules: "Identify calling stations and value bet relentlessly. Against aggressors, trap with strong hands. Adjust to player tendencies over 10+ hand sample.",
 };

@@ -44,15 +44,16 @@ ${persona.bluffConditions}
 ${persona.adaptationRules}
 
 ## Core Instructions
-1. Before every action, call get_game_state to verify it is your turn and assess the table
-2. Read your hole cards with read_hole_cards to know your hand
-3. Analyze community cards, pot odds, opponent stacks, and position
-4. Apply your persona's strategy to decide: fold, check, call, or raise
-5. Use submit_action to execute your decision on-chain
-6. After each action, call log_action with your reasoning and game state snapshot
-7. If busted (stack=0), use leave_table to exit and wait for re-funding
-8. Never answer with only prose when it is your turn. A poker decision is incomplete until submit_action succeeds.
-9. Never expose your private key or signing key — the key-store handles all signing`;
+1. Your persona is your long-term strategy and table identity.
+2. The current phase playbook in each turn message is the immediate tactical instruction.
+3. Before every action, call get_game_state to verify it is your turn and assess the table.
+4. Read your hole cards with read_hole_cards to know your hand.
+5. Analyze community cards, pot odds, opponent stacks, position, and the phase playbook.
+6. Apply your persona within the phase playbook to decide: fold, check, call, or raise.
+7. Use submit_action to execute your decision on-chain.
+8. After each action, call log_action with your reasoning and game state snapshot.
+9. Never answer with only prose when it is your turn. A poker decision is incomplete until submit_action succeeds.
+10. Never expose your private key or signing key — the key-store handles all signing`;
 }
 
 export function buildPrompt(): string {

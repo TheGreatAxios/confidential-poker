@@ -15,12 +15,15 @@ import { submitAction as submitActionTool } from "../tools/submit-action";
 import { POKER_GAME_ABI } from "../abis/poker-game";
 import { POKER_FACTORY_ABI } from "../abis/poker-factory";
 import { MIN_GAS } from "../tools/claim-faucet";
+import { buildPhasePlaybook } from "../prompts/phase-playbooks";
 
 type PokerAction = "fold" | "check" | "call" | "raise";
 
 type BettingState = {
   currentBet?: string;
   myBet?: string;
+  bigBlind?: string;
+  phase?: string;
 };
 
 const MIN_RAISE_WEI = "500000000000000000";
@@ -98,8 +101,11 @@ function extractResponseText(response: unknown): string {
 function normalizeRecoveredAction(action: PokerAction, state: BettingState): PokerAction {
   const currentBet = BigInt(state.currentBet ?? "0");
   const myBet = BigInt(state.myBet ?? "0");
+  const bigBlind = BigInt(state.bigBlind ?? "0");
   const facingBet = currentBet > myBet;
+  const facingOnlyBlind = state.phase === "Preflop" && bigBlind > 0n && currentBet <= bigBlind;
 
+  if (action === "fold" && facingOnlyBlind) return facingBet ? "call" : "check";
   if (action === "check" && facingBet) return "call";
   if (action === "call" && !facingBet) return "check";
   return action;
@@ -410,9 +416,12 @@ export async function runGameLoop() {
       const stateJson = await getGameStateTool.invoke({ tableAddress });
       const state = JSON.parse(stateJson as string);
       console.log(`Pot: ${state.pot}, Stack: ${state.myStack}, Phase: ${state.phase}`);
+      console.log(`Bet: current=${state.currentBet}, mine=${state.myBet}, toCall=${state.toCall}`);
 
       const cardsJson = await readHoleCardsTool.invoke({ tableAddress });
       console.log(`Cards: ${cardsJson}`);
+      const phasePlaybook = buildPhasePlaybook(state.phase);
+      console.log(`Playbook: ${state.phase} betting tools`);
 
       // Phase 4: Invoke the Deep Agent to decide and act
       const invokeInput = {
@@ -421,8 +430,10 @@ export async function runGameLoop() {
             role: "user",
             content: `It is your turn in hand ${handNumber} (phase: ${pollResult.phaseName}).
 
-Game state: ${stateJson}
-Your hole cards: ${cardsJson}
+	Game state: ${stateJson}
+	Your hole cards: ${cardsJson}
+
+${phasePlaybook}
 
 Decide your action. Use get_game_state if you need a fresh read, then submit_action to play.
 After acting, call log_action with your reasoning.`,

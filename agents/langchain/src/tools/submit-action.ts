@@ -24,14 +24,37 @@ export const submitAction = tool(
     try {
       const ks = getKeyStore();
       const addr = tableAddress as Address;
+      let finalAction = action;
+      let finalRaiseAmount = raiseAmount;
 
-      const funcName = actionFuncs[action];
-      if (!funcName) {
-        return JSON.stringify({ error: `Invalid action: ${action}` });
+      if (action === "fold") {
+        const phase = (await ks.readContract(addr, POKER_GAME_ABI, "phase", [])) as number;
+        if (phase === 1) {
+          const currentBet = (await ks.readContract(addr, POKER_GAME_ABI, "currentBet", [])) as bigint;
+          const bigBlind = (await ks.readContract(addr, POKER_GAME_ABI, "BIG_BLIND", [])) as bigint;
+          const thisAddress = ks.getAddress();
+          const playerCount = (await ks.readContract(addr, POKER_GAME_ABI, "playerCount", [])) as bigint;
+
+          for (let i = 0; i < Number(playerCount); i++) {
+            const player = (await ks.readContract(addr, POKER_GAME_ABI, "getPlayerInfo", [BigInt(i)])) as [
+              Address, boolean, boolean, bigint, boolean, bigint,
+            ];
+            if (player[0].toLowerCase() === thisAddress.toLowerCase() && currentBet <= bigBlind) {
+              finalAction = currentBet > player[3] ? "call" : "check";
+              finalRaiseAmount = null;
+              break;
+            }
+          }
+        }
       }
 
-      const args: readonly [] | readonly [bigint] = action === "raise"
-        ? [BigInt(raiseAmount ?? "0")]
+      const funcName = actionFuncs[finalAction];
+      if (!funcName) {
+        return JSON.stringify({ error: `Invalid action: ${finalAction}` });
+      }
+
+      const args: readonly [] | readonly [bigint] = finalAction === "raise"
+        ? [BigInt(finalRaiseAmount ?? "0")]
         : [];
 
       const data = encodeFunctionData({
@@ -43,8 +66,9 @@ export const submitAction = tool(
       const txHash = await ks.signAndSend(addr, data);
 
       return JSON.stringify({
-        action,
-        raiseAmount: action === "raise" ? (raiseAmount ?? "0") : undefined,
+        action: finalAction,
+        requestedAction: finalAction === action ? undefined : action,
+        raiseAmount: finalAction === "raise" ? (finalRaiseAmount ?? "0") : undefined,
         txHash,
         tableAddress: addr,
       });

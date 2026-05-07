@@ -30,6 +30,8 @@ export const getGameState = tool(
 
       const pot = (await ks.readContract(addr, POKER_GAME_ABI, "pot", [])) as bigint;
       const currentBet = (await ks.readContract(addr, POKER_GAME_ABI, "currentBet", [])) as bigint;
+      const smallBlind = (await ks.readContract(addr, POKER_GAME_ABI, "SMALL_BLIND", [])) as bigint;
+      const bigBlind = (await ks.readContract(addr, POKER_GAME_ABI, "BIG_BLIND", [])) as bigint;
       const turnIdx = (await ks.readContract(addr, POKER_GAME_ABI, "getCurrentTurnIndex", [])) as bigint;
       const playerCount = (await ks.readContract(addr, POKER_GAME_ABI, "playerCount", [])) as bigint;
       const handNumber = (await ks.readContract(addr, POKER_GAME_ABI, "handNumber", [])) as bigint;
@@ -81,15 +83,21 @@ export const getGameState = tool(
         .map(decodeCard);
 
       const isMyTurn = myIdx >= 0 && Number(turnIdx) === myIdx;
+      const myBet = myInfo ? myInfo[3] : 0n;
+      const toCall = currentBet > myBet ? currentBet - myBet : 0n;
 
       return JSON.stringify({
         phase: phaseName,
         handNumber: Number(handNumber),
         pot: pot.toString(),
         currentBet: currentBet.toString(),
+        smallBlind: smallBlind.toString(),
+        bigBlind: bigBlind.toString(),
+        toCall: toCall.toString(),
+        facingPreflopRaise: phaseName === "Preflop" && currentBet > bigBlind,
         myPlayerIndex: myIdx,
         myStack: myStack.toString(),
-        myBet: myInfo ? myInfo[3].toString() : "0",
+        myBet: myBet.toString(),
         myAllIn: myInfo ? myInfo[4] : false,
         isMyTurn,
         currentTurnIndex: Number(turnIdx),
