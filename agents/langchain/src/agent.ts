@@ -28,6 +28,10 @@ type MessageLike = {
   id?: unknown;
 };
 
+export type PokerAgent = {
+  invoke(input: unknown, options?: unknown): Promise<unknown>;
+};
+
 function toDeepAgentMessage(message: unknown) {
   if (AIMessage.isInstance(message)) return message;
   if (!message || typeof message !== "object") return message;
@@ -132,7 +136,7 @@ const allTools = [
   logAction,
 ];
 
-export function createAgent(memoryBackend: MemoryBackend) {
+export function createAgent(memoryBackend: MemoryBackend): PokerAgent {
   const systemPrompt = buildPrompt();
 
   const agent = createDeepAgent({

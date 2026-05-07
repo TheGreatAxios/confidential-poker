@@ -8,22 +8,57 @@ interface PgRow {
   amount: string;
   thinking: string;
   game_snapshot: string;
-  created_at: string;
+  created_at: string | Date;
+}
+
+type QueryResult<T> = {
+  rows: T[];
+};
+
+type PgClient = {
+  query<T = unknown>(sql: string, values?: readonly unknown[]): Promise<QueryResult<T>>;
+  release(): void;
+};
+
+type PgPool = {
+  connect(): Promise<PgClient>;
+  query<T = unknown>(sql: string, values?: readonly unknown[]): Promise<QueryResult<T>>;
+};
+
+type PgModule = {
+  Pool: new (options: { connectionString: string }) => PgPool;
+};
+
+async function loadPgModule(): Promise<PgModule> {
+  const dynamicImport = new Function("specifier", "return import(specifier)") as (
+    specifier: string,
+  ) => Promise<unknown>;
+  const module = await dynamicImport("pg");
+  if (!module || typeof module !== "object" || !("default" in module)) {
+    throw new Error("Postgres memory backend requires the pg package");
+  }
+
+  const pg = (module as { default: unknown }).default;
+  if (!pg || typeof pg !== "object" || !("Pool" in pg)) {
+    throw new Error("Postgres memory backend could not load pg.Pool");
+  }
+
+  return pg as PgModule;
 }
 
 export class PostgresBackend implements MemoryBackend {
   checkpointer: SafeMemorySaver;
   private connectionString: string;
-  private pool: any;
+  private pool: PgPool | null = null;
 
   constructor(connectionString: string) {
     this.connectionString = connectionString;
     this.checkpointer = new SafeMemorySaver();
   }
 
-  private async getPool(): Promise<any> {
+  private async getPool(): Promise<PgPool> {
     if (!this.pool) {
-      const { default: pg } = await import("pg");
+      const pg = await loadPgModule();
       this.pool = new pg.Pool({ connectionString: this.connectionString });
       const client = await this.pool.connect();
       try {
@@ -82,7 +117,7 @@ export class PostgresBackend implements MemoryBackend {
 
   async getSessionState(key: string): Promise<string | null> {
     const pool = await this.getPool();
-    const result = await pool.query(
+    const result = await pool.query<{ value: string }>(
       `SELECT value FROM session_state WHERE key = $1`,
       [key],
     );

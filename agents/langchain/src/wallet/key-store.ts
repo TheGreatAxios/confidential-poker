@@ -1,7 +1,7 @@
-import { secp256k1 } from "@noble/curves/secp256k1";
 import {
   createPublicClient,
   createWalletClient,
+  hexToBytes,
   http,
   type Address,
   type Hash,
@@ -33,7 +33,7 @@ class KeyStore {
     this._privateKey = `0x${config.privateKey.startsWith("0x") ? config.privateKey.slice(2) : config.privateKey}` as `0x${string}`;
     this._account = privateKeyToAccount(this._privateKey);
     this._address = this._account.address;
-    const pkBytes = secp256k1.utils.normPrivateKeyToScalar(this._privateKey.slice(2));
+    const pkBytes = hexToBytes(this._privateKey);
     this._viewerKey = deriveViewerKey(pkBytes);
     this._publicClient = createPublicClient({
       transport: http(config.rpcUrl),

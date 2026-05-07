@@ -14,9 +14,7 @@ export async function createMemoryBackend(): Promise<MemoryBackend> {
       if (!config.databaseUrl) {
         throw new Error("DATABASE_URL required for postgres memory backend");
       }
-      const backend = new PostgresBackend(config.databaseUrl);
-      await backend.initCheckpointer();
-      return backend;
+      return new PostgresBackend(config.databaseUrl);
     }
     default: {
       console.log("Using in-memory backend (state lost on restart)");
