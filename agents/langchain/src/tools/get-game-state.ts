@@ -3,19 +3,7 @@ import { z } from "zod";
 import { getKeyStore } from "../wallet/key-store";
 import { POKER_GAME_ABI } from "../abis/poker-game";
 import type { Address } from "viem";
-
-const SUITS = ["Spades", "Hearts", "Diamonds", "Clubs"] as const;
-const RANKS = [
-  "2", "3", "4", "5", "6", "7", "8", "9", "10",
-  "Jack", "Queen", "King", "Ace",
-] as const;
-
-function decodeCard(encoded: number): string {
-  if (encoded === 0) return "None";
-  const rank = (encoded % 13) + 2;
-  const suit = Math.floor(encoded / 13);
-  return `${RANKS[rank - 2]} of ${SUITS[suit]}`;
-}
+import { decodeCard } from "../cards";
 
 export const getGameState = tool(
   async ({ tableAddress }: { tableAddress: string }) => {

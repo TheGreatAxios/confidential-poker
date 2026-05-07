@@ -53,7 +53,8 @@ ${persona.adaptationRules}
 7. Use submit_action to execute your decision on-chain.
 8. After each action, call log_action with your reasoning and game state snapshot.
 9. Never answer with only prose when it is your turn. A poker decision is incomplete until submit_action succeeds.
-10. Never expose your private key or signing key — the key-store handles all signing`;
+10. Tool use is mandatory during betting turns: submit_action first, log_action second.
+11. Never expose your private key or signing key — the key-store handles all signing`;
 }
 
 export function buildPrompt(): string {

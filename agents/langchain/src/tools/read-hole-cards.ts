@@ -6,20 +6,7 @@ import { decodeAbiParameters, hexToBytes, bytesToHex, type Hex, type Address } f
 import { getKeyStore } from "../wallet/key-store";
 import { config } from "../config";
 import { POKER_GAME_ABI } from "../abis/poker-game";
-
-const SUITS = ["Spades", "Hearts", "Diamonds", "Clubs"] as const;
-const RANKS = [
-  "2", "3", "4", "5", "6", "7", "8", "9", "10",
-  "Jack", "Queen", "King", "Ace",
-] as const;
-
-function decodeCard(encoded: number): string {
-  const rank = encoded & 0x0f;
-  const suit = (encoded >> 4) & 0x03;
-  const rankName = RANKS[rank - 2];
-  const suitName = SUITS[suit];
-  return rankName && suitName ? `${rankName} of ${suitName}` : `Invalid card (${encoded})`;
-}
+import { decodeCard } from "../cards";
 
 async function decryptEncryptedCards(
   privateKey: Hex,

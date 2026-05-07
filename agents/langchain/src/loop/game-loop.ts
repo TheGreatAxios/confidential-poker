@@ -16,8 +16,7 @@ import { POKER_GAME_ABI } from "../abis/poker-game";
 import { POKER_FACTORY_ABI } from "../abis/poker-factory";
 import { MIN_GAS } from "../tools/claim-faucet";
 import { buildPhasePlaybook } from "../prompts/phase-playbooks";
-
-type PokerAction = "fold" | "check" | "call" | "raise";
+import { decidePokerAction, type PokerAction } from "../strategy/action-policy";
 
 type BettingState = {
   currentBet?: string;
@@ -420,8 +419,11 @@ export async function runGameLoop() {
 
       const cardsJson = await readHoleCardsTool.invoke({ tableAddress });
       console.log(`Cards: ${cardsJson}`);
+      const cards = JSON.parse(cardsJson as string);
       const phasePlaybook = buildPhasePlaybook(state.phase);
       console.log(`Playbook: ${state.phase} betting tools`);
+      const policyDecision = decidePokerAction(state, cards);
+      console.log(`Policy decision: ${policyDecision.action}${policyDecision.raiseAmount ? ` ${policyDecision.raiseAmount}` : ""} — ${policyDecision.reason}`);
 
       // Phase 4: Invoke the Deep Agent to decide and act
       const invokeInput = {
@@ -430,12 +432,15 @@ export async function runGameLoop() {
             role: "user",
             content: `It is your turn in hand ${handNumber} (phase: ${pollResult.phaseName}).
 
-	Game state: ${stateJson}
-	Your hole cards: ${cardsJson}
+Game state: ${stateJson}
+Your hole cards: ${cardsJson}
 
 ${phasePlaybook}
 
-Decide your action. Use get_game_state if you need a fresh read, then submit_action to play.
+Recommended action from deterministic policy: ${JSON.stringify(policyDecision)}
+
+Submit that action with submit_action unless you can identify a concrete reason it is illegal or strategically worse.
+Use get_game_state if you need a fresh read, then submit_action to play.
 After acting, call log_action with your reasoning.`,
           },
         ] as never[],
@@ -456,20 +461,32 @@ After acting, call log_action with your reasoning.`,
         if (afterInvoke?.isMyTurn && afterInvoke.phase >= 1 && afterInvoke.phase <= 4) {
           const recovered = recoverActionFromText(responseText, state);
           if (recovered) {
-            console.log(`Agent did not submit tool action, recovering from text: ${recovered.action}`);
+            console.log(`Agent did not submit tool action, text suggested ${recovered.action}; submitting policy action`);
             const submitted = await submitPokerAction(
               tableAddress,
-              recovered.action,
-              recovered.raiseAmount,
-              "recovered",
+              policyDecision.action,
+              policyDecision.raiseAmount,
+              "policy",
             );
             if (!submitted) {
-              console.log("Recovered action failed, bumping with fallback action");
-              await submitFallbackAction(tableAddress, state);
+              console.log("Policy action failed, trying text-recovered action");
+              const textSubmitted = await submitPokerAction(
+                tableAddress,
+                recovered.action,
+                recovered.raiseAmount,
+                "text-recovered",
+              );
+              if (!textSubmitted) await submitFallbackAction(tableAddress, state);
             }
           } else {
-            console.log("Agent did not advance turn, bumping with fallback action");
-            await submitFallbackAction(tableAddress, state);
+            console.log("Agent did not advance turn, submitting policy action");
+            const submitted = await submitPokerAction(
+              tableAddress,
+              policyDecision.action,
+              policyDecision.raiseAmount,
+              "policy",
+            );
+            if (!submitted) await submitFallbackAction(tableAddress, state);
           }
         }
       } catch (err) {
