@@ -7,6 +7,8 @@ export const config = {
   llmProvider: process.env.LLM_PROVIDER ?? "anthropic",
   llmApiKey: process.env.LLM_API_KEY ?? "",
   llmModel: process.env.LLM_MODEL ?? "claude-sonnet-4-6",
+  zaiPrivateKey: process.env.ZAI_PRIVATE_KEY ?? "",
+  zaiModel: process.env.ZAI_MODEL ?? "glm-5.1",
   rpcUrl: DEPLOYMENT_CONFIG.rpcUrl,
   chainId: DEPLOYMENT_CONFIG.chainId,
   mockSklAddress: DEPLOYMENT_CONFIG.contracts.mockSkl as Address,
@@ -21,12 +23,15 @@ export const config = {
   idleBalanceCheckMs: Number(process.env.IDLE_BALANCE_CHECK_MS ?? 60000),
 } as const;
 
-const required = ["privateKey", "llmApiKey"] as const;
-for (const key of required) {
-  if (!config[key]) {
-    console.error(`FATAL: Missing required env var: ${key}`);
-    process.exit(1);
-  }
+// llmApiKey is required unless using zai with its own ZAI_PRIVATE_KEY
+const usingZai = config.llmProvider.toLowerCase() === "zai";
+if (!config.privateKey) {
+  console.error("FATAL: Missing required env var: PRIVATE_KEY");
+  process.exit(1);
+}
+if (!config.llmApiKey && !(usingZai && config.zaiPrivateKey)) {
+  console.error("FATAL: Missing required env var: LLM_API_KEY (or ZAI_PRIVATE_KEY when provider is zai)");
+  process.exit(1);
 }
 
 export type Config = typeof config;

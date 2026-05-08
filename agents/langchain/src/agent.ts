@@ -116,6 +116,14 @@ function createModel() {
         temperature: 0.3,
         apiKey: config.llmApiKey,
       }));
+    case "zai": {
+      return createDeepAgentCompatModel(new ChatOpenAI({
+        model: config.zaiModel,
+        temperature: 0.3,
+        apiKey: config.zaiPrivateKey,
+        configuration: { baseURL: "https://api.z.ai/api/coding/paas/v4" },
+      }));
+    }
     default:
       console.error(`Unknown LLM provider: ${provider}, falling back to anthropic`);
       return createDeepAgentCompatModel(new ChatAnthropic({
