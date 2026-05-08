@@ -166,7 +166,7 @@ export function createSubmitActionCaller(): SubmitActionCaller {
   return createModel().bindTools(
     [submitAction],
     {
-      tool_choice: "submit_action",
+      tool_choice: "required",
       strict: true,
     } as never,
   ) as never;

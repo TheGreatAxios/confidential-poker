@@ -479,7 +479,8 @@ export async function runGameLoop() {
       const policyDecision = decidePokerAction(state, cards);
       console.log(`Policy decision: ${policyDecision.action}${policyDecision.raiseAmount ? ` ${policyDecision.raiseAmount}` : ""} — ${policyDecision.reason}${policyDecision.score !== undefined ? ` (hand score: ${policyDecision.score})` : ""}`);
 
-      // Phase 4: Force the model to return a submit_action tool call, then execute it.
+      // Phase 4: Let the LLM reason and decide, then call submit_action.
+      // The deterministic policy decision is only used as a fallback if the LLM fails.
       const invokeInput = [
         {
           role: "user",
@@ -490,10 +491,7 @@ Your hole cards: ${cardsJson}
 
 ${phasePlaybook}
 
-Recommended action from deterministic policy: ${JSON.stringify(policyDecision)}
-
-Return exactly one submit_action tool call now. Do not answer with text.
-Use the recommended action unless it is illegal. If illegal, choose the closest legal action.`,
+Think step by step about your decision, then call submit_action with your chosen action.`,
         },
       ] as never[];
 
