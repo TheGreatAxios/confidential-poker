@@ -20,15 +20,16 @@ export function Card({ card, index = 0, size = "default" }: CardProps) {
   const backInnerClass = isLarge ? "h-14 w-10 sm:h-16 sm:w-12" : "h-9 w-7 sm:h-12 sm:w-10";
   const rankClass = isLarge ? "text-sm sm:text-lg" : "text-[10px] sm:text-sm";
   const suitClass = isLarge ? "mt-1 text-xl sm:text-3xl" : "mt-0.5 text-base sm:text-xl";
+  const logoClass = isLarge ? "text-[10px] sm:text-xs" : "text-[7px] sm:text-[9px]";
 
   if (!card.faceUp) {
     return (
       <div
-        className={`card-deal flex items-center justify-center rounded-lg border-2 border-blue-700/50 bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 shadow-lg ${cardClass}`}
+        className={`card-deal card-back-pattern flex items-center justify-center rounded-lg border-2 border-sky-300/35 bg-[#101b36] shadow-lg ${cardClass}`}
         style={{ animationDelay: `${index * 0.15}s` }}
       >
-        <div className={`flex items-center justify-center rounded border border-blue-600/30 bg-blue-800/50 ${backInnerClass}`}>
-          <span className="text-lg sm:text-xl opacity-60">🂠</span>
+        <div className={`relative z-10 flex items-center justify-center rounded border border-sky-200/25 bg-white/5 ${backInnerClass}`}>
+          <span className={`${logoClass} font-black tracking-[0.14em] text-sky-100`}>SKALE</span>
         </div>
       </div>
     );

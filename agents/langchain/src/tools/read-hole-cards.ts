@@ -1,7 +1,7 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { secp256k1 } from "@noble/curves/secp256k1";
-import { sha256 } from "@noble/hashes/sha256";
+import { secp256k1 } from "@noble/curves/secp256k1.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { decodeAbiParameters, hexToBytes, bytesToHex, type Hex, type Address } from "viem";
 import { getKeyStore } from "../wallet/key-store";
 import { config } from "../config";

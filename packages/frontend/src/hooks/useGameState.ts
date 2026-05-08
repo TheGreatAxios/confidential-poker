@@ -27,6 +27,10 @@ const GAME_STARTED_EVENT = parseAbiItem("event GameStarted(uint256 handNumber, a
 const HAND_COMPLETE_EVENT = parseAbiItem("event HandComplete()");
 const WINNER_EVENT = parseAbiItem("event Winner(address indexed player, uint256 amount, string handName)");
 const POT_AWARDED_EVENT = parseAbiItem("event PotAwarded(address indexed player, uint256 amount)");
+const FACE_DOWN_HAND: [Card, Card] = [
+  { rank: "A", suit: "♠", faceUp: false },
+  { rank: "A", suit: "♠", faceUp: false },
+];
 
 type HandResolution = {
   winnerAddresses: string[];
@@ -391,10 +395,7 @@ export function useGameState(tableAddress: `0x${string}`) {
     const isTableEmpty = table.playerCount === 0n;
     const isWaiting = table.phase === "waiting";
     const activePlayerCount = players.filter(player => player?.isActive).length;
-    const handComplete =
-      table.phase === "showdown" ||
-      handResolution.handComplete ||
-      (activePlayerCount === 1 && players.some((player) => player?.hadCardsThisHand));
+    const handComplete = table.phase === "showdown" || handResolution.handComplete;
 
     const revealablePlayers = players.flatMap((player) => {
       if (!player) {
@@ -414,7 +415,7 @@ export function useGameState(tableAddress: `0x${string}`) {
     });
 
     // If only one active player remains, they are the winner by default
-    const foldWinnerIds = activePlayerCount === 1 && handComplete
+    const foldWinnerIds = activePlayerCount === 1 && handResolution.handComplete
       ? players.flatMap((player, i) => player?.isActive ? [`agent-${i}`] : [])
       : [];
 
@@ -468,6 +469,15 @@ export function useGameState(tableAddress: `0x${string}`) {
         handOutcome = isWinner ? "winner" : (!player.isActive ? "folded" : "lost");
       }
 
+      const cards =
+        revealedCards.length === 2
+          ? revealedCards
+          : isHumanSeat && holeCards.length === 2
+            ? holeCards
+            : player.hadCardsThisHand && !handComplete
+              ? FACE_DOWN_HAND
+              : [];
+
       return [
         {
           id: `agent-${i}`,
@@ -475,7 +485,7 @@ export function useGameState(tableAddress: `0x${string}`) {
           personality: PERSONALITIES[i % PERSONALITIES.length],
           emoji: EMOJIS[i % EMOJIS.length] ?? "🧠",
           chips: player.chips,
-          cards: revealedCards.length === 2 ? revealedCards : isHumanSeat ? holeCards : [],
+          cards,
           status,
           currentBet: player.currentBet,
           isDealer: dealer === player.address.toLowerCase(),
@@ -563,7 +573,7 @@ export function useGameState(tableAddress: `0x${string}`) {
       lastAction: winnerSummary,
       handSummary,
       winners: winners && winners.length > 0 ? winners : null,
-	      canStartNextHand: isWaiting && players.filter((player) => player && player.chips > 0n).length >= 2,
+      canStartNextHand: isWaiting && players.filter((player) => player && player.chips > 0n).length >= 2,
 	      handComplete,
 	      sidePots,
 	      humanPlayer: humanAddress

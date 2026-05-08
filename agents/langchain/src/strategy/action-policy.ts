@@ -34,6 +34,12 @@ function toBigInt(value: string | undefined): bigint {
   return BigInt(value ?? "0");
 }
 
+function clampBigInt(value: bigint, min: bigint, max: bigint): bigint {
+  if (value < min) return min;
+  if (value > max) return max;
+  return value;
+}
+
 function rankCode(rank: RankValue): string {
   if (rank === 10) return "T";
   if (rank === 11) return "J";
@@ -134,6 +140,27 @@ function madeHandScore(holeCards: readonly [Card, Card], board: readonly Card[])
   return 0;
 }
 
+function holeImprovesBoard(holeCards: readonly [Card, Card], board: readonly Card[], score: number): boolean {
+  const boardRanks = rankCounts(board);
+  const allRanks = rankCounts([...holeCards, ...board]);
+  const holeMakesPairOrBetter = holeCards.some((card) => (allRanks.get(card.rank) ?? 0) >= 2);
+  const boardFlushSuit = [...suitCounts(board)].find(([, count]) => count >= 5)?.[0];
+  const holeMakesFlush = boardFlushSuit ? false : [...suitCounts([...holeCards, ...board]).values()].some((count) => count >= 5);
+  const holeMakesStraight = !hasStraight(board) && hasStraight([...holeCards, ...board]);
+
+  if (score <= 1) return holeMakesPairOrBetter;
+  return holeMakesPairOrBetter
+    || holeMakesFlush
+    || holeMakesStraight
+    || holeCards.some((card) => !boardRanks.has(card.rank) && card.rank >= 11);
+}
+
+function actionableHandScore(holeCards: readonly [Card, Card], board: readonly Card[]): number {
+  const score = madeHandScore(holeCards, board);
+  if (score === 0) return 0;
+  return holeImprovesBoard(holeCards, board, score) ? score : 0;
+}
+
 function hasStrongDraw(holeCards: readonly [Card, Card], board: readonly Card[]): boolean {
   const cards = [...holeCards, ...board];
   const flushDraw = [...suitCounts(cards).values()].some((count) => count >= 4);
@@ -145,6 +172,8 @@ function preflopDecision(state: PolicyGameState, holeCards: readonly [Card, Card
   const toCall = toBigInt(state.toCall);
   const facingRaise = Boolean(state.facingPreflopRaise);
   const canCheck = toCall === 0n;
+  const bigBlind = toBigInt(state.bigBlind);
+  const stack = toBigInt(state.myStack);
   const pair = isPair(code);
   const suited = code.endsWith("s");
   const broadway = [...code.slice(0, 2)].every((rank) => rankIndex(rank as never) >= rankIndex("T" as never));
@@ -156,7 +185,9 @@ function preflopDecision(state: PolicyGameState, holeCards: readonly [Card, Card
     || suited && isAtLeast(code, "K7")
     || isSuitedConnector(holeCards);
 
-  if (premium && !facingRaise) return { action: "raise", raiseAmount: TOKEN_WEI.toString(), reason: `${code} is a value open heads-up.` };
+  const openSize = clampBigInt(bigBlind > 0n ? bigBlind * 2n : TOKEN_WEI, TOKEN_WEI, stack > 0n ? stack : TOKEN_WEI);
+
+  if (premium && !facingRaise) return { action: "raise", raiseAmount: openSize.toString(), reason: `${code} is a value open heads-up with dynamic sizing.` };
   if (canCheck) return { action: "check", raiseAmount: null, reason: `${code} can realize equity for free.` };
   if (!facingRaise || playable) return { action: "call", raiseAmount: null, reason: `${code} is playable at current price.` };
   return { action: "fold", raiseAmount: null, reason: `${code} is too weak against a real raise.` };
@@ -165,12 +196,14 @@ function preflopDecision(state: PolicyGameState, holeCards: readonly [Card, Card
 function postflopDecision(state: PolicyGameState, holeCards: readonly [Card, Card], board: readonly Card[]): PolicyDecision {
   const toCall = toBigInt(state.toCall);
   const pot = toBigInt(state.pot);
+  const stack = toBigInt(state.myStack);
   const canCheck = toCall === 0n;
-  const score = madeHandScore(holeCards, board);
+  const score = actionableHandScore(holeCards, board);
   const draw = hasStrongDraw(holeCards, board);
   const cheapCall = toCall > 0n && (pot === 0n || toCall * 4n <= pot + toCall);
+  const valueRaise = clampBigInt(pot / (score >= 4 ? 2n : 3n), MIN_RAISE_WEI, stack > 0n ? stack : MIN_RAISE_WEI);
 
-  if (score >= 2 && canCheck) return { action: "raise", raiseAmount: MIN_RAISE_WEI.toString(), reason: "Two pair or better should value bet when checked to." };
+  if (score >= 2 && canCheck) return { action: "raise", raiseAmount: valueRaise.toString(), reason: "Value hand should size against the pot, not use a fixed minimum." };
   if (score >= 2) return { action: "call", raiseAmount: null, reason: "Made value hand continues against pressure." };
   if (score === 1 && canCheck) return { action: "check", raiseAmount: null, reason: "One pair has showdown value." };
   if (score === 1 && cheapCall) return { action: "call", raiseAmount: null, reason: "One pair has enough equity at this price." };

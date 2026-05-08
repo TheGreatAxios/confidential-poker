@@ -1,9 +1,9 @@
 import { encodeFunctionData, type Address } from "viem";
 import { getKeyStore } from "../wallet/key-store";
 import { config } from "../config";
-import { createAgent } from "../agent";
+import { createSubmitActionCaller } from "../agent";
 import { createMemoryBackend } from "../memory/factory";
-import { setLogActionBackend } from "../tools/log-action";
+import { logAction as logActionTool, setLogActionBackend } from "../tools/log-action";
 import { discoverOrCreate } from "./discovery";
 import { watchTurnChanged } from "./event-watcher";
 import { createPoller } from "./poller";
@@ -25,7 +25,16 @@ type BettingState = {
   phase?: string;
 };
 
-const MIN_RAISE_WEI = "500000000000000000";
+type SubmitActionToolCall = {
+  name?: unknown;
+  args?: unknown;
+};
+
+type SubmitActionArgs = {
+  tableAddress: Address;
+  action: PokerAction;
+  raiseAmount: string | null;
+};
 
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -86,6 +95,25 @@ function textFromMessage(message: unknown): string {
 
 function extractResponseText(response: unknown): string {
   if (!response || typeof response !== "object") return "";
+
+  // Check for direct AIMessage content (raw model output)
+  const content = (response as { content?: unknown }).content;
+  if (typeof content === "string" && content.trim()) return content.trim();
+  if (Array.isArray(content)) {
+    const text = content
+      .map((part) => {
+        if (typeof part === "string") return part;
+        if (!part || typeof part !== "object") return "";
+        const text = (part as { text?: unknown }).text;
+        return typeof text === "string" ? text : "";
+      })
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+    if (text) return text;
+  }
+
+  // Fallback: check messages array (Legacy output containing { messages: [...] })
   const messages = (response as { messages?: unknown }).messages;
   if (!Array.isArray(messages)) return "";
 
@@ -97,38 +125,61 @@ function extractResponseText(response: unknown): string {
   return "";
 }
 
-function normalizeRecoveredAction(action: PokerAction, state: BettingState): PokerAction {
-  const currentBet = BigInt(state.currentBet ?? "0");
-  const myBet = BigInt(state.myBet ?? "0");
-  const bigBlind = BigInt(state.bigBlind ?? "0");
-  const facingBet = currentBet > myBet;
-  const facingOnlyBlind = state.phase === "Preflop" && bigBlind > 0n && currentBet <= bigBlind;
-
-  if (action === "fold" && facingOnlyBlind) return facingBet ? "call" : "check";
-  if (action === "check" && facingBet) return "call";
-  if (action === "call" && !facingBet) return "check";
-  return action;
+function isPokerAction(action: unknown): action is PokerAction {
+  return action === "fold" || action === "check" || action === "call" || action === "raise";
 }
 
-function recoverActionFromText(text: string, state: BettingState): { action: PokerAction; raiseAmount: string | null } | null {
-  const normalized = text.toLowerCase();
-  const actionMatch = normalized.match(/\b(fold(?:ed)?|check(?:ed)?|call(?:ed)?|raise(?:d)?|bet)\b/);
-  if (!actionMatch) return null;
+function extractToolCalls(response: unknown): SubmitActionToolCall[] {
+  if (!response || typeof response !== "object") return [];
 
-  const rawAction = actionMatch[1];
-  const action: PokerAction = rawAction.startsWith("fold")
-    ? "fold"
-    : rawAction.startsWith("check")
-      ? "check"
-      : rawAction.startsWith("call")
-        ? "call"
-        : "raise";
+  const directToolCalls = (response as { tool_calls?: unknown }).tool_calls;
+  if (Array.isArray(directToolCalls)) return directToolCalls as SubmitActionToolCall[];
 
-  const recoveredAction = normalizeRecoveredAction(action, state);
-  if (recoveredAction !== "raise") return { action: recoveredAction, raiseAmount: null };
+  const messages = (response as { messages?: unknown }).messages;
+  if (!Array.isArray(messages)) return [];
 
-  const amountMatch = text.match(/\b\d{15,}\b/);
-  return { action: "raise", raiseAmount: amountMatch?.[0] ?? MIN_RAISE_WEI };
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const toolCalls = (messages[i] as { tool_calls?: unknown }).tool_calls;
+    if (Array.isArray(toolCalls)) return toolCalls as SubmitActionToolCall[];
+  }
+
+  return [];
+}
+
+function extractSubmitActionArgs(response: unknown, tableAddress: Address): SubmitActionArgs | null {
+  const toolCall = extractToolCalls(response).find((call) => call.name === "submit_action");
+  if (!toolCall || !toolCall.args || typeof toolCall.args !== "object") return null;
+
+  const args = toolCall.args as {
+    tableAddress?: unknown;
+    action?: unknown;
+    raiseAmount?: unknown;
+  };
+
+  if (!isPokerAction(args.action)) return null;
+  const raiseAmount = typeof args.raiseAmount === "string" ? args.raiseAmount : null;
+  return {
+    tableAddress,
+    action: args.action,
+    raiseAmount: args.action === "raise" ? raiseAmount : null,
+  };
+}
+
+async function logSubmittedAction(
+  handNumber: number,
+  action: PokerAction,
+  raiseAmount: string | null,
+  thinking: string,
+  gameStateSnapshot: string,
+): Promise<void> {
+  const result = await logActionTool.invoke({
+    handNumber,
+    action,
+    amount: raiseAmount ?? "0",
+    thinking,
+    gameStateSnapshot,
+  });
+  console.log(`log_action result: ${result}`);
 }
 
 async function ensureGas(): Promise<void> {
@@ -217,7 +268,7 @@ export async function runGameLoop() {
   const memoryBackend = await createMemoryBackend();
   setLogActionBackend(memoryBackend);
 
-  const agent = createAgent(memoryBackend);
+  const submitActionCaller = createSubmitActionCaller();
   const ks = getKeyStore();
   const ourAddress = ks.getAddress();
   const publicClient = ks.getPublicClient();
@@ -425,12 +476,11 @@ export async function runGameLoop() {
       const policyDecision = decidePokerAction(state, cards);
       console.log(`Policy decision: ${policyDecision.action}${policyDecision.raiseAmount ? ` ${policyDecision.raiseAmount}` : ""} — ${policyDecision.reason}`);
 
-      // Phase 4: Invoke the Deep Agent to decide and act
-      const invokeInput = {
-        messages: [
-          {
-            role: "user",
-            content: `It is your turn in hand ${handNumber} (phase: ${pollResult.phaseName}).
+      // Phase 4: Force the model to return a submit_action tool call, then execute it.
+      const invokeInput = [
+        {
+          role: "user",
+          content: `It is your turn in hand ${handNumber} (phase: ${pollResult.phaseName}).
 
 Game state: ${stateJson}
 Your hole cards: ${cardsJson}
@@ -439,15 +489,13 @@ ${phasePlaybook}
 
 Recommended action from deterministic policy: ${JSON.stringify(policyDecision)}
 
-Submit that action with submit_action unless you can identify a concrete reason it is illegal or strategically worse.
-Use get_game_state if you need a fresh read, then submit_action to play.
-After acting, call log_action with your reasoning.`,
-          },
-        ] as never[],
-      };
+Return exactly one submit_action tool call now. Do not answer with text.
+Use the recommended action unless it is illegal. If illegal, choose the closest legal action.`,
+        },
+      ] as never[];
 
       try {
-        const response = await agent.invoke(
+        const response = await submitActionCaller.invoke(
           invokeInput,
           { configurable: { thread_id: `hand-${handNumber}` } } as never,
         );
@@ -457,36 +505,30 @@ After acting, call log_action with your reasoning.`,
           console.log("Agent response:", responseText.slice(0, 300));
         }
 
-        const afterInvoke = await watchPoller.poll();
-        if (afterInvoke?.isMyTurn && afterInvoke.phase >= 1 && afterInvoke.phase <= 4) {
-          const recovered = recoverActionFromText(responseText, state);
-          if (recovered) {
-            console.log(`Agent did not submit tool action, text suggested ${recovered.action}; submitting policy action`);
-            const submitted = await submitPokerAction(
-              tableAddress,
-              policyDecision.action,
-              policyDecision.raiseAmount,
-              "policy",
+        const toolArgs = extractSubmitActionArgs(response, tableAddress);
+        if (!toolArgs) {
+          console.log("Agent did not return submit_action tool call; submitting policy action");
+          const submitted = await submitPokerAction(tableAddress, policyDecision.action, policyDecision.raiseAmount, "policy");
+          if (!submitted) await submitFallbackAction(tableAddress, state);
+        } else {
+          console.log(`Agent returned submit_action tool call: ${toolArgs.action}${toolArgs.raiseAmount ? ` ${toolArgs.raiseAmount}` : ""}`);
+          const submitted = await submitPokerAction(
+            toolArgs.tableAddress,
+            toolArgs.action,
+            toolArgs.raiseAmount,
+            "model-tool",
+          );
+          if (submitted) {
+            await logSubmittedAction(
+              handNumber,
+              toolArgs.action,
+              toolArgs.raiseAmount,
+              responseText || policyDecision.reason,
+              stateJson,
             );
-            if (!submitted) {
-              console.log("Policy action failed, trying text-recovered action");
-              const textSubmitted = await submitPokerAction(
-                tableAddress,
-                recovered.action,
-                recovered.raiseAmount,
-                "text-recovered",
-              );
-              if (!textSubmitted) await submitFallbackAction(tableAddress, state);
-            }
           } else {
-            console.log("Agent did not advance turn, submitting policy action");
-            const submitted = await submitPokerAction(
-              tableAddress,
-              policyDecision.action,
-              policyDecision.raiseAmount,
-              "policy",
-            );
-            if (!submitted) await submitFallbackAction(tableAddress, state);
+            const policySubmitted = await submitPokerAction(tableAddress, policyDecision.action, policyDecision.raiseAmount, "policy");
+            if (!policySubmitted) await submitFallbackAction(tableAddress, state);
           }
         }
       } catch (err) {

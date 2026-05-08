@@ -1,8 +1,9 @@
 import { createDeepAgent } from "deepagents";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatOpenAI } from "@langchain/openai";
+import { ChatOpenRouter } from "@langchain/openrouter";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { AIMessage } from "../node_modules/deepagents/node_modules/@langchain/core/dist/messages/ai.js";
+import { AIMessage } from "@langchain/core/messages";
 import type { MemoryBackend } from "./memory/types";
 import { config } from "./config";
 import { buildPrompt } from "./prompts/build-prompt";
@@ -29,6 +30,10 @@ type MessageLike = {
 };
 
 export type PokerAgent = {
+  invoke(input: unknown, options?: unknown): Promise<unknown>;
+};
+
+export type SubmitActionCaller = {
   invoke(input: unknown, options?: unknown): Promise<unknown>;
 };
 
@@ -106,11 +111,10 @@ function createModel() {
         apiKey: config.llmApiKey,
       }));
     case "openrouter":
-      return createDeepAgentCompatModel(new ChatOpenAI({
+      return createDeepAgentCompatModel(new ChatOpenRouter({
         model: config.llmModel,
         temperature: 0.3,
         apiKey: config.llmApiKey,
-        configuration: { baseURL: "https://openrouter.ai/api/v1" },
       }));
     default:
       console.error(`Unknown LLM provider: ${provider}, falling back to anthropic`);
@@ -148,4 +152,14 @@ export function createAgent(memoryBackend: MemoryBackend): PokerAgent {
   });
 
   return agent;
+}
+
+export function createSubmitActionCaller(): SubmitActionCaller {
+  return createModel().bindTools(
+    [submitAction],
+    {
+      tool_choice: "submit_action",
+      strict: true,
+    } as never,
+  ) as never;
 }
