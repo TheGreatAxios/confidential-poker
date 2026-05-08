@@ -467,6 +467,9 @@ export async function runGameLoop() {
       const state = JSON.parse(stateJson as string);
       console.log(`Pot: ${state.pot}, Stack: ${state.myStack}, Phase: ${state.phase}`);
       console.log(`Bet: current=${state.currentBet}, mine=${state.myBet}, toCall=${state.toCall}`);
+      if (state.communityCards && state.communityCards.length > 0) {
+        console.log(`Board: ${state.communityCards.join(", ")}`);
+      }
 
       const cardsJson = await readHoleCardsTool.invoke({ tableAddress });
       console.log(`Cards: ${cardsJson}`);
@@ -474,7 +477,7 @@ export async function runGameLoop() {
       const phasePlaybook = buildPhasePlaybook(state.phase);
       console.log(`Playbook: ${state.phase} betting tools`);
       const policyDecision = decidePokerAction(state, cards);
-      console.log(`Policy decision: ${policyDecision.action}${policyDecision.raiseAmount ? ` ${policyDecision.raiseAmount}` : ""} — ${policyDecision.reason}`);
+      console.log(`Policy decision: ${policyDecision.action}${policyDecision.raiseAmount ? ` ${policyDecision.raiseAmount}` : ""} — ${policyDecision.reason}${policyDecision.score !== undefined ? ` (hand score: ${policyDecision.score})` : ""}`);
 
       // Phase 4: Force the model to return a submit_action tool call, then execute it.
       const invokeInput = [

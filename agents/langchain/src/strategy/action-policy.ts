@@ -24,6 +24,7 @@ export type PolicyDecision = {
   action: PokerAction;
   raiseAmount: string | null;
   reason: string;
+  score?: number;
 };
 
 const MIN_RAISE_WEI = 500000000000000000n;
@@ -203,14 +204,16 @@ function postflopDecision(state: PolicyGameState, holeCards: readonly [Card, Car
   const cheapCall = toCall > 0n && (pot === 0n || toCall * 4n <= pot + toCall);
   const valueRaise = clampBigInt(pot / (score >= 4 ? 2n : 3n), MIN_RAISE_WEI, stack > 0n ? stack : MIN_RAISE_WEI);
 
-  if (score >= 2 && canCheck) return { action: "raise", raiseAmount: valueRaise.toString(), reason: "Value hand should size against the pot, not use a fixed minimum." };
-  if (score >= 2) return { action: "call", raiseAmount: null, reason: "Made value hand continues against pressure." };
-  if (score === 1 && canCheck) return { action: "check", raiseAmount: null, reason: "One pair has showdown value." };
-  if (score === 1 && cheapCall) return { action: "call", raiseAmount: null, reason: "One pair has enough equity at this price." };
-  if (draw && canCheck) return { action: "check", raiseAmount: null, reason: "Draw can take a free card." };
-  if (draw && cheapCall) return { action: "call", raiseAmount: null, reason: "Strong draw has acceptable pot odds." };
-  if (canCheck) return { action: "check", raiseAmount: null, reason: "No made hand or strong draw; avoid bluffing by default." };
-  return { action: "fold", raiseAmount: null, reason: "Weak hand facing a bet without enough equity." };
+  if (score >= 2 && canCheck) return { action: "raise", raiseAmount: valueRaise.toString(), reason: "Value hand should size against the pot, not use a fixed minimum.", score };
+  if (score >= 2) return { action: "call", raiseAmount: null, reason: "Made value hand continues against pressure.", score };
+  if (score === 1 && draw && canCheck) return { action: "raise", raiseAmount: valueRaise.toString(), reason: "One pair with a strong draw — semi-bluff.", score };
+  if (score === 1 && draw && cheapCall) return { action: "call", raiseAmount: null, reason: "One pair with a draw has enough equity.", score };
+  if (score === 1 && canCheck) return { action: "check", raiseAmount: null, reason: "One pair has showdown value.", score };
+  if (score === 1 && cheapCall) return { action: "call", raiseAmount: null, reason: "One pair has enough equity at this price.", score };
+  if (draw && canCheck) return { action: "check", raiseAmount: null, reason: "Draw can take a free card.", score };
+  if (draw && cheapCall) return { action: "call", raiseAmount: null, reason: "Strong draw has acceptable pot odds.", score };
+  if (canCheck) return { action: "check", raiseAmount: null, reason: "No made hand or strong draw; avoid bluffing by default.", score };
+  return { action: "fold", raiseAmount: null, reason: "Weak hand facing a bet without enough equity.", score };
 }
 
 export function decidePokerAction(state: PolicyGameState, holeCards: PolicyHoleCards): PolicyDecision {
