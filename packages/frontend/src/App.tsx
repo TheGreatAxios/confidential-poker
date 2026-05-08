@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
+import { Routes, Route, useNavigate, useParams, useLocation } from "react-router-dom";
 import { useGameState } from "@/hooks/useGameState";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -16,39 +17,72 @@ const JoinPanel = lazy(() =>
   import("@/components/JoinPanel").then((module) => ({ default: module.JoinPanel })),
 );
 
-export default function Home() {
-  const [selectedTable, setSelectedTable] = useState<`0x${string}` | null>(null);
-  const [selectedTableInfo, setSelectedTableInfo] = useState<TableInfo | null>(null);
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<LobbyPage />} />
+      <Route path="/tables/:address" element={<TablePage />} />
+    </Routes>
+  );
+}
 
-  if (!selectedTable) {
+function LobbyPage() {
+  const navigate = useNavigate();
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Header error={null} />
+      <main className="flex flex-1 justify-center">
+        <TableLobby
+          onSelectTable={(tableAddress, tableInfo) => {
+            navigate(`/tables/${tableAddress}`, { state: { tableInfo } });
+          }}
+        />
+      </main>
+      <Footer />
+    </div>
+  );
+}
+
+function TablePage() {
+  const { address } = useParams<{ address: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [tableInfo, setTableInfo] = useState<TableInfo | null>(null);
+
+  const tableAddress = address as `0x${string}` | undefined;
+
+  useEffect(() => {
+    if (location.state?.tableInfo) {
+      setTableInfo(location.state.tableInfo);
+    }
+  }, [location.state]);
+
+  if (!tableAddress || !tableAddress.startsWith("0x")) {
     return (
-      <div className="flex min-h-screen flex-col">
-        <Header error={null} />
-        <main className="flex flex-1 justify-center">
-          <TableLobby
-            onSelectTable={(tableAddress, tableInfo) => {
-              setSelectedTable(tableAddress);
-              setSelectedTableInfo(tableInfo ?? null);
-            }}
-          />
-        </main>
-        <Footer />
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+        <p className="text-poker-text-muted">Invalid table address.</p>
+        <button
+          onClick={() => navigate("/")}
+          className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white hover:bg-white/[0.08]"
+        >
+          Back to Lobby
+        </button>
       </div>
     );
   }
 
-  return <ActiveTable tableAddress={selectedTable} tableInfo={selectedTableInfo} onBack={() => setSelectedTable(null)} />;
+  return <ActiveTable tableAddress={tableAddress} tableInfo={tableInfo} />;
 }
 
 function ActiveTable({
   tableAddress,
   tableInfo,
-  onBack,
 }: {
   tableAddress: `0x${string}`;
   tableInfo: TableInfo | null;
-  onBack: () => void;
 }) {
+  const navigate = useNavigate();
   const { gameState, isConnected, error, joinHumanPlayer, leaveHumanPlayer } = useGameState(tableAddress);
   const { isConnected: isWalletConnected } = useAccount();
 
@@ -59,7 +93,7 @@ function ActiveTable({
       <main className="flex min-h-0 flex-1 flex-col items-center gap-2 px-3 py-3 sm:px-4">
         <div className="flex w-full max-w-6xl shrink-0 items-center justify-between gap-3">
           <button
-            onClick={onBack}
+            onClick={() => navigate("/")}
             className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-white hover:bg-white/[0.08]"
           >
             Back to Lobby
