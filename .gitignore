@@ -18,3 +18,4 @@ poker-deploy.json
 **/sandbox.json
 .pi/prompts
 **/prompts
+**/.wrangler
