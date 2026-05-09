@@ -24,6 +24,7 @@ export type PlayerStatus =
   | "acting"
   | "folded"
   | "all-in"
+  | "leaving"
   | "busted";
 
 export type GamePhase =
@@ -56,9 +57,29 @@ export interface Agent {
   color: string;
   handComplete: boolean;
   handOutcome: "winner" | "lost" | "folded" | null;
+  leaveRequested: boolean;
+}
+
+export interface TableInfo {
+  address: `0x${string}`;
+  buyIn: bigint;
+  smallBlind: bigint;
+  bigBlind: bigint;
+  playerCount: number;
+  pot: bigint;
+  phase: GamePhase;
+  name: string;
+  isActive: boolean;
+}
+
+export interface SidePot {
+  amount: bigint;
+  winnerIds: string[];
 }
 
 export interface GameState {
+  tableAddress: `0x${string}`;
+  chipTokenAddress: `0x${string}` | null;
   phase: GamePhase;
   communityCards: Card[];
   pot: bigint;
@@ -79,6 +100,7 @@ export interface GameState {
   winners: string[] | null;
   canStartNextHand: boolean;
   handComplete: boolean;
+  sidePots: SidePot[];
   humanPlayer: {
     isConnected: boolean;
     address: string | null;
@@ -89,7 +111,15 @@ export interface GameState {
     currentBet: bigint;
     seatIndex: number;
     isWinner: boolean;
+    leaveRequested: boolean;
+    chipTokenBalance: bigint;
   } | null;
+}
+
+export interface FactoryState {
+  tables: TableInfo[];
+  isLoading: boolean;
+  error: string | null;
 }
 
 export interface FaucetState {

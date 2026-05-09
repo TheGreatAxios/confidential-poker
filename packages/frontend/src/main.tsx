@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
 import "./globals.css";
 import { Providers } from "./providers";
 import App from "./App";
@@ -16,9 +17,11 @@ createRoot(document.getElementById("root")!).render(
 
     {/* Content */}
     <div className="relative z-10">
-      <Providers>
-        <App />
-      </Providers>
+      <BrowserRouter>
+        <Providers>
+          <App />
+        </Providers>
+      </BrowserRouter>
     </div>
   </StrictMode>,
 );

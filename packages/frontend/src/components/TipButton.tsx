@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { FRONTEND_CONFIG } from "@/lib/config";
 
 interface TipButtonProps {
   agentId?: string;
@@ -16,17 +15,8 @@ export function TipButton({ agentId, agentName, agentEmoji }: TipButtonProps) {
     setIsTipping(true);
     setMessage(null);
     try {
-      const apiUrl = FRONTEND_CONFIG.apiUrl;
-      if (apiUrl) {
-        await fetch(`${apiUrl}/tip`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ agentId, amount: 10 }),
-        });
-      } else {
-        await new Promise((r) => setTimeout(r, 500));
-      }
-      setMessage(`Tipped ${agentEmoji} ${agentName}! 🎉`);
+      await new Promise((r) => setTimeout(r, 500));
+      setMessage(`Tipped ${agentEmoji} ${agentName}!`);
     } catch {
       setMessage("Tip failed");
     } finally {
@@ -43,7 +33,7 @@ export function TipButton({ agentId, agentName, agentEmoji }: TipButtonProps) {
         disabled={isTipping}
         className="px-2 py-1 rounded text-xs bg-poker-gold/10 border border-poker-gold/20 text-poker-gold/70 hover:bg-poker-gold/20 transition-colors disabled:opacity-50"
       >
-        {isTipping ? "..." : "💰 Tip"}
+        {isTipping ? "..." : "Tip"}
       </button>
       {message && (
         <span className="text-[10px] text-poker-gold/60">{message}</span>

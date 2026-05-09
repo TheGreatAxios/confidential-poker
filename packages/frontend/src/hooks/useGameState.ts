@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { parseAbiItem } from "viem";
 import { useAccount, usePublicClient, useReadContract, useReadContracts } from "wagmi";
 import { Card, GameState } from "@/lib/types";
-import { POKER_TABLE_ABI, POKER_TABLE_ADDRESS } from "@/lib/contracts";
+import { ERC20_ABI, POKER_GAME_ABI } from "@/lib/contracts";
 import { cardFromUint8, usePokerTable } from "@/hooks/usePokerTable";
 import { FRONTEND_CONFIG } from "@/lib/config";
 import { loadViewerKey } from "@/lib/viewer-key";
@@ -26,12 +26,18 @@ const CARDS_REVEALED_EVENT = parseAbiItem("event CardsRevealed(address indexed p
 const GAME_STARTED_EVENT = parseAbiItem("event GameStarted(uint256 handNumber, address indexed dealer)");
 const HAND_COMPLETE_EVENT = parseAbiItem("event HandComplete()");
 const WINNER_EVENT = parseAbiItem("event Winner(address indexed player, uint256 amount, string handName)");
+const POT_AWARDED_EVENT = parseAbiItem("event PotAwarded(address indexed player, uint256 amount)");
+const FACE_DOWN_HAND: [Card, Card] = [
+  { rank: "A", suit: "♠", faceUp: false },
+  { rank: "A", suit: "♠", faceUp: false },
+];
 
 type HandResolution = {
   winnerAddresses: string[];
   winnerAmount: bigint | null;
   winnerHandName: string | null;
   handComplete: boolean;
+  awardedPots: { playerAddress: string; amount: bigint }[];
 };
 
 type PlayerRead = readonly [
@@ -47,10 +53,10 @@ type PlayerRead = readonly [
   boolean,
 ];
 
-export function useGameState() {
+export function useGameState(tableAddress: `0x${string}`) {
   const { address, isConnected: isWalletConnected } = useAccount();
   const publicClient = usePublicClient();
-  const table = usePokerTable();
+  const table = usePokerTable(tableAddress);
   const [pendingJoinAddress, setPendingJoinAddress] = useState<`0x${string}` | null>(null);
   const [holeCards, setHoleCards] = useState<Card[]>([]);
   const [revealedCardsByAddress, setRevealedCardsByAddress] = useState<Record<string, Card[]>>({});
@@ -59,6 +65,7 @@ export function useGameState() {
     winnerAmount: null,
     winnerHandName: null,
     handComplete: false,
+    awardedPots: [],
   });
   const playerCount = Number(table.playerCount);
 
@@ -66,12 +73,12 @@ export function useGameState() {
     () =>
       Array.from({ length: playerCount }, (_, i) => ({
         chainId: FRONTEND_CONFIG.chainId,
-        address: POKER_TABLE_ADDRESS,
-        abi: POKER_TABLE_ABI,
+        address: tableAddress,
+        abi: POKER_GAME_ABI,
         functionName: "players" as const,
         args: [BigInt(i)] as const,
       })),
-    [playerCount],
+    [playerCount, tableAddress],
   );
 
   const { data: playerReads, refetch: refetchPlayers } = useReadContracts({
@@ -84,8 +91,8 @@ export function useGameState() {
 
   const { data: dealerAddress, refetch: refetchDealer } = useReadContract({
     chainId: FRONTEND_CONFIG.chainId,
-    address: POKER_TABLE_ADDRESS,
-    abi: POKER_TABLE_ABI,
+    address: tableAddress,
+    abi: POKER_GAME_ABI,
     functionName: "dealer",
     query: {
       enabled: table.isSuccess,
@@ -95,8 +102,8 @@ export function useGameState() {
 
   const { data: turnIndexRead, refetch: refetchTurnIndex } = useReadContract({
     chainId: FRONTEND_CONFIG.chainId,
-    address: POKER_TABLE_ADDRESS,
-    abi: POKER_TABLE_ABI,
+    address: tableAddress,
+    abi: POKER_GAME_ABI,
     functionName: "getCurrentTurnIndex",
     query: {
       enabled: table.isSuccess,
@@ -130,6 +137,43 @@ export function useGameState() {
     });
   }, [playerReads]);
 
+  const leaveContracts = useMemo(
+    () =>
+      players.flatMap((player) =>
+        player
+          ? [{
+              chainId: FRONTEND_CONFIG.chainId,
+              address: tableAddress,
+              abi: POKER_GAME_ABI,
+              functionName: "isLeaveRequested" as const,
+              args: [player.address] as const,
+            }]
+          : [],
+      ),
+    [players, tableAddress],
+  );
+
+  const { data: leaveReads } = useReadContracts({
+    contracts: leaveContracts,
+    query: {
+      enabled: leaveContracts.length > 0,
+      refetchInterval: 5_000,
+    },
+  });
+
+  const leaveRequestedByAddress = useMemo(() => {
+    const next: Record<string, boolean> = {};
+    let readIndex = 0;
+    for (const player of players) {
+      if (!player) continue;
+      next[player.address.toLowerCase()] = leaveReads?.[readIndex]?.status === "success"
+        ? Boolean(leaveReads[readIndex]?.result)
+        : false;
+      readIndex += 1;
+    }
+    return next;
+  }, [leaveReads, players]);
+
   const playerAddresses = useMemo(
     () => players.flatMap((player) => (player ? [player.address] : [])),
     [players],
@@ -140,10 +184,22 @@ export function useGameState() {
   const humanAddress = hasHumanSeat ? address : pendingJoinAddress;
   const viewerKey = useMemo(() => loadViewerKey(address), [address]);
 
+  const { data: chipTokenBalance } = useReadContract({
+    chainId: FRONTEND_CONFIG.chainId,
+    address: table.chipTokenAddress ?? undefined,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address && !!table.chipTokenAddress,
+      refetchInterval: 5_000,
+    },
+  });
+
   const { data: encryptedHoleCards } = useReadContract({
     chainId: FRONTEND_CONFIG.chainId,
-    address: POKER_TABLE_ADDRESS,
-    abi: POKER_TABLE_ABI,
+    address: tableAddress,
+    abi: POKER_GAME_ABI,
     functionName: "getMyEncryptedCards",
     account: address,
     query: {
@@ -202,6 +258,7 @@ export function useGameState() {
         winnerAmount: null,
         winnerHandName: null,
         handComplete: false,
+        awardedPots: [],
       });
       return;
     }
@@ -215,7 +272,7 @@ export function useGameState() {
         const latestBlock = await client.getBlockNumber();
         const searchFromBlock = latestBlock > 10_000n ? latestBlock - 10_000n : 0n;
         const gameStartedLogs = await client.getLogs({
-          address: POKER_TABLE_ADDRESS,
+          address: tableAddress,
           event: GAME_STARTED_EVENT,
           fromBlock: searchFromBlock,
           toBlock: "latest",
@@ -236,26 +293,33 @@ export function useGameState() {
             winnerAmount: null,
             winnerHandName: null,
             handComplete: false,
+            awardedPots: [],
           });
           return;
         }
 
         const handFromBlock = currentHandLog.blockNumber ?? searchFromBlock;
-        const [revealedLogs, winnerLogs, handCompleteLogs] = await Promise.all([
+        const [revealedLogs, winnerLogs, potAwardedLogs, handCompleteLogs] = await Promise.all([
           client.getLogs({
-            address: POKER_TABLE_ADDRESS,
+            address: tableAddress,
             event: CARDS_REVEALED_EVENT,
             fromBlock: handFromBlock,
             toBlock: "latest",
           }),
           client.getLogs({
-            address: POKER_TABLE_ADDRESS,
+            address: tableAddress,
             event: WINNER_EVENT,
             fromBlock: handFromBlock,
             toBlock: "latest",
           }),
           client.getLogs({
-            address: POKER_TABLE_ADDRESS,
+            address: tableAddress,
+            event: POT_AWARDED_EVENT,
+            fromBlock: handFromBlock,
+            toBlock: "latest",
+          }),
+          client.getLogs({
+            address: tableAddress,
             event: HAND_COMPLETE_EVENT,
             fromBlock: handFromBlock,
             toBlock: "latest",
@@ -289,11 +353,17 @@ export function useGameState() {
           ),
         );
         const latestWinnerLog = winnerLogs[winnerLogs.length - 1];
+        const awardedPots = potAwardedLogs.flatMap((log) => {
+          const playerAddress = log.args.player?.toLowerCase();
+          const amount = log.args.amount;
+          return playerAddress && typeof amount === "bigint" ? [{ playerAddress, amount }] : [];
+        });
         setHandResolution({
           winnerAddresses,
           winnerAmount: typeof latestWinnerLog?.args.amount === "bigint" ? latestWinnerLog.args.amount : null,
           winnerHandName: typeof latestWinnerLog?.args.handName === "string" ? latestWinnerLog.args.handName : null,
           handComplete: handCompleteLogs.length > 0 || winnerAddresses.length > 0,
+          awardedPots,
         });
       } catch {
         if (cancelled) {
@@ -316,7 +386,7 @@ export function useGameState() {
         clearTimeout(timeoutId);
       }
     };
-  }, [publicClient, table.handNumber]);
+  }, [publicClient, table.handNumber, tableAddress]);
 
   const gameState = useMemo<GameState>(() => {
     const dealer = typeof dealerAddress === "string" ? dealerAddress.toLowerCase() : null;
@@ -325,10 +395,7 @@ export function useGameState() {
     const isTableEmpty = table.playerCount === 0n;
     const isWaiting = table.phase === "waiting";
     const activePlayerCount = players.filter(player => player?.isActive).length;
-    const handComplete =
-      table.phase === "showdown" ||
-      handResolution.handComplete ||
-      (activePlayerCount === 1 && players.some((player) => player?.hadCardsThisHand));
+    const handComplete = table.phase === "showdown" || handResolution.handComplete;
 
     const revealablePlayers = players.flatMap((player) => {
       if (!player) {
@@ -348,7 +415,7 @@ export function useGameState() {
     });
 
     // If only one active player remains, they are the winner by default
-    const foldWinnerIds = activePlayerCount === 1 && handComplete
+    const foldWinnerIds = activePlayerCount === 1 && handResolution.handComplete
       ? players.flatMap((player, i) => player?.isActive ? [`agent-${i}`] : [])
       : [];
 
@@ -379,12 +446,15 @@ export function useGameState() {
         return [];
       }
 
-      const isHumanSeat = player.address.toLowerCase() === normalizedAddress;
-      const revealedCards = revealedCardsByAddress[player.address.toLowerCase()] ?? [];
-      let status: GameState["agents"][number]["status"] = "waiting";
+	      const isHumanSeat = player.address.toLowerCase() === normalizedAddress;
+	      const revealedCards = revealedCardsByAddress[player.address.toLowerCase()] ?? [];
+	      const playerLeaveRequested = leaveRequestedByAddress[player.address.toLowerCase()] ?? false;
+	      let status: GameState["agents"][number]["status"] = "waiting";
 
-      if (player.chips === 0n && !player.hadCardsThisHand) {
-        status = "busted";
+	      if (playerLeaveRequested) {
+	        status = "leaving";
+	      } else if (player.chips === 0n && !player.hadCardsThisHand) {
+	        status = "busted";
       } else if (!handComplete) {
         if (player.isActive) {
           status = player.isAllIn ? "all-in" : currentTurnIndex === i ? "acting" : "waiting";
@@ -399,6 +469,15 @@ export function useGameState() {
         handOutcome = isWinner ? "winner" : (!player.isActive ? "folded" : "lost");
       }
 
+      const cards =
+        revealedCards.length === 2
+          ? revealedCards
+          : isHumanSeat && holeCards.length === 2
+            ? holeCards
+            : player.hadCardsThisHand && !handComplete
+              ? FACE_DOWN_HAND
+              : [];
+
       return [
         {
           id: `agent-${i}`,
@@ -406,7 +485,7 @@ export function useGameState() {
           personality: PERSONALITIES[i % PERSONALITIES.length],
           emoji: EMOJIS[i % EMOJIS.length] ?? "🧠",
           chips: player.chips,
-          cards: revealedCards.length === 2 ? revealedCards : isHumanSeat ? holeCards : [],
+          cards,
           status,
           currentBet: player.currentBet,
           isDealer: dealer === player.address.toLowerCase(),
@@ -420,9 +499,10 @@ export function useGameState() {
           winRate: 0,
           handsPlayed: Number(table.handNumber),
           color: COLORS[i % COLORS.length] ?? "#6b7280",
-          handComplete,
-          handOutcome,
-        },
+	          handComplete,
+	          handOutcome,
+	          leaveRequested: playerLeaveRequested,
+	        },
       ];
     });
 
@@ -436,7 +516,14 @@ export function useGameState() {
     const humanAgent = humanSeatIndex >= 0 ? agents[humanSeatIndex] : null;
     const humanRevealedCards =
       humanPlayerState ? revealedCardsByAddress[humanPlayerState.address.toLowerCase()] ?? [] : [];
-    const winnerNames = agents.filter((agent) => agent.isWinner).map((agent) => agent.name);
+	    const winnerNames = agents.filter((agent) => agent.isWinner).map((agent) => agent.name);
+	    const sidePots = handResolution.awardedPots.map((pot, index) => {
+	      const agentIndex = players.findIndex((player) => player?.address.toLowerCase() === pot.playerAddress);
+	      return {
+	        amount: pot.amount,
+	        winnerIds: agentIndex >= 0 ? [`agent-${agentIndex}`] : [`winner-${index}`],
+	      };
+	    });
     const winnerSummary =
       handComplete && winnerNames.length > 0
         ? `Winner: ${winnerNames.join(" & ")}${handResolution.winnerHandName ? ` with ${handResolution.winnerHandName}` : ""}${handResolution.winnerAmount !== null ? ` for ${formatTokenAmount(handResolution.winnerAmount)} SKL` : ""}`
@@ -470,8 +557,10 @@ export function useGameState() {
           }
         : null;
 
-    return {
-      phase: table.phase,
+	    return {
+	      tableAddress,
+	      chipTokenAddress: table.chipTokenAddress,
+	      phase: table.phase,
       communityCards: table.communityCards,
       pot: isTableEmpty || isWaiting ? 0n : table.pot,
       currentBet: normalizedCurrentBet,
@@ -485,8 +574,9 @@ export function useGameState() {
       handSummary,
       winners: winners && winners.length > 0 ? winners : null,
       canStartNextHand: isWaiting && players.filter((player) => player && player.chips > 0n).length >= 2,
-      handComplete,
-      humanPlayer: humanAddress
+	      handComplete,
+	      sidePots,
+	      humanPlayer: humanAddress
         ? {
             isConnected: isWalletConnected,
             address: humanAddress,
@@ -495,26 +585,34 @@ export function useGameState() {
             cards: humanRevealedCards.length === 2 ? humanRevealedCards : holeCards,
             status: humanAgent?.status ?? "waiting",
             currentBet: humanPlayerState ? humanPlayerState.currentBet : 0n,
-            seatIndex: humanSeatIndex >= 0 ? humanSeatIndex : 6,
-            isWinner: humanAgent?.isWinner ?? false,
-          }
+	            seatIndex: humanSeatIndex >= 0 ? humanSeatIndex : 6,
+	            isWinner: humanAgent?.isWinner ?? false,
+	            leaveRequested: humanPlayerState
+	              ? leaveRequestedByAddress[humanPlayerState.address.toLowerCase()] ?? false
+	              : false,
+	            chipTokenBalance: chipTokenBalance ?? 0n,
+	          }
         : null,
     };
   }, [
     dealerAddress,
     holeCards,
     humanAddress,
+    chipTokenBalance,
     isWalletConnected,
     normalizedAddress,
     playerAddresses,
     players,
-    handResolution,
-    revealedCardsByAddress,
-    table.communityCards,
+	    handResolution,
+	    leaveRequestedByAddress,
+	    revealedCardsByAddress,
+	    table.chipTokenAddress,
+	    table.communityCards,
     table.currentBet,
     table.handNumber,
     table.phase,
-    table.pot,
+	    table.pot,
+	    tableAddress,
     turnIndexRead,
     viewerKey,
   ]);

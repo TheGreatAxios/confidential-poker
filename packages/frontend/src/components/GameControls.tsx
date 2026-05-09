@@ -1,9 +1,7 @@
 
 import { useEffect, useState } from "react";
-import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import type { GameState } from "@/lib/types";
-import { POKER_TABLE_ABI, POKER_TABLE_ADDRESS } from "@/lib/contracts";
-import { FRONTEND_CONFIG } from "@/lib/config";
+import { useTableActions } from "@/hooks/useTableActions";
 import { formatTokenAmount, formatTokenDisplay, parseTokenAmount } from "@/lib/token-format";
 
 interface GameControlsProps {
@@ -13,7 +11,7 @@ interface GameControlsProps {
 }
 
 const ACTION_BUTTON_CLASS =
-  "min-w-[132px] rounded-xl border px-4 py-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+  "min-w-[132px] cursor-pointer rounded-xl border px-4 py-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 const SECONDARY_BUTTON_CLASS = `${ACTION_BUTTON_CLASS} border-white/20 bg-white/[0.03] text-white hover:bg-white/[0.06]`;
 const GOLD_BUTTON_CLASS = `${ACTION_BUTTON_CLASS} border-poker-gold/30 bg-poker-gold/15 text-poker-gold hover:bg-poker-gold/25`;
 const RED_BUTTON_CLASS = `${ACTION_BUTTON_CLASS} border-poker-red/30 bg-poker-red/15 text-poker-red hover:bg-poker-red/25`;
@@ -30,12 +28,9 @@ function getActionErrorMessage(error: unknown): string {
 }
 
 export function GameControls({ gameState, onLeft, layout = "default" }: GameControlsProps) {
-  const { address } = useAccount();
-  const publicClient = usePublicClient();
-  const { writeContractAsync } = useWriteContract();
+  const { actions, acting, error } = useTableActions(gameState.tableAddress);
   const [raiseAmountInput, setRaiseAmountInput] = useState(formatTokenAmount(gameState.minRaise, { maxFractionDigits: 6 }));
   const [message, setMessage] = useState<string | null>(null);
-  const [acting, setActing] = useState(false);
 
   useEffect(() => {
     setRaiseAmountInput(formatTokenAmount(gameState.minRaise, { maxFractionDigits: 6 }));
@@ -57,116 +52,65 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
     gameState.humanPlayer !== null &&
     gameState.humanPlayer.seatIndex === gameState.dealerIndex;
   const canDealNextHand = gameState.humanPlayer !== null && gameState.canStartNextHand;
+  const leaveRequested = gameState.humanPlayer?.leaveRequested ?? false;
+  const canRequestLeave = gameState.humanPlayer !== null && !canCashOut && !leaveRequested;
+  const canCancelLeave = gameState.humanPlayer !== null && leaveRequested;
   const isPanelLayout = layout === "panel";
   const checkOrCallLabel = canCheckNow ? "Check" : `Call ${formatTokenDisplay(callAmount)}`;
-  const sendAndWait = async (hash: `0x${string}`) => {
-    const receipt = await publicClient!.waitForTransactionReceipt({
-      hash,
-      pollingInterval: 1_000,
-    });
-    if (receipt.status !== "success") throw new Error("Transaction reverted on-chain.");
-  };
 
   const handleFold = async () => {
-    if (!address || !publicClient || acting) return;
-    setActing(true);
+    if (acting) return;
     setMessage(null);
     try {
-      const hash = await writeContractAsync({
-        chainId: FRONTEND_CONFIG.chainId,
-        address: POKER_TABLE_ADDRESS,
-        abi: POKER_TABLE_ABI,
-        functionName: "fold",
-      });
-      await sendAndWait(hash);
+      await actions.fold();
     } catch (error) {
-      setMessage(`❌ ${getActionErrorMessage(error)}`);
-    } finally {
-      setActing(false);
+      setMessage(getActionErrorMessage(error));
     }
   };
 
   const handleCheck = async () => {
-    if (!address || !publicClient || acting) return;
-    setActing(true);
+    if (acting) return;
     setMessage(null);
     try {
-      const hash = await writeContractAsync({
-        chainId: FRONTEND_CONFIG.chainId,
-        address: POKER_TABLE_ADDRESS,
-        abi: POKER_TABLE_ABI,
-        functionName: "check",
-      });
-      await sendAndWait(hash);
+      await actions.check();
     } catch (error) {
-      setMessage(`❌ ${getActionErrorMessage(error)}`);
-    } finally {
-      setActing(false);
+      setMessage(getActionErrorMessage(error));
     }
   };
 
   const handleCall = async () => {
-    if (!address || !publicClient || acting) return;
-    setActing(true);
+    if (acting) return;
     setMessage(null);
     try {
-      const hash = await writeContractAsync({
-        chainId: FRONTEND_CONFIG.chainId,
-        address: POKER_TABLE_ADDRESS,
-        abi: POKER_TABLE_ABI,
-        functionName: "call",
-      });
-      await sendAndWait(hash);
+      await actions.call();
     } catch (error) {
-      setMessage(`❌ ${getActionErrorMessage(error)}`);
-    } finally {
-      setActing(false);
+      setMessage(getActionErrorMessage(error));
     }
   };
 
   const handleRaise = async () => {
-    if (!address || !publicClient || acting || raiseAmount === null || raiseAmount < gameState.minRaise) return;
-    setActing(true);
+    if (acting || raiseAmount === null || raiseAmount < gameState.minRaise) return;
     setMessage(null);
     try {
-      const hash = await writeContractAsync({
-        chainId: FRONTEND_CONFIG.chainId,
-        address: POKER_TABLE_ADDRESS,
-        abi: POKER_TABLE_ABI,
-        functionName: "raise",
-        args: [raiseAmount],
-      });
-      await sendAndWait(hash);
+      await actions.raise(raiseAmount);
     } catch (error) {
-      setMessage(`❌ ${getActionErrorMessage(error)}`);
-    } finally {
-      setActing(false);
+      setMessage(getActionErrorMessage(error));
     }
   };
 
   const handleAllIn = async () => {
     const allInAmount = gameState.humanPlayer?.chips ?? 0n;
-    if (!address || !publicClient || acting || allInAmount <= 0n) return;
-    setActing(true);
+    if (acting || allInAmount <= 0n) return;
     setMessage(null);
     try {
-      const hash = await writeContractAsync({
-        chainId: FRONTEND_CONFIG.chainId,
-        address: POKER_TABLE_ADDRESS,
-        abi: POKER_TABLE_ABI,
-        functionName: "raise",
-        args: [allInAmount],
-      });
-      await sendAndWait(hash);
+      await actions.raise(allInAmount);
     } catch (error) {
-      setMessage(`❌ ${getActionErrorMessage(error)}`);
-    } finally {
-      setActing(false);
+      setMessage(getActionErrorMessage(error));
     }
   };
 
   const handleLeave = async () => {
-    if (!address || !publicClient || acting) return;
+    if (acting) return;
     const forfeiting = !canCashOut;
 
     if (
@@ -177,41 +121,45 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
       return;
     }
 
-    setActing(true);
     setMessage(null);
     try {
-      const hash = await writeContractAsync({
-        chainId: FRONTEND_CONFIG.chainId,
-        address: POKER_TABLE_ADDRESS,
-        abi: POKER_TABLE_ABI,
-        functionName: forfeiting ? "forfeitAndLeave" : "leaveTable",
-      });
-      await sendAndWait(hash);
+      await (forfeiting ? actions.forfeitAndLeave() : actions.leaveTable());
       onLeft?.();
       setMessage(forfeiting ? "You left the table and forfeited the stack." : "You left the table.");
     } catch (error) {
-      setMessage(`❌ ${getActionErrorMessage(error)}`);
-    } finally {
-      setActing(false);
+      setMessage(getActionErrorMessage(error));
     }
   };
 
   const handleDealNextHand = async () => {
-    if (!address || !publicClient || acting || !canDealNextHand) return;
-    setActing(true);
+    if (acting || !canDealNextHand) return;
     setMessage(null);
     try {
-      const hash = await writeContractAsync({
-        chainId: FRONTEND_CONFIG.chainId,
-        address: POKER_TABLE_ADDRESS,
-        abi: POKER_TABLE_ABI,
-        functionName: "dealNewHand",
-      });
-      await sendAndWait(hash);
+      await actions.dealNewHand();
     } catch (error) {
-      setMessage(`❌ ${getActionErrorMessage(error)}`);
-    } finally {
-      setActing(false);
+      setMessage(getActionErrorMessage(error));
+    }
+  };
+
+  const handleRequestLeave = async () => {
+    if (acting) return;
+    setMessage(null);
+    try {
+      await actions.requestLeave();
+      setMessage("You will leave at the end of this hand.");
+    } catch (error) {
+      setMessage(getActionErrorMessage(error));
+    }
+  };
+
+  const handleCancelLeave = async () => {
+    if (acting) return;
+    setMessage(null);
+    try {
+      await actions.cancelLeave();
+      setMessage("Leave request cancelled.");
+    } catch (error) {
+      setMessage(getActionErrorMessage(error));
     }
   };
 
@@ -229,7 +177,7 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
               <button
                 className={`${SECONDARY_BUTTON_CLASS} w-full min-w-0`}
                 onClick={handleFold}
-                disabled={acting || !canAct}
+                disabled={!!acting || !canAct}
               >
                 Fold
               </button>
@@ -237,7 +185,7 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
               <button
                 className={`${SECONDARY_BUTTON_CLASS} w-full min-w-0`}
                 onClick={canCheckNow ? handleCheck : handleCall}
-                disabled={acting || !canAct}
+                disabled={!!acting || !canAct}
               >
                 {checkOrCallLabel}
               </button>
@@ -245,7 +193,7 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
               <button
                 className={`${RED_BUTTON_CLASS} w-full min-w-0`}
                 onClick={handleAllIn}
-                disabled={acting || !canAct}
+                disabled={!!acting || !canAct}
               >
                 ALL IN
               </button>
@@ -263,7 +211,7 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
                 <button
                   className={`${GOLD_BUTTON_CLASS} min-w-0 flex-1 text-sm`}
                   onClick={handleRaise}
-                  disabled={acting || !canAct || !isRaiseAmountValid}
+                  disabled={!!acting || !canAct || !isRaiseAmountValid}
                 >
                   Raise / Bet
                 </button>
@@ -272,7 +220,7 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
               <button
                 className={`${AMBER_BUTTON_CLASS} w-full min-w-0`}
                 onClick={handleLeave}
-                disabled={acting}
+                disabled={!!acting}
               >
                 {canCashOut ? "Leave Table" : "Forfeit & Leave"}
               </button>
@@ -281,12 +229,22 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
                 <button
                   className={`${SECONDARY_BUTTON_CLASS} w-full min-w-0`}
                   onClick={handleDealNextHand}
-                  disabled={acting}
+                  disabled={!!acting}
                 >
                   {gameState.handComplete ? "Play Another Hand" : "Play Again"}
                 </button>
               )}
             </div>
+
+            {(canRequestLeave || canCancelLeave) && (
+              <button
+                className={`${SECONDARY_BUTTON_CLASS} w-full min-w-0`}
+                onClick={canCancelLeave ? handleCancelLeave : handleRequestLeave}
+                disabled={!!acting}
+              >
+                {canCancelLeave ? "Cancel Leave Request" : "Request Leave at Hand End"}
+              </button>
+            )}
           </>
         ) : (
           <>
@@ -294,7 +252,7 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
               <button
                 className={SECONDARY_BUTTON_CLASS}
                 onClick={handleFold}
-                disabled={acting || !canAct}
+                disabled={!!acting || !canAct}
               >
                 Fold
               </button>
@@ -303,7 +261,7 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
                 <button
                   className={SECONDARY_BUTTON_CLASS}
                   onClick={handleCheck}
-                  disabled={acting || !canAct}
+                  disabled={!!acting || !canAct}
                 >
                   Check
                 </button>
@@ -311,7 +269,7 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
                 <button
                   className={SECONDARY_BUTTON_CLASS}
                   onClick={handleCall}
-                  disabled={acting || !canAct}
+                  disabled={!!acting || !canAct}
                 >
                   Call {formatTokenDisplay(callAmount)}
                 </button>
@@ -330,7 +288,7 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
                 <button
                   className={`${GOLD_BUTTON_CLASS} min-w-[148px] text-sm`}
                   onClick={handleRaise}
-                  disabled={acting || !canAct || !isRaiseAmountValid}
+                  disabled={!!acting || !canAct || !isRaiseAmountValid}
                 >
                   Raise / Bet
                 </button>
@@ -339,7 +297,7 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
               <button
                 className={RED_BUTTON_CLASS}
                 onClick={handleAllIn}
-                disabled={acting || !canAct}
+                disabled={!!acting || !canAct}
               >
                 ALL IN
               </button>
@@ -347,16 +305,26 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
               <button
                 className={AMBER_BUTTON_CLASS}
                 onClick={handleLeave}
-                disabled={acting}
+                disabled={!!acting}
               >
                 {canCashOut ? "Leave Table" : "Forfeit & Leave"}
               </button>
+
+              {(canRequestLeave || canCancelLeave) && (
+                <button
+                  className={SECONDARY_BUTTON_CLASS}
+                  onClick={canCancelLeave ? handleCancelLeave : handleRequestLeave}
+                  disabled={!!acting}
+                >
+                  {canCancelLeave ? "Cancel Leave" : "Request Leave"}
+                </button>
+              )}
 
               {canDealNextHand && (
                 <button
                   className={`${SECONDARY_BUTTON_CLASS} min-w-[172px]`}
                   onClick={handleDealNextHand}
-                  disabled={acting}
+                  disabled={!!acting}
                 >
                   {gameState.handComplete ? "Play Another Hand" : "Play Again"}
                 </button>
@@ -382,7 +350,13 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
         </p>
       )}
 
-      {message && <p className={`text-xs text-gray-400 ${isPanelLayout ? "self-start" : "text-center"}`}>{message}</p>}
+      {leaveRequested && (
+        <p className={`text-xs text-amber-200 ${isPanelLayout ? "self-start" : "text-center"}`}>
+          Leave queued. You will exit when the hand ends.
+        </p>
+      )}
+
+      {(message || error) && <p className={`text-xs text-gray-400 ${isPanelLayout ? "self-start" : "text-center"}`}>{message ?? error}</p>}
     </div>
   );
 }

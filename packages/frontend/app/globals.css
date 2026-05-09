@@ -34,6 +34,23 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+button,
+a,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+summary,
+appkit-button {
+  cursor: pointer;
+}
+
+button:disabled,
+input:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 /* ============================================================
    Ambient Background Blobs
    ============================================================ */
