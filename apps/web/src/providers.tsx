@@ -5,7 +5,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
 import { FRONTEND_CONFIG } from '@/lib/config'
-import type { AppKitNetwork } from '@reown/appkit-common'
+type AppKitNetwork = {
+  id: number;
+  name: string;
+  nativeCurrency: { name: string; symbol: string; decimals: number };
+  rpcUrls: { default: { http: string[] } };
+};
 
 export const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'demo-project-id'
 

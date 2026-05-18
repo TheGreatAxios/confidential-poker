@@ -1,10 +1,6 @@
-import type { Agent } from "@/lib/types";
 import type { SeatPosition } from "@/lib/types";
-import { AgentAvatar } from "./AgentAvatar";
 
-interface AgentSeatProps {
-  agent: Agent;
-  isActive: boolean;
+interface SeatOpenProps {
   position: SeatPosition;
 }
 
@@ -17,14 +13,15 @@ const POSITION_CLASSES: Record<SeatPosition, string> = {
   "bottom-left": "absolute bottom-[8%] left-[4%] sm:bottom-[10%] sm:left-[8%]",
 };
 
-export function AgentSeat({ agent, isActive, position }: AgentSeatProps) {
+export function SeatOpen({ position }: SeatOpenProps) {
   return (
-    <div
-      className={`${POSITION_CLASSES[position]} z-10 transition-all duration-300 ${
-        isActive ? "scale-[1.12]" : "scale-100"
-      }`}
-    >
-      <AgentAvatar agent={agent} isActive={isActive} />
+    <div className={`${POSITION_CLASSES[position]} z-10`}>
+      <div className="flex flex-col items-center gap-1.5 opacity-40 transition-opacity duration-300 hover:opacity-70">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-dashed border-emerald-200/40 sm:h-16 sm:w-16" />
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100/70">
+          Seat Open
+        </span>
+      </div>
     </div>
   );
 }

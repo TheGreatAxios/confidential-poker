@@ -3,7 +3,7 @@
 // Extends shared domain types with UI-specific fields
 // ============================================================
 
-export type {
+import type {
   Suit,
   Rank,
   Card,
@@ -18,7 +18,24 @@ export type {
   SeatPosition,
 } from "@confidential-poker/poker-types";
 
-export { SEAT_POSITIONS } from "@confidential-poker/poker-types";
+import { SEAT_POSITIONS } from "@confidential-poker/poker-types";
+
+export type {
+  Suit,
+  Rank,
+  Card,
+  PokerAction,
+  PlayerStatus,
+  GamePhase,
+  TableInfo,
+  SidePot,
+  FactoryState,
+  FaucetState,
+  TipState,
+  SeatPosition,
+};
+
+export { SEAT_POSITIONS };
 
 export type AgentPersonality =
   | "aggressive"

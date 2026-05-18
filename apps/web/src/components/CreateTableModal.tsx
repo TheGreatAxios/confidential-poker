@@ -47,6 +47,7 @@ export function CreateTableModal({ onClose, onCreated }: CreateTableModalProps) 
         abi: POKER_FACTORY_ABI,
         functionName: "createTable",
         args: [buyIn, smallBlind, bigBlind, BigInt(maxPlayers), tableName.trim()],
+        // @ts-expect-error wagmi type inference mismatch for payable value
         value: parseEther(ctxReserveInput || "0"),
       });
 

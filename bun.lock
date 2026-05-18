@@ -49,6 +49,7 @@
         "@reown/appkit-adapter-wagmi": "1.8.19",
         "@tanstack/react-query": "5.100.9",
         "@wagmi/core": "^3.4.9",
+        "blo": "2.0.0",
         "framer-motion": "^12.38.0",
         "lucide-react": "^1.14.0",
         "react": "^19.2.6",
@@ -693,6 +694,8 @@
     "blake3-wasm": ["blake3-wasm@2.1.5", "", {}, "sha512-F1+K8EbfOZE49dtoPtmxUQrpXaBIl3ICvasLh+nJta0xkz+9kF/7uet9fLnwKqhDrmj6g+6K3Tw9yQPUg2ka5g=="],
 
     "blakejs": ["blakejs@1.2.1", "", {}, "sha512-QXUSXI3QVc/gJME0dBpXrag1kbzOqCjCX8/b54ntNyW6sjtoqxqRk3LTmXzaJoh71zMsDCjM+47jS7XiwN/+fQ=="],
+
+    "blo": ["blo@2.0.0", "", {}, "sha512-VUUr1+vWisNSaHVswkbPbk1+GhygClKILkGchae7nsyuJ4ZVz5l1hEW4eR5F/ly/asM5vzigYGXjPnvrd//CVg=="],
 
     "browserslist": ["browserslist@4.28.2", "", { "dependencies": { "baseline-browser-mapping": "^2.10.12", "caniuse-lite": "^1.0.30001782", "electron-to-chromium": "^1.5.328", "node-releases": "^2.0.36", "update-browserslist-db": "^1.2.3" }, "bin": { "browserslist": "cli.js" } }, "sha512-48xSriZYYg+8qXna9kwqjIVzuQxi+KYWp2+5nCYnYKPTr0LvD89Jqk2Or5ogxz0NUMfIjhh2lIUX/LyX9B4oIg=="],
 

@@ -84,6 +84,7 @@ export function useChipToken({ chipTokenAddress, gameAddress }: UseChipTokenPara
     chainId: FRONTEND_CONFIG.chainId,
     address: chipTokenAddress ?? undefined,
     abi: ERC20_ABI,
+    // @ts-expect-error ERC20_ABI typing lacks symbol method
     functionName: "symbol",
     query: { enabled: chipReady },
   });

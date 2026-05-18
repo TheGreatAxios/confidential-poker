@@ -1,15 +1,17 @@
-
 import type { GameState, SeatPosition } from "@/lib/types";
 import { SEAT_POSITIONS } from "@/lib/types";
 import { AgentSeat } from "./AgentSeat";
 import { CommunityCards } from "./CommunityCards";
 import { PotDisplay } from "./PotDisplay";
+import { SeatOpen } from "./ui/seat-open";
 
 interface PokerTableProps {
   gameState: GameState;
 }
 
 export function PokerTable({ gameState }: PokerTableProps) {
+  const occupiedIndices = new Set(gameState.agents.map((a) => a.seatIndex));
+
   return (
     <div className="relative min-h-0 w-full max-w-6xl flex-1">
       <div className="relative mx-auto aspect-[16/10] h-full max-h-[50vh] min-h-[280px] w-full min-w-[320px] max-w-[980px]">
@@ -24,6 +26,9 @@ export function PokerTable({ gameState }: PokerTableProps) {
         />
 
         <div className="pointer-events-none absolute inset-[5.3%] rounded-[48%] shadow-[inset_0_2px_16px_rgba(255,255,255,0.04),inset_0_-10px_18px_rgba(0,0,0,0.22)]" />
+
+        {/* Vignette for extra depth */}
+        <div className="pointer-events-none absolute inset-[5.3%] rounded-[48%] bg-[radial-gradient(circle_at_center,transparent_50%,rgba(0,0,0,0.35)_100%)]" />
 
         <div className="pointer-events-none absolute inset-[15%] rounded-[46%] border border-dashed border-emerald-100/25 shadow-[inset_0_0_18px_rgba(0,0,0,0.26)]" />
 
@@ -65,6 +70,15 @@ export function PokerTable({ gameState }: PokerTableProps) {
           );
         })}
 
+        {SEAT_POSITIONS.map((position, index) => {
+          if (occupiedIndices.has(index)) return null;
+          return (
+            <SeatOpen
+              key={`seat-open-${index}`}
+              position={position as SeatPosition}
+            />
+          );
+        })}
       </div>
     </div>
   );

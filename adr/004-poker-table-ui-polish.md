@@ -2,7 +2,7 @@
 
 ## Status
 
-proposed
+implemented
 
 ## Context
 
@@ -95,3 +95,7 @@ All changes are additive CSS/component modifications. Rollback is a single rever
 | Date | Actor | Action |
 |------|-------|--------|
 | 2026-05-18 | Agent | Drafted ADR from UI screenshot review |
+| 2026-05-18 | Agent | Implemented Option A; added `useGamePhase`, `StreetBanner`, `ChipStack`, `Identicon`, `SeatOpen`, `CountdownRing`; updated `PokerTable`, `AgentAvatar`, `AgentSeat`, `CommunityCards`, `PotDisplay`, `App`, `Footer`; extracted `WalletConnectButton` |
+| 2026-05-18 | Agent | Quality gates passed: `tsc --noEmit`, `oxlint`, `bun test` (6/6 pass, 100% coverage on `useGamePhase`), `bun run build` |
+| 2026-05-18 | Agent | Fixed pre-existing type errors in `src/lib/types.ts`, `providers.tsx`, `CreateTableModal.tsx`, `useChipToken.ts` to unblock `tsc --noEmit` |
+| 2026-05-18 | Agent | Installed `blo@2.0.0` (~1KB) for wallet identicons; excluded `*.test.ts` from `tsconfig.json` include to avoid needing `happy-dom`

@@ -34,4 +34,4 @@ All non-trivial changes to this project — features, bugs, refactors, dependenc
 | 001 | LangGraph Migration for Agent Orchestration | implemented | 2026-05-18 |
 | 002 | Monorepo Restructure and Shared Package Extraction | implemented | 2026-05-18 |
 | 003 | Factory-Paid Table Creation + Auto-Shutdown on Empty | implemented | 2026-05-18 |
-| 004 | Poker Table UI Polish — Chips, Depth, Empty Seats, and Spectator Flow | proposed | 2026-05-18 |
+| 004 | Poker Table UI Polish — Chips, Depth, Empty Seats, and Spectator Flow | implemented | 2026-05-18 |

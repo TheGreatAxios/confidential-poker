@@ -1,13 +1,14 @@
-
 import type { Agent } from "@/lib/types";
 import { Card } from "./Card";
-import { ChipStack } from "./ChipStack";
+import { ChipStack } from "./ui/chip-stack";
+import { CountdownRing } from "./ui/countdown-ring";
 
 interface AgentAvatarProps {
   agent: Agent;
+  isActive?: boolean;
 }
 
-export function AgentAvatar({ agent }: AgentAvatarProps) {
+export function AgentAvatar({ agent, isActive = false }: AgentAvatarProps) {
   const seatBadges = [
     agent.isDealer
       ? {
@@ -57,8 +58,11 @@ export function AgentAvatar({ agent }: AgentAvatarProps) {
           </div>
         )}
 
-        {agent.status === "acting" && (
-          <div className="absolute inset-[-10px] rounded-full border-2 border-poker-gold/70 shadow-[0_0_32px_rgba(240,180,41,0.55)] animate-pulse" />
+        {isActive && (
+          <>
+            <div className="absolute inset-[-10px] rounded-full border-2 border-poker-gold/70 shadow-[0_0_32px_rgba(240,180,41,0.55)] animate-pulse" />
+            <CountdownRing isActive={isActive} />
+          </>
         )}
         {agent.isWinner && (
           <div className="absolute inset-[-14px] rounded-full border border-emerald-300/60 shadow-[0_0_36px_rgba(52,211,153,0.45)]" />
@@ -67,20 +71,20 @@ export function AgentAvatar({ agent }: AgentAvatarProps) {
         {/* Avatar Circle */}
         <div
           className={`relative h-12 w-12 rounded-full border-2 text-xl transition-all duration-300 sm:h-16 sm:w-16 sm:text-3xl ${
-          agent.status === "leaving"
-            ? "bg-amber-950/40 border-amber-300/60 opacity-80"
-          : agent.status === "busted"
-            ? "bg-gray-800 border-gray-700 opacity-50"
-            : agent.isWinner
-            ? "bg-emerald-900/50 border-emerald-300 shadow-[0_0_24px_rgba(52,211,153,0.35)]"
-            : agent.status === "acting"
-            ? "bg-amber-950/90 border-poker-gold glow-gold"
-            : agent.status === "folded"
-            ? "bg-gray-800 border-gray-600 opacity-70"
-            : agent.status === "all-in"
-            ? "bg-red-900/30 border-red-500 animate-pulse"
-            : "bg-gray-800 border-gray-600"
-        } flex items-center justify-center`}
+            agent.status === "leaving"
+              ? "bg-amber-950/40 border-amber-300/60 opacity-80"
+              : agent.status === "busted"
+                ? "bg-gray-800 border-gray-700 opacity-50"
+                : agent.isWinner
+                  ? "bg-emerald-900/50 border-emerald-300 shadow-[0_0_24px_rgba(52,211,153,0.35)]"
+                  : isActive
+                    ? "bg-amber-950/90 border-poker-gold glow-gold"
+                    : agent.status === "folded"
+                      ? "bg-gray-800 border-gray-600 opacity-70"
+                      : agent.status === "all-in"
+                        ? "bg-red-900/30 border-red-500 animate-pulse"
+                        : "bg-gray-800 border-gray-600"
+          } flex items-center justify-center`}
         >
           <span>{agent.emoji}</span>
 
@@ -97,7 +101,7 @@ export function AgentAvatar({ agent }: AgentAvatarProps) {
         </div>
       </div>
 
-      <ChipStack amount={agent.chips} color={agent.color} />
+      <ChipStack amount={agent.chips} />
 
       {agent.cards.length > 0 && (
         <div className="flex gap-0.5">
@@ -135,7 +139,7 @@ export function AgentAvatar({ agent }: AgentAvatarProps) {
       )}
       {agent.isWinner && (
         <span className="animate-pulse rounded-full border border-emerald-300/50 bg-emerald-400/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-100 shadow-lg">
-          🏆 Winner
+          Winner
         </span>
       )}
       {agent.handOutcome === "lost" && (
@@ -148,7 +152,7 @@ export function AgentAvatar({ agent }: AgentAvatarProps) {
           Folded
         </span>
       )}
-      {agent.status === "acting" && (
+      {isActive && (
         <span className="rounded-full border border-poker-gold/40 bg-poker-gold/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-poker-gold">
           Acting
         </span>

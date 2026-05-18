@@ -3,6 +3,8 @@ import { Routes, Route, useNavigate, useParams, useLocation } from "react-router
 import { useGameState } from "@/hooks/useGameState";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { Identicon } from "@/components/ui/identicon";
+import { WalletConnectButton } from "@/components/wallet-connect-button";
 import { PokerTable } from "@/components/PokerTable";
 import { GameControls } from "@/components/GameControls";
 import { FaucetPanel } from "@/components/FaucetPanel";
@@ -90,7 +92,7 @@ function ActiveTable({
     <div className="flex h-screen overflow-hidden flex-col">
       <Header error={error} />
 
-      <main className="flex min-h-0 flex-1 flex-col items-center gap-2 px-3 py-3 sm:px-4">
+      <main className="flex min-h-0 flex-1 flex-col items-center gap-2 px-3 py-3 pb-8 sm:px-4">
         <div className="flex w-full max-w-6xl shrink-0 items-center justify-between gap-3">
           <button
             onClick={() => navigate("/")}
@@ -98,8 +100,18 @@ function ActiveTable({
           >
             Back to Lobby
           </button>
-          <div className="hidden rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 font-mono text-xs text-poker-text-muted sm:block">
-            {tableInfo?.name ?? "Selected Table"} · {tableAddress.slice(0, 8)}...{tableAddress.slice(-6)}
+          <div className="hidden items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 sm:flex">
+            <Identicon address={tableAddress} size={16} />
+            <span className="font-mono text-xs text-poker-text-muted">
+              {tableInfo?.name ?? "Selected Table"} · {tableAddress.slice(0, 8)}...{tableAddress.slice(-6)}
+            </span>
+            <span className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              </span>
+              SKALE
+            </span>
           </div>
         </div>
 
@@ -145,13 +157,16 @@ function ActiveTable({
           )}
 
           {!gameState.humanPlayer && !isWalletConnected && (
-            <div className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center">
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-poker-text-muted">
-                Spectating
-              </span>
-              <span className="ml-2 text-xs text-poker-text-dim">
-                — Connect wallet to join the table
-              </span>
+            <div className="flex w-full flex-col items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 sm:w-auto">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-poker-text-muted">
+                  Spectating
+                </span>
+                <span className="text-xs text-poker-text-dim">
+                  Connect wallet to join the table
+                </span>
+              </div>
+              <WalletConnectButton />
             </div>
           )}
 

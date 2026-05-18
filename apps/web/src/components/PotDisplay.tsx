@@ -1,5 +1,6 @@
-import { formatTokenDisplay, TOKEN_SYMBOL } from "@/lib/token-format";
+import { formatTokenDisplay } from "@/lib/token-format";
 import type { SidePot } from "@/lib/types";
+import { ChipStack } from "./ui/chip-stack";
 
 interface PotDisplayProps {
   pot: bigint;
@@ -12,20 +13,18 @@ export function PotDisplay({ pot, currentBet, sidePots = [] }: PotDisplayProps) 
 
   return (
     <div className="flex flex-col items-center gap-2 animate-fade-in">
-      <div className="pot-glow flex items-center gap-2 rounded-full border border-poker-gold/20 bg-poker-gold/10 px-4 py-2">
-        <span className="text-poker-gold text-lg">💰</span>
+      <div className="pot-glow flex items-center gap-3 rounded-full border border-poker-gold/20 bg-poker-gold/10 px-4 py-2">
+        <ChipStack amount={pot} />
         <p className="font-mono text-sm font-bold text-poker-gold sm:text-base">
-          Pot {formatTokenDisplay(pot)}
+          Pot
         </p>
       </div>
 
       {currentBet > 0n && (
-        <p className="text-xs text-gray-400">
-          Current bet:{" "}
-          <span className="text-white font-mono font-semibold">
-            {formatTokenDisplay(currentBet, { symbol: TOKEN_SYMBOL })}
-          </span>
-        </p>
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <span>Current bet:</span>
+          <ChipStack amount={currentBet} />
+        </div>
       )}
 
       {hasAwardedPots && (

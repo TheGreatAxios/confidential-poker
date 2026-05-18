@@ -1,6 +1,6 @@
 "use client";
 
-import { createElement, useEffect, useState } from "react";
+import { useState } from "react";
 import {
   useAccount,
   usePublicClient,
@@ -13,8 +13,9 @@ import { FRONTEND_CONFIG } from "@/lib/config";
 import { isContractDeployed } from "@/lib/contracts";
 import { addSKALEChain } from "@/providers";
 import { generateViewerKeyPair, loadViewerKey, persistViewerKey } from "@/lib/viewer-key";
-import { ensureAppKit } from "@/lib/appkit";
 import { useChipToken } from "@/hooks/useChipToken";
+import { WalletConnectButton } from "./wallet-connect-button";
+import { Identicon } from "./ui/identicon";
 import type { TableInfo } from "@/lib/types";
 import { formatTokenDisplay } from "@/lib/token-format";
 
@@ -50,26 +51,6 @@ export function JoinPanel({
   const [step, setStep] = useState<Step>("idle");
   const [message, setMessage] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
-  const [isAppKitReady, setIsAppKitReady] = useState(isConnected);
-
-  useEffect(() => {
-    if (isConnected) {
-      setIsAppKitReady(true);
-      return;
-    }
-
-    let cancelled = false;
-
-    void ensureAppKit().then(() => {
-      if (!cancelled) {
-        setIsAppKitReady(true);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isConnected]);
 
   const activeBuyIn = tableInfo?.buyIn ?? 1_000_000_000_000_000_000_000n;
   const hasUnderlyingBalance = chipToken.underlyingBalance >= activeBuyIn;
@@ -166,10 +147,15 @@ export function JoinPanel({
   return (
     <div className="w-full max-w-3xl">
       <div className="flex w-full flex-col items-stretch justify-center gap-2 sm:w-auto sm:flex-row sm:items-center">
-        <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-poker-text-muted">
-          {address
-            ? `${address.slice(0, 6)}...${address.slice(-4)}`
-            : "Connect wallet to join"}
+        <div className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs text-poker-text-muted">
+          {address ? (
+            <>
+              <Identicon address={address} size={16} />
+              <span>{`${address.slice(0, 6)}...${address.slice(-4)}`}</span>
+            </>
+          ) : (
+            <span>Connect wallet to join</span>
+          )}
         </div>
 
         {isConnected ? (
@@ -181,16 +167,7 @@ export function JoinPanel({
             {statusLabel}
           </button>
         ) : (
-          isAppKitReady ? (
-            createElement("appkit-button")
-          ) : (
-            <button
-              disabled
-              className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-poker-text-muted opacity-70"
-            >
-              Loading wallet...
-            </button>
-          )
+          <WalletConnectButton />
         )}
 
         {txHash && (
