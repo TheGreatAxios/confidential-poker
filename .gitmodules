@@ -1,9 +1,9 @@
-[submodule "packages/contracts/lib-skale-rng"]
-	path = packages/contracts/lib-skale-rng
-	url = git@github.com:thegreataxios/skale-rng
-[submodule "packages/contracts/lib/skale-rng"]
-	path = packages/contracts/lib/skale-rng
-	url = https://github.com/thegreataxios/skale-rng
-[submodule "packages/contracts/skale-rng"]
-	path = packages/contracts/skale-rng
-	url = https://github.com/thegreataxios/skale-rng
+[submodule "vendor/deepagentsjs"]
+	path = vendor/deepagentsjs
+	url = git@github.com:langchain-ai/deepagentsjs
+[submodule "vendor/langchainjs"]
+	path = vendor/langchainjs
+	url = git@github.com:langchain-ai/langchainjs.git
+[submodule "vendor/langgraphjs"]
+	path = vendor/langgraphjs
+	url = git@github.com:langchain-ai/langgraphjs.git

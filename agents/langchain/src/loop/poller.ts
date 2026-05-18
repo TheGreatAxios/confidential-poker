@@ -1,5 +1,5 @@
 import { type Address, type PublicClient } from "viem";
-import { POKER_GAME_ABI } from "../abis/poker-game";
+import { POKER_GAME_ABI } from "@confidential-poker/abis";
 import { config } from "../config";
 
 export interface PollResult {

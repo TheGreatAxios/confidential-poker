@@ -14,7 +14,14 @@
     "skipLibCheck": true,
     "outDir": "dist",
     "rootDir": "src",
-    "declaration": true
+    "declaration": true,
+    "paths": {
+      "@confidential-poker/abis": ["../../packages/abis/src/index.ts"],
+      "@confidential-poker/cards": ["../../packages/cards/src/index.ts"],
+      "@confidential-poker/config": ["../../packages/config/src/index.ts"],
+      "@confidential-poker/poker-types": ["../../packages/poker-types/src/index.ts"],
+      "@confidential-poker/token-utils": ["../../packages/token-utils/src/index.ts"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

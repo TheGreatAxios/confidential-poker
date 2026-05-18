@@ -2,7 +2,7 @@ import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { encodeFunctionData, type Address } from "viem";
 import { getKeyStore } from "../wallet/key-store";
-import { POKER_GAME_ABI } from "../abis/poker-game";
+import { POKER_GAME_ABI } from "@confidential-poker/abis";
 
 export const leaveTable = tool(
   async ({ tableAddress }: { tableAddress: string }) => {

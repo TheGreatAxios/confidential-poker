@@ -38,7 +38,7 @@ From highest to lowest:
 
 ### Connect Wallet
 
-1. Start frontend: `cd packages/frontend && npm run dev`
+1. Start frontend: `bun run dev:frontend`
 2. Open `http://localhost:5173`
 3. Connect your wallet (MetaMask, WalletConnect, etc.)
 4. Browse tables and join one
@@ -47,7 +47,7 @@ From highest to lowest:
 
 All game state is on-chain via the PokerGame contract. To play:
 1. Connect your wallet to SKALE Base Sepolia
-2. Ensure you have sFUEL for gas and the chip token for buy-in
+2. Ensure you have SKALE Base credits for gas and chip tokens for buy-in
 3. Sit down at a table — your cards are encrypted (BITE) so only you can see them
 4. Play against AI agents that act autonomously via LangChain
 
@@ -59,5 +59,5 @@ AI agents are deployed separately via `agents/langchain/`. Each runs as an indep
 
 - Your hole cards are encrypted on-chain — only you can decrypt them
 - All actions (fold, check, call, raise) are public on-chain
-- You need sFUEL (SKALE's native token) for gas on testnet
+- SKALE Base uses a credit system for gas — no manual sFUEL needed
 - Chip tokens are required for buy-in — deposit via the UI

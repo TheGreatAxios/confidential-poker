@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "name": "@dirtroad/skale-rng",
+  "author": {
+    "email": "sawyer@dirtroad.dev",
+    "url": "https://dirtroad.dev"
+  },
+  "devDependencies": {
+    "hardhat": "^2.22.3",
+    "solidity-docgen": "^0.6.0-beta.36"
+  }
+}

@@ -1,44 +1,72 @@
 # Create a Wallet
 
-To play on-chain, you need an Ethereum-compatible wallet.
+Each agent needs a unique Ethereum-compatible wallet.
 
-## Option 1: Use an Existing Wallet (MetaMask, etc.)
-
-Add SKALE Base Sepolia to your wallet:
-
-- **Chain ID**: 324705682
-- **RPC URL**: `https://base-sepolia-testnet.skalenodes.com/v1/base-testnet`
-- **Currency**: sFUEL
-- **Explorer**: `https://base-sepolia-testnet-explorer.skalenodes.com/`
-
-## Option 2: Generate a Wallet Script
-
-Use the gen-wallets script in the langchain agent package:
+## Quick: Generate Agent Wallets
 
 ```bash
 cd agents/langchain
-bun run scripts/gen-wallets.ts
+
+# Generate 6 wallets (one per strategy) + auto-write .env.* files
+bun run gen:wallets 6
+
+# Overwrite existing files (destructive)
+bun run gen:wallets 6 --force
 ```
 
-## Getting Testnet Tokens
+**Default behavior:** creates `.env.wolf`, `.env.shark`, `.env.fox`, etc. in `agents/langchain/`.
+If a `.env.<strategy>` already has `PRIVATE_KEY=`, it is **skipped**.
 
-### sFUEL (Gas)
+If you already have a `agents/langchain/.env` file, the script copies its content into each `.env.<strategy>` and appends `PRIVATE_KEY` + `STRATEGY`.
 
-SKALE Base Sepolia uses sFUEL for gas. Get it from:
+## Output
 
-- https://sfuel.skale.network/
+```
+┌───────┬──────────┬──────────────────────────────────────────┬──────────────────────────────────────────────┐
+│ Index │ Strategy │ Address                                  │ Private Key                                  │
+├───────┼──────────┼──────────────────────────────────────────┼──────────────────────────────────────────────┤
+│     0 │     wolf │ 0xAbC...                                 │ 0x123...                                     │
+│     1 │    shark │ 0xDeF...                                 │ 0x456...                                     │
+└───────┴──────────┴──────────────────────────────────────────┴──────────────────────────────────────────────┘
+```
 
-### Chip Tokens (Game Tokens)
+## Fund the Wallets
 
-Chip tokens are the on-chain representation of your stack. To get them:
-1. Connect your wallet to the frontend
-2. Deposit underlying tokens into the ChipToken contract via the Join Panel
-3. Approve the poker table contract to spend your chips
-4. Sit down and play
+### Gas (SKALE Base Credits)
 
-## Security Notes
+SKALE Base uses a credit system. When the agent's credit balance is low, it automatically opens a headless browser and claims from https://base-sepolia-faucet.skale.space. No manual gas acquisition needed.
 
-- Never commit private keys to git
-- For testnet, generated wallets are fine
+### MockSKL Tokens (Game Currency)
+
+The game uses MockSKL as the underlying token. Agents auto-claim from the built-in contract faucet when they need chips:
+
+1. Agent checks chip balance
+2. If low, calls `MockSKL.faucet()` to claim free tokens
+3. Approves ChipToken contract
+4. Deposits into ChipToken for chips
+
+This is handled automatically by `ensureChipBalance()` in `agents/langchain/src/tools/claim-faucet.ts`.
+
+### Manual Claim (if needed)
+
+Connect your wallet to the frontend and use the Join Panel faucet, or call the contract directly:
+
+```bash
+cast send <mockSklAddress> "faucet()" --rpc-url $RPC_URL --private-key $PRIVATE_KEY
+```
+
+## Chain Config
+
+| Field | Value |
+|-------|-------|
+| Chain ID | 324705682 |
+| RPC URL | `https://base-sepolia-testnet.skalenodes.com/v1/base-testnet` |
+| Currency | sFUEL (credit-based, auto-faucet via browser) |
+| Explorer | `https://base-sepolia-testnet-explorer.skalenodes.com/` |
+
+## Security
+
+- Never commit private keys to git (`.env*` files are in `.gitignore`)
+- These are testnet wallets — fine to generate and discard
 - For mainnet, use hardware wallets and never expose private keys
-- Viewer keys are public — they're used to encrypt your cards
+- Viewer keys are public — they're derived from the private key and used to encrypt cards

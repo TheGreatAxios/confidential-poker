@@ -1,14 +1,29 @@
 # LangChain Agent — Agent Instructions
 
 ## Overview
-Autonomous Texas Hold'em poker agent that plays on-chain. Uses LangChain Deep Agents with a strategy persona prompt, on-chain tools (viem), and a game loop that polls/watches for turns.
+Autonomous Texas Hold'em poker agent that plays on-chain. Uses a native LangGraph state machine for turn lifecycle orchestration, with a strategy persona prompt, on-chain tools (viem), and checkpoint-based crash recovery.
 
 ## Quick Start
 
+Create your env files:
+
 ```bash
+# Shared defaults (LLM key, RPC, etc.)
 cp .env.example .env
-# Fill in PRIVATE_KEY, LLM_API_KEY, STRATEGY
+
+# Per-strategy overrides (private key, persona, model)
+cp .env.example .env.shark
+# Edit .env.shark — set STRATEGY=shark and a unique PRIVATE_KEY
+```
+
+Run an agent:
+
+```bash
+# Uses .env + .env.<strategy> (strategy defaults to wolf)
 bun run start
+
+# Or explicitly
+STRATEGY=shark bun run start
 ```
 
 Or via Docker:
@@ -21,23 +36,43 @@ PRIVATE_KEY=0x... STRATEGY=wolf docker compose up -d
 - `bun run start` — Start the agent loop
 - `bun run dev` — Start with watch mode
 - `bun run typecheck` — TypeScript check
+- `bun run test` — Run test suite
+- `bun run lint` — Run oxlint
 
 ## Source structure
 ```
 src/
-├── abis/       # Contract ABIs (chip-token, erc20, poker-factory, poker-game)
-├── agent.ts    # createAgent — wires persona prompt + tools into a Deep Agent
+├── agent.ts    # Model factory + submitAction caller
 ├── config.ts   # Runtime config (private key, LLM, deployment, strategy)
-├── index.ts    # Entry point — inits wallet, memory, runs game loop
-├── loop/       # Autonomous loop (discovery, event-watcher, game-loop, poller)
+├── graph/      # LangGraph state machine (nodes, edges, types, extract)
+├── index.ts    # Entry point — inits wallet, memory, runs graph loop
+├── loop/       # Discovery and poller (reused by graph nodes)
 ├── memory/     # Backends: in-memory / sqlite / postgres
-├── prompts/    # Strategy personas + base poker knowledge
-├── tools/      # 10 on-chain tools
+├── prompts/    # Strategy personas + base poker knowledge + phase playbooks
+├── strategy/   # Deterministic policy fallback + unit tests
+├── tools/      # 10 on-chain tools (import ABIs from @confidential-poker/abis)
 └── wallet/     # secp256k1 key + viewer key derivation
 skills/         # Agent Skills (bankroll, card-encryption, game-play, etc.)
 ```
 
 ## Environment variables
+
+### `.env` — shared defaults
+Place common config here: `LLM_API_KEY`, `LLM_PROVIDER`, `LLM_MODEL`, `MEMORY_BACKEND`, `DATABASE_URL`, etc.
+
+### `.env.<strategy>` — per-agent overrides
+Create one per agent personality. Example `.env.shark`:
+
+```
+STRATEGY=shark
+PRIVATE_KEY=0x...
+LLM_MODEL=claude-sonnet-4-6
+```
+
+**Merge precedence:** shell env vars > `.env.<strategy>` > `.env`
+
+So `LLM_API_KEY` lives in `.env` as a fallback, and each `.env.<strategy>` only needs `PRIVATE_KEY` + `STRATEGY`.
+
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `PRIVATE_KEY` | Yes | — | Agent wallet private key |

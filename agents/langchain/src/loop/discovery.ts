@@ -1,8 +1,8 @@
 import { encodeFunctionData, type Address } from "viem";
 import { getKeyStore } from "../wallet/key-store";
 import { config } from "../config";
-import { POKER_FACTORY_ABI } from "../abis/poker-factory";
-import { POKER_GAME_ABI } from "../abis/poker-game";
+import { POKER_FACTORY_ABI } from "@confidential-poker/abis";
+import { POKER_GAME_ABI } from "@confidential-poker/abis";
 
 const DEFAULT_BUY_IN = 1000n * 10n ** 18n;
 const DEFAULT_SMALL_BLIND = 5n * 10n ** 18n;
@@ -115,23 +115,6 @@ export async function discoverOrCreate(): Promise<Address> {
   }
 
   console.log("No open tables found, creating a new one...");
-  const factoryCtxValue = (await ks.readContract(
-    config.factoryAddress,
-    POKER_FACTORY_ABI,
-    "CTX_CALLBACK_VALUE_WEI",
-    [],
-  )) as bigint;
-
-  // Minimum: 11 * CTX_CALLBACK_VALUE_WEI (constructor requires minimumCtxReserve + 1 CTX payment)
-  // The table auto-pulls more from factory via _ensureCTXReserve as needed
-  const reserve = factoryCtxValue * 11n;
-  const balance = await ks.getBalance(ourAddress);
-
-  if (balance < reserve) {
-    throw new Error(
-      `Insufficient sFUEL for CTX reserve. Need ${reserve.toString()}, have ${balance.toString()}`,
-    );
-  }
 
   const data = encodeFunctionData({
     abi: POKER_FACTORY_ABI,
@@ -139,7 +122,7 @@ export async function discoverOrCreate(): Promise<Address> {
     args: [DEFAULT_BUY_IN, DEFAULT_SMALL_BLIND, DEFAULT_BIG_BLIND, DEFAULT_MAX_PLAYERS, "Agent Table"],
   });
 
-  const txHash = await ks.signAndSend(config.factoryAddress, data, reserve);
+  const txHash = await ks.signAndSend(config.factoryAddress, data);
   console.log(`Table creation tx: ${txHash}`);
 
   const tableCount = (await ks.readContract(

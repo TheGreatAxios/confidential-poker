@@ -1,24 +1,11 @@
-import { createDeepAgent } from "deepagents";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatOpenRouter } from "@langchain/openrouter";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { AIMessage } from "@langchain/core/messages";
-import type { MemoryBackend } from "./memory/types";
 import { config } from "./config";
 import { buildPrompt } from "./prompts/build-prompt";
-
-import { checkBalance } from "./tools/check-balance";
-import { listTables } from "./tools/list-tables";
-import { getTableInfo } from "./tools/get-table-info";
-import { joinTable } from "./tools/join-table";
-import { createTable } from "./tools/create-table";
-import { readHoleCards } from "./tools/read-hole-cards";
-import { getGameState } from "./tools/get-game-state";
 import { submitAction } from "./tools/submit-action";
-import { leaveTable } from "./tools/leave-table";
-import { logAction } from "./tools/log-action";
-import { claimFaucet } from "./tools/claim-faucet";
 
 type MessageLike = {
   content?: unknown;
@@ -27,10 +14,6 @@ type MessageLike = {
   response_metadata?: unknown;
   usage_metadata?: unknown;
   id?: unknown;
-};
-
-export type PokerAgent = {
-  invoke(input: unknown, options?: unknown): Promise<unknown>;
 };
 
 export type SubmitActionCaller = {
@@ -134,40 +117,25 @@ function createModel() {
   }
 }
 
-const allTools = [
-  checkBalance,
-  claimFaucet,
-  listTables,
-  getTableInfo,
-  joinTable,
-  createTable,
-  readHoleCards,
-  getGameState,
-  submitAction,
-  leaveTable,
-  logAction,
-];
-
-export function createAgent(memoryBackend: MemoryBackend): PokerAgent {
-  const systemPrompt = buildPrompt();
-
-  const agent = createDeepAgent({
-    model: createModel() as never,
-    tools: allTools as never[],
-    systemPrompt,
-    skills: ["./skills"],
-    checkpointer: memoryBackend.checkpointer as never,
-  });
-
-  return agent;
-}
-
 export function createSubmitActionCaller(): SubmitActionCaller {
-  return createModel().bindTools(
+  const systemPrompt = buildPrompt();
+  const model = createModel().bindTools(
     [submitAction],
     {
       tool_choice: "required",
       strict: true,
     } as never,
   ) as never;
+
+  // Wrap the bound model so the first message in every invoke carries the system prompt
+  return {
+    invoke: async (input: unknown, options?: unknown) => {
+      const messages = Array.isArray(input) ? input : [];
+      const withSystem = [
+        { role: "system", content: systemPrompt },
+        ...messages,
+      ];
+      return model.invoke(withSystem as never, options);
+    },
+  };
 }

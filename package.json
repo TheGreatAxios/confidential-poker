@@ -3,11 +3,27 @@
   "version": "1.1.0",
   "private": true,
   "description": "Confidential Poker — Texas Hold'em with AI agents on SKALE",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "agents/*"
+  ],
   "scripts": {
     "build": "echo 'Run build in individual packages'",
-    "dev:frontend": "cd packages/frontend && bun run dev",
-    "test:contracts": "cd packages/contracts && forge test -vvv",
-    "build:frontend": "cd packages/frontend && bun run build"
+    "dev:frontend": "cd apps/web && bun run dev",
+    "test:contracts": "cd contracts && forge test -vvv",
+    "build:frontend": "cd apps/web && bun run build",
+    "deploy:contracts": "bun run scripts/deploy-and-sync.ts",
+    "extract:deployment": "bun run contracts/script/extract-deployment.ts",
+    "sync:packages": "bun run packages/config/scripts/sync.ts",
+    "agent:langchain": "cd agents/langchain && bun run start",
+    "agent:langchain:wolf": "cd agents/langchain && STRATEGY=wolf bun run start",
+    "agent:langchain:shark": "cd agents/langchain && STRATEGY=shark bun run start",
+    "agent:langchain:fox": "cd agents/langchain && STRATEGY=fox bun run start",
+    "agent:langchain:owl": "cd agents/langchain && STRATEGY=owl bun run start",
+    "agent:langchain:bull": "cd agents/langchain && STRATEGY=bull bun run start",
+    "agent:langchain:cat": "cd agents/langchain && STRATEGY=cat bun run start",
+    "agent:langchain:custom": "cd agents/langchain && STRATEGY=custom bun run start"
   },
   "keywords": [
     "poker",

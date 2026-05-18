@@ -3,8 +3,8 @@ import { z } from "zod";
 import { encodeFunctionData, maxUint256, type Address } from "viem";
 import { getKeyStore } from "../wallet/key-store";
 import { config } from "../config";
-import { POKER_GAME_ABI } from "../abis/poker-game";
-import { ERC20_ABI } from "../abis/erc20";
+import { POKER_GAME_ABI } from "@confidential-poker/abis";
+import { ERC20_ABI } from "@confidential-poker/abis";
 import { ensureChipBalance } from "./claim-faucet";
 
 export const joinTable = tool(

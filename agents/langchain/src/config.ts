@@ -1,6 +1,6 @@
-import "dotenv/config";
+import "./env";
 import type { Address } from "viem";
-import { DEPLOYMENT_CONFIG } from "./deployment";
+import { DEPLOYMENT_CONFIG } from "@confidential-poker/config";
 
 export const config = {
   privateKey: process.env.PRIVATE_KEY ?? "",

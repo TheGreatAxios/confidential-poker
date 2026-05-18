@@ -3,7 +3,7 @@ import { z } from "zod";
 import { encodeFunctionData, parseEther } from "viem";
 import { getKeyStore } from "../wallet/key-store";
 import { config } from "../config";
-import { POKER_FACTORY_ABI } from "../abis/poker-factory";
+import { POKER_FACTORY_ABI } from "@confidential-poker/abis";
 
 const CTX_CALLBACK_VALUE_WEI = parseEther("0.01");
 const MIN_CTX_RESERVE = CTX_CALLBACK_VALUE_WEI * 10n;

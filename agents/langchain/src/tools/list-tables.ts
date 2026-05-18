@@ -2,8 +2,8 @@ import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { getKeyStore } from "../wallet/key-store";
 import { config } from "../config";
-import { POKER_FACTORY_ABI } from "../abis/poker-factory";
-import { POKER_GAME_ABI } from "../abis/poker-game";
+import { POKER_FACTORY_ABI } from "@confidential-poker/abis";
+import { POKER_GAME_ABI } from "@confidential-poker/abis";
 import type { Address } from "viem";
 
 export const listTables = tool(

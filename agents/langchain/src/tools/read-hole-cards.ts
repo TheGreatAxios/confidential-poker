@@ -1,12 +1,11 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { secp256k1 } from "@noble/curves/secp256k1.js";
-import { sha256 } from "@noble/hashes/sha2.js";
 import { decodeAbiParameters, hexToBytes, bytesToHex, type Hex, type Address } from "viem";
 import { getKeyStore } from "../wallet/key-store";
 import { config } from "../config";
-import { POKER_GAME_ABI } from "../abis/poker-game";
-import { decodeCard } from "../cards";
+import { POKER_GAME_ABI } from "@confidential-poker/abis";
+import { decodeCard } from "@confidential-poker/cards";
 
 async function decryptEncryptedCards(
   privateKey: Hex,
@@ -24,7 +23,9 @@ async function decryptEncryptedCards(
   const sharedSecret = secp256k1
     .getSharedSecret(hexToBytes(privateKey), ephemeralPublicKey, true)
     .slice(1);
-  const encryptionKey = sha256(sharedSecret);
+  const encryptionKey = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", sharedSecret),
+  );
 
   // Bun/Node native crypto (Web Crypto API is available in Bun)
   const cryptoKey = await crypto.subtle.importKey(

@@ -1,7 +1,7 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { getKeyStore } from "../wallet/key-store";
-import { POKER_GAME_ABI } from "../abis/poker-game";
+import { POKER_GAME_ABI } from "@confidential-poker/abis";
 import type { Address } from "viem";
 
 export const getTableInfo = tool(

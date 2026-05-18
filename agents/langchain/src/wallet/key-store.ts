@@ -7,19 +7,11 @@ import {
   type Hash,
   type PublicClient,
   type WalletClient,
-  type Chain,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { config } from "../config";
+import { SKALE_CHAIN } from "@confidential-poker/config";
 import { deriveViewerKey, type ViewerKey } from "./viewer-key";
-
-
-const SKALE_CHAIN: Chain = {
-  id: config.chainId,
-  name: "SKALE",
-  nativeCurrency: { name: "sFUEL", symbol: "sFUEL", decimals: 18 },
-  rpcUrls: { default: { http: [config.rpcUrl] } },
-};
 
 class KeyStore {
   private _privateKey: `0x${string}`;

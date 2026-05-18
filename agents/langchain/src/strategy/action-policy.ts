@@ -1,5 +1,5 @@
-import type { Card, RankValue } from "../cards";
-import { parseCard } from "../cards";
+import type { Card, RankValue } from "@confidential-poker/cards";
+import { parseCard } from "@confidential-poker/cards";
 
 export type PokerAction = "fold" | "check" | "call" | "raise";
 

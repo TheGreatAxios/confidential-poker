@@ -2,8 +2,8 @@ import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { getKeyStore } from "../wallet/key-store";
 import { config } from "../config";
-import { ERC20_ABI } from "../abis/erc20";
-import { CHIP_TOKEN_ABI } from "../abis/chip-token";
+import { ERC20_ABI } from "@confidential-poker/abis";
+import { CHIP_TOKEN_ABI } from "@confidential-poker/abis";
 import type { Address } from "viem";
 
 export const checkBalance = tool(

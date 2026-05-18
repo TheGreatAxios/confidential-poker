@@ -2,9 +2,9 @@ import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import { encodeFunctionData, type Address } from "viem";
 import { getKeyStore } from "../wallet/key-store";
-import { MOCK_SKL_ABI } from "../abis/mock-skl";
-import { ERC20_ABI } from "../abis/erc20";
-import { CHIP_TOKEN_ABI } from "../abis/chip-token";
+import { MOCK_SKL_ABI } from "@confidential-poker/abis";
+import { ERC20_ABI } from "@confidential-poker/abis";
+import { CHIP_TOKEN_ABI } from "@confidential-poker/abis";
 import { config } from "../config";
 
 export const BUY_IN = 1_000_000_000_000_000_000_000n; // 1000 tokens
