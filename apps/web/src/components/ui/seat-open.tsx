@@ -2,6 +2,7 @@ import type { SeatPosition } from "@/lib/types";
 
 interface SeatOpenProps {
   position: SeatPosition;
+  compact?: boolean;
 }
 
 const POSITION_CLASSES: Record<SeatPosition, string> = {
@@ -13,9 +14,11 @@ const POSITION_CLASSES: Record<SeatPosition, string> = {
   "bottom-left": "absolute bottom-[8%] left-[4%] sm:bottom-[10%] sm:left-[8%]",
 };
 
-export function SeatOpen({ position }: SeatOpenProps) {
+export function SeatOpen({ position, compact = false }: SeatOpenProps) {
+  const scaleClass = compact ? "scale-[0.88]" : "scale-100";
+
   return (
-    <div className={`${POSITION_CLASSES[position]} z-10`}>
+    <div className={`${POSITION_CLASSES[position]} z-10 transition-all duration-300 ${scaleClass}`}>
       <div className="flex flex-col items-center gap-1.5 opacity-40 transition-opacity duration-300 hover:opacity-70">
         <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-dashed border-emerald-200/40 sm:h-16 sm:w-16" />
         <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100/70">

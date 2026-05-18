@@ -98,4 +98,8 @@ All changes are additive CSS/component modifications. Rollback is a single rever
 | 2026-05-18 | Agent | Implemented Option A; added `useGamePhase`, `StreetBanner`, `ChipStack`, `Identicon`, `SeatOpen`, `CountdownRing`; updated `PokerTable`, `AgentAvatar`, `AgentSeat`, `CommunityCards`, `PotDisplay`, `App`, `Footer`; extracted `WalletConnectButton` |
 | 2026-05-18 | Agent | Quality gates passed: `tsc --noEmit`, `oxlint`, `bun test` (6/6 pass, 100% coverage on `useGamePhase`), `bun run build` |
 | 2026-05-18 | Agent | Fixed pre-existing type errors in `src/lib/types.ts`, `providers.tsx`, `CreateTableModal.tsx`, `useChipToken.ts` to unblock `tsc --noEmit` |
-| 2026-05-18 | Agent | Installed `blo@2.0.0` (~1KB) for wallet identicons; excluded `*.test.ts` from `tsconfig.json` include to avoid needing `happy-dom`
+| 2026-05-18 | Agent | Installed `blo@2.0.0` (~1KB) for wallet identicons; excluded `*.test.ts` from `tsconfig.json` include to avoid needing `happy-dom` |
+| 2026-05-18 | Agent | Post-implementation amendment: added `compact` prop to `PokerTable`, `AgentSeat`, `SeatOpen`. Spectating mode uses `max-h-[72vh]` with full-scale seats; playing mode uses `max-h-[46vh]` with `scale-[0.88]` seats to make room for `PlayerHandPanel` + `GameControls` |
+| 2026-05-18 | Agent | Second amendment: changed table aspect ratio from `16/10` to `2/1` and border-radius from `48%` to `50%` for a more distinctly oval (ellipse) shape closer to a real poker table |
+| 2026-05-18 | Agent | Third amendment: `aspect-[2/1]` → `aspect-[5/2]` (2.5:1), `rounded-[50%]` → `rounded-[40%]` (racetrack shape with flat sides), removed `w-full` and `max-w-[980px]` to prevent width capping from distorting the oval |
+| 2026-05-18 | Agent | Fourth amendment: made table mobile-responsive — mobile uses `aspect-[3/2]` (1.5:1) + `rounded-[48%]` (soft oval), sm+ uses `aspect-[5/2]` (2.5:1) + `rounded-[40%]` (racetrack). Center content offset also breakpoint-aware.

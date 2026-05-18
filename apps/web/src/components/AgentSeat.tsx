@@ -6,6 +6,7 @@ interface AgentSeatProps {
   agent: Agent;
   isActive: boolean;
   position: SeatPosition;
+  compact?: boolean;
 }
 
 const POSITION_CLASSES: Record<SeatPosition, string> = {
@@ -17,12 +18,18 @@ const POSITION_CLASSES: Record<SeatPosition, string> = {
   "bottom-left": "absolute bottom-[8%] left-[4%] sm:bottom-[10%] sm:left-[8%]",
 };
 
-export function AgentSeat({ agent, isActive, position }: AgentSeatProps) {
+export function AgentSeat({ agent, isActive, position, compact = false }: AgentSeatProps) {
+  const scaleClass = compact
+    ? isActive
+      ? "scale-[1.06]"
+      : "scale-[0.88]"
+    : isActive
+      ? "scale-[1.12]"
+      : "scale-100";
+
   return (
     <div
-      className={`${POSITION_CLASSES[position]} z-10 transition-all duration-300 ${
-        isActive ? "scale-[1.12]" : "scale-100"
-      }`}
+      className={`${POSITION_CLASSES[position]} z-10 transition-all duration-300 ${scaleClass}`}
     >
       <AgentAvatar agent={agent} isActive={isActive} />
     </div>

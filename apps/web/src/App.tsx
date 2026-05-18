@@ -115,7 +115,7 @@ function ActiveTable({
           </div>
         </div>
 
-        <PokerTable gameState={gameState} />
+        <PokerTable gameState={gameState} compact={!!gameState.humanPlayer} />
 
         {gameState.humanPlayer && (
           <PlayerHandPanel
