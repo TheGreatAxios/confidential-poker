@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { usePublicClient, useWriteContract } from "wagmi";
-import { parseEther } from "viem";
 import { FRONTEND_CONFIG } from "@/lib/config";
 import { POKER_FACTORY_ABI, POKER_FACTORY_ADDRESS } from "@/lib/contracts";
 import { formatTokenDisplay, parseTokenAmount } from "@/lib/token-format";
@@ -20,13 +19,12 @@ export function CreateTableModal({ onClose, onCreated }: CreateTableModalProps) 
   const [smallBlindInput, setSmallBlindInput] = useState("1");
   const [bigBlindInput, setBigBlindInput] = useState("2");
   const [maxPlayers, setMaxPlayers] = useState(6);
-  const [ctxReserveInput, setCtxReserveInput] = useState("0.01");
   const [step, setStep] = useState<TxStep>("idle");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const smallBlind = parseTokenAmount(smallBlindInput);
-    if (smallBlind && bigBlindInput === "") {
+    const sb = parseTokenAmount(smallBlindInput);
+    if (sb && bigBlindInput === "") {
       setBigBlindInput((Number(smallBlindInput) * 2).toString());
     }
   }, [bigBlindInput, smallBlindInput]);
@@ -47,13 +45,28 @@ export function CreateTableModal({ onClose, onCreated }: CreateTableModalProps) 
         abi: POKER_FACTORY_ABI,
         functionName: "createTable",
         args: [buyIn, smallBlind, bigBlind, BigInt(maxPlayers), tableName.trim()],
-        // @ts-expect-error wagmi type inference mismatch for payable value
-        value: parseEther(ctxReserveInput || "0"),
       });
 
       if (!publicClient) throw new Error("No RPC client.");
       const receipt = await publicClient.waitForTransactionReceipt({ hash, pollingInterval: 1_000 });
-      if (receipt.status !== "success") throw new Error("Create table reverted on-chain.");
+      if (receipt.status !== "success") {
+        // Decode exact revert reason
+        let revertReason = "Create table reverted on-chain.";
+        try {
+          await publicClient.call({
+            to: POKER_FACTORY_ADDRESS,
+            data: (await publicClient.getTransaction({ hash })).input,
+          });
+        } catch (callErr) {
+          const reason = callErr instanceof Error ? callErr.message : String(callErr);
+          if (reason.includes("InsufficientPayment") || reason.includes("0x")) {
+            revertReason = "Factory reserve is too low to create a table. Contact the team to refill.";
+          } else {
+            revertReason = `Create table reverted: ${reason}`;
+          }
+        }
+        throw new Error(revertReason);
+      }
 
       const createdLog = receipt.logs.find((log) => log.address.toLowerCase() === POKER_FACTORY_ADDRESS.toLowerCase());
       const createdTable = createdLog?.topics[1]
@@ -108,10 +121,7 @@ export function CreateTableModal({ onClose, onCreated }: CreateTableModalProps) 
             <span className="text-xs font-semibold uppercase tracking-[0.16em] text-poker-text-dim">Big Blind</span>
             <input value={bigBlindInput} onChange={(event) => setBigBlindInput(event.target.value)} inputMode="decimal" className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 font-mono text-white outline-none focus:border-poker-gold/50" />
           </label>
-          <label className="sm:col-span-2">
-            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-poker-text-dim">CTX Reserve</span>
-            <input value={ctxReserveInput} onChange={(event) => setCtxReserveInput(event.target.value)} inputMode="decimal" className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 font-mono text-white outline-none focus:border-poker-gold/50" />
-          </label>
+
         </div>
 
         {buyIn && (

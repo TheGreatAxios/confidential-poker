@@ -5,6 +5,7 @@ export {
   POKER_FACTORY_ABI,
   CHIP_TOKEN_ABI,
   ERC20_ABI,
+  MOCK_SKL_ABI,
 } from "@confidential-poker/abis";
 
 export const POKER_FACTORY_ADDRESS = FRONTEND_CONFIG.factoryAddress;

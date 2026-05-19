@@ -35,3 +35,6 @@ All non-trivial changes to this project — features, bugs, refactors, dependenc
 | 002 | Monorepo Restructure and Shared Package Extraction | implemented | 2026-05-18 |
 | 003 | Factory-Paid Table Creation + Auto-Shutdown on Empty | implemented | 2026-05-18 |
 | 004 | Poker Table UI Polish — Chips, Depth, Empty Seats, and Spectator Flow | implemented | 2026-05-18 |
+| 005 | Auto-Claim MockSKL in JoinPanel — Remove Misleading FaucetPanel Stub | implemented | 2026-05-19 |
+| 006 | Viewer Key Loss Recovery — Fix Rejoin Mode When localStorage Is Cleared | implemented | 2026-05-19 |
+| 007 | Allow Joining During Active Hand + Fix Create Table Revert | implemented | 2026-05-19 |

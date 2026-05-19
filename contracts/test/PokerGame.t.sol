@@ -443,6 +443,85 @@ contract PokerGameUnitTest is Test, BiteMockSetup {
         assertEq(game.playerCount(), 1);
     }
 
+    function testSitDownDuringGame() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+
+        vm.prank(alice);
+        game.readyUp();
+        vm.prank(bob);
+        game.readyUp();
+
+        assertEq(uint8(game.phase()), 1); // Preflop
+
+        // Carol should be able to join during an active hand
+        vm.prank(carol);
+        game.sitDown(_viewerKey(3));
+        assertEq(game.playerCount(), 3);
+    }
+
+    function testReadyUpDuringGame() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+
+        vm.prank(alice);
+        game.readyUp();
+        vm.prank(bob);
+        game.readyUp();
+
+        assertEq(uint8(game.phase()), 1); // Preflop
+
+        // Carol joins and readies up during the hand
+        vm.prank(carol);
+        game.sitDown(_viewerKey(3));
+        vm.prank(carol);
+        game.readyUp();
+        assertTrue(game.isReady(carol));
+    }
+
+    function testNewPlayerIncludedInNextHand() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+
+        vm.prank(alice);
+        game.readyUp();
+        vm.prank(bob);
+        game.readyUp();
+
+        assertEq(uint8(game.phase()), 1);
+
+        // Carol joins and readies up during the hand
+        vm.prank(carol);
+        game.sitDown(_viewerKey(3));
+        vm.prank(carol);
+        game.readyUp();
+
+        // End the current hand
+        vm.prank(alice);
+        game.fold();
+        biteMock.sendCallback();
+
+        assertEq(uint8(game.phase()), 0);
+
+        // All players must ready up again for the next hand (dealNewHand clears flags)
+        vm.prank(alice);
+        game.readyUp();
+        vm.prank(bob);
+        game.readyUp();
+        vm.prank(carol);
+        game.readyUp();
+
+        // Carol should now be in the hand
+        assertEq(uint8(game.phase()), 1);
+        assertEq(game.playerCount(), 3);
+    }
+
     function testCannotJoinTwice() external {
         vm.prank(alice);
         game.sitDown(_viewerKey(1));
@@ -480,9 +559,10 @@ contract PokerGameUnitTest is Test, BiteMockSetup {
 
         _readyUpAll();
 
+        // sitDown now succeeds during a hand — new player joins as inactive
         vm.prank(carol);
-        vm.expectRevert(PokerGame.GameInProgress.selector);
         game.sitDown(_viewerKey(3));
+        assertEq(game.playerCount(), 3);
     }
 
     function testLeaveRequestAndCancel() external {
@@ -524,6 +604,52 @@ contract PokerGameUnitTest is Test, BiteMockSetup {
     function testRequestLeaveNonPlayerReverts() external {
         vm.expectRevert(PokerGame.NotAPlayer.selector);
         game.requestLeave();
+    }
+
+    function testUpdateViewerKey() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+
+        PublicKey memory newKey = _viewerKey(99);
+        vm.prank(alice);
+        game.updateViewerKey(newKey);
+
+        PublicKey memory stored = game.getViewerKey(0);
+        assertEq(stored.x, newKey.x);
+        assertEq(stored.y, newKey.y);
+    }
+
+    function testUpdateViewerKeyAsNonPlayerReverts() external {
+        vm.expectRevert(PokerGame.NotAPlayer.selector);
+        game.updateViewerKey(_viewerKey(1));
+    }
+
+    function testUpdatedKeyUsedInNextDeal() external {
+        vm.prank(alice);
+        game.sitDown(_viewerKey(1));
+        vm.prank(bob);
+        game.sitDown(_viewerKey(2));
+
+        vm.prank(alice);
+        game.readyUp();
+        vm.prank(bob);
+        game.readyUp();
+
+        // Mid-hand, alice updates her viewer key
+        PublicKey memory newKey = _viewerKey(99);
+        vm.prank(alice);
+        game.updateViewerKey(newKey);
+
+        // Finish the hand
+        vm.prank(alice);
+        game.fold();
+        biteMock.sendCallback();
+        assertEq(uint8(game.phase()), 0);
+
+        // Verify the stored key is the new one
+        PublicKey memory stored = game.getViewerKey(0);
+        assertEq(stored.x, newKey.x);
+        assertEq(stored.y, newKey.y);
     }
 }
 

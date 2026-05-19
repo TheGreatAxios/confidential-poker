@@ -163,6 +163,19 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
     }
   };
 
+  const handleReadyUp = async () => {
+    if (acting) return;
+    setMessage(null);
+    try {
+      await actions.readyUp();
+      setMessage("You are ready for the next hand.");
+    } catch (error) {
+      setMessage(getActionErrorMessage(error));
+    }
+  };
+
+  const canReadyUp = gameState.humanPlayer !== null && !gameState.humanPlayer.isReady;
+
   return (
     <div className={`flex flex-col gap-3 ${isPanelLayout ? "items-start" : "items-center"}`}>
       {canAct && (
@@ -173,6 +186,15 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
       <div className={`w-full ${isPanelLayout ? "space-y-2.5" : "grid gap-3"}`}>
         {isPanelLayout ? (
           <>
+            {canReadyUp && (
+              <button
+                className={`${GOLD_BUTTON_CLASS} w-full min-w-0`}
+                onClick={handleReadyUp}
+                disabled={!!acting}
+              >
+                Ready Up for Next Hand
+              </button>
+            )}
             <div className="grid gap-2 sm:grid-cols-3">
               <button
                 className={`${SECONDARY_BUTTON_CLASS} w-full min-w-0`}
@@ -248,6 +270,15 @@ export function GameControls({ gameState, onLeft, layout = "default" }: GameCont
           </>
         ) : (
           <>
+            {canReadyUp && (
+              <button
+                className={`${GOLD_BUTTON_CLASS} w-full min-w-0 sm:w-auto`}
+                onClick={handleReadyUp}
+                disabled={!!acting}
+              >
+                Ready Up for Next Hand
+              </button>
+            )}
             <div className={`flex flex-wrap items-center ${isPanelLayout ? "justify-start" : "justify-center"} gap-2 sm:gap-3`}>
               <button
                 className={SECONDARY_BUTTON_CLASS}

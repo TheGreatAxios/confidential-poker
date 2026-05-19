@@ -5,9 +5,11 @@ import {
   useAccount,
   usePublicClient,
   useWriteContract,
+  useReadContract,
 } from "wagmi";
 import {
   POKER_GAME_ABI,
+  MOCK_SKL_ABI,
 } from "@/lib/contracts";
 import { FRONTEND_CONFIG } from "@/lib/config";
 import { isContractDeployed } from "@/lib/contracts";
@@ -19,7 +21,7 @@ import { Identicon } from "./ui/identicon";
 import type { TableInfo } from "@/lib/types";
 import { formatTokenDisplay } from "@/lib/token-format";
 
-type Step = "idle" | "approving-underlying" | "depositing" | "approving-game" | "joining" | "done";
+type Step = "idle" | "claiming-faucet" | "approving-underlying" | "depositing" | "approving-game" | "joining" | "done";
 
 interface JoinPanelProps {
   tableAddress: `0x${string}`;
@@ -52,7 +54,44 @@ export function JoinPanel({
   const [message, setMessage] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
 
-  const activeBuyIn = tableInfo?.buyIn ?? 1_000_000_000_000_000_000_000n;
+  const { data: tablePhaseRaw } = useReadContract({
+    chainId: FRONTEND_CONFIG.chainId,
+    address: tableAddress,
+    abi: POKER_GAME_ABI,
+    functionName: "phase",
+    query: { enabled: isContractDeployed(tableAddress), refetchInterval: 5_000 },
+  });
+
+  const { data: contractBuyIn } = useReadContract({
+    chainId: FRONTEND_CONFIG.chainId,
+    address: tableAddress,
+    abi: POKER_GAME_ABI,
+    functionName: "BUY_IN",
+    query: { enabled: isContractDeployed(tableAddress), refetchInterval: 30_000 },
+  });
+
+  const { data: playerCountRaw } = useReadContract({
+    chainId: FRONTEND_CONFIG.chainId,
+    address: tableAddress,
+    abi: POKER_GAME_ABI,
+    functionName: "playerCount",
+    query: { enabled: isContractDeployed(tableAddress), refetchInterval: 5_000 },
+  });
+
+  const { data: maxPlayersRaw } = useReadContract({
+    chainId: FRONTEND_CONFIG.chainId,
+    address: tableAddress,
+    abi: POKER_GAME_ABI,
+    functionName: "MAX_PLAYERS",
+    query: { enabled: isContractDeployed(tableAddress), refetchInterval: 30_000 },
+  });
+
+  const tablePhase = typeof tablePhaseRaw === "number" ? tablePhaseRaw : null;
+  const configBuyIn = tableInfo?.buyIn ?? 1_000_000_000_000_000_000_000n;
+  const activeBuyIn = typeof contractBuyIn === "bigint" ? contractBuyIn : configBuyIn;
+  const playerCount = typeof playerCountRaw === "bigint" ? Number(playerCountRaw) : null;
+  const maxPlayers = typeof maxPlayersRaw === "bigint" ? Number(maxPlayersRaw) : 6;
+
   const hasUnderlyingBalance = chipToken.underlyingBalance >= activeBuyIn;
   const hasChipBalance = chipToken.chipBalance >= activeBuyIn;
   const needsDepositApproval = chipToken.depositAllowance < activeBuyIn;
@@ -80,9 +119,76 @@ export function JoinPanel({
     persistViewerKey(address, viewerKey);
 
     try {
+      if (mode === "rejoin") {
+        if (!publicClient) throw new Error("No RPC client.");
+
+        setStep("joining");
+        setMessage("Restoring viewer key...");
+
+        // Pre-simulate to catch revert reason early
+        try {
+          await publicClient.simulateContract({
+            address: tableAddress,
+            abi: POKER_GAME_ABI,
+            functionName: "updateViewerKey",
+            args: [{ x: viewerKey.x, y: viewerKey.y }],
+            account: address,
+          });
+        } catch (simErr) {
+          const reason = simErr instanceof Error ? simErr.message : String(simErr);
+          if (reason.includes("NotAPlayer") || reason.includes("0xabca3517")) {
+            throw new Error("You are not seated at this table. Join instead of restoring.");
+          }
+          throw new Error(`Cannot restore viewer key: ${reason}`);
+        }
+
+        const updateHash = await writeContractAsync({
+          chainId: FRONTEND_CONFIG.chainId,
+          address: tableAddress,
+          abi: POKER_GAME_ABI,
+          functionName: "updateViewerKey",
+          args: [{ x: viewerKey.x, y: viewerKey.y }],
+        });
+        setTxHash(updateHash);
+
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: updateHash,
+          pollingInterval: 1_000,
+        });
+        if (receipt.status !== "success") {
+          throw new Error("Update reverted on-chain.");
+        }
+
+        setStep("done");
+        onJoined?.(address);
+        return;
+      }
+
+      // New join: no longer blocked by active hand — sitDown now works in any phase
+
       if (!hasChipBalance) {
         if (!hasUnderlyingBalance) {
-          throw new Error("Insufficient underlying token balance.");
+          setStep("claiming-faucet");
+          setMessage("Claiming MockSKL...");
+          const faucetHash = await writeContractAsync({
+            chainId: FRONTEND_CONFIG.chainId,
+            address: FRONTEND_CONFIG.underlyingTokenAddress,
+            abi: MOCK_SKL_ABI,
+            functionName: "faucet",
+            args: [],
+          });
+          setTxHash(faucetHash);
+
+          if (!publicClient) throw new Error("No RPC client.");
+          const faucetReceipt = await publicClient.waitForTransactionReceipt({
+            hash: faucetHash,
+            pollingInterval: 1_000,
+          });
+          if (faucetReceipt.status !== "success") {
+            throw new Error("Faucet claim reverted — may be on cooldown.");
+          }
+
+          await chipToken.refetch();
         }
 
         if (needsDepositApproval) {
@@ -105,8 +211,11 @@ export function JoinPanel({
         setTxHash(approveHash);
       }
 
+      if (!publicClient) throw new Error("No RPC client.");
+
       setStep("joining");
-      setMessage(mode === "rejoin" ? "Restoring viewer key..." : "Joining table...");
+      setMessage("Joining table...");
+
       const joinHash = await writeContractAsync({
         chainId: FRONTEND_CONFIG.chainId,
         address: tableAddress,
@@ -116,13 +225,42 @@ export function JoinPanel({
       });
       setTxHash(joinHash);
 
-      if (!publicClient) throw new Error("No RPC client.");
       const joinReceipt = await publicClient.waitForTransactionReceipt({
         hash: joinHash,
         pollingInterval: 1_000,
       });
       if (joinReceipt.status !== "success") {
-        throw new Error("Join reverted on-chain.");
+        // Infer the revert reason from known table state instead of relying on
+        // RPC error strings which are often truncated or generic on SKALE.
+        let revertReason = "Join reverted on-chain.";
+        if (tablePhase !== null && tablePhase !== 0) {
+          revertReason = "A hand is in progress. Wait for it to end before joining.";
+        } else if (playerCount !== null && playerCount >= maxPlayers) {
+          revertReason = "This table is full.";
+        } else {
+          // Fallback: try to extract a more specific reason from a replay call
+          try {
+            await publicClient.call({
+              to: tableAddress,
+              data: (await publicClient.getTransaction({ hash: joinHash })).input,
+              account: address,
+            });
+          } catch (callErr) {
+            const reason = callErr instanceof Error ? callErr.message : String(callErr);
+            if (reason.includes("AlreadyJoined") || reason.includes("0x003b2682")) {
+              revertReason = "You are already seated at this table.";
+            } else if (reason.includes("GameIsFull") || reason.includes("0x07cc8ab8")) {
+              revertReason = "This table is full.";
+            } else if (reason.includes("GameInProgress") || reason.includes("0xd25f4344")) {
+              revertReason = "A hand is in progress. Wait for it to end before joining.";
+            } else if (reason.includes("ERC20") || reason.includes("insufficient") || reason.includes("allowance")) {
+              revertReason = "Insufficient chip balance or approval. Deposit and approve chips before joining.";
+            } else {
+              revertReason = `Join reverted: ${reason}`;
+            }
+          }
+        }
+        throw new Error(revertReason);
       }
 
       setStep("done");
@@ -134,10 +272,11 @@ export function JoinPanel({
   };
 
   const statusLabel = (() => {
+    if (step === "claiming-faucet") return "Claiming MockSKL...";
     if (step === "approving-underlying") return "Approving Deposit...";
     if (step === "depositing") return "Depositing...";
     if (step === "approving-game") return "Approving Table...";
-    if (step === "joining") return mode === "rejoin" ? "Rejoining..." : "Joining...";
+    if (step === "joining") return mode === "rejoin" ? "Restoring..." : "Joining...";
     if (step === "done") return mode === "rejoin" ? "Restored" : "Joined";
     return mode === "rejoin" ? "Restore Viewer Key" : "Join Table";
   })();
@@ -191,8 +330,8 @@ export function JoinPanel({
                 {formatTokenDisplay(activeBuyIn)}
               </span>
             </span>
-            {isConnected && !hasUnderlyingBalance && !hasChipBalance && (
-              <span className="text-poker-red">Insufficient balance</span>
+            {isConnected && !hasUnderlyingBalance && !hasChipBalance && step === "idle" && (
+              <span className="text-poker-text-muted">MockSKL will be auto-claimed</span>
             )}
             {isConnected && hasUnderlyingBalance && (needsDepositApproval || needsGameApproval) && step === "idle" && (
               <span className="text-yellow-400">Requires approval</span>

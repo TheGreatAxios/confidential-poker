@@ -1110,6 +1110,31 @@ export const POKER_GAME_ABI = [
     "stateMutability": "nonpayable"
   },
   {
+    "type": "function",
+    "name": "updateViewerKey",
+    "inputs": [
+      {
+        "name": "newKey",
+        "type": "tuple",
+        "internalType": "struct PublicKey",
+        "components": [
+          {
+            "name": "x",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "y",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
     "type": "event",
     "name": "CTXSubmitted",
     "inputs": [

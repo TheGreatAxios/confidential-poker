@@ -174,6 +174,43 @@ export function useGameState(tableAddress: `0x${string}`) {
     return next;
   }, [leaveReads, players]);
 
+  const readyContracts = useMemo(
+    () =>
+      players.flatMap((player) =>
+        player
+          ? [{
+              chainId: FRONTEND_CONFIG.chainId,
+              address: tableAddress,
+              abi: POKER_GAME_ABI,
+              functionName: "isReady" as const,
+              args: [player.address] as const,
+            }]
+          : [],
+      ),
+    [players, tableAddress],
+  );
+
+  const { data: readyReads } = useReadContracts({
+    contracts: readyContracts,
+    query: {
+      enabled: readyContracts.length > 0,
+      refetchInterval: 5_000,
+    },
+  });
+
+  const readyByAddress = useMemo(() => {
+    const next: Record<string, boolean> = {};
+    let readIndex = 0;
+    for (const player of players) {
+      if (!player) continue;
+      next[player.address.toLowerCase()] = readyReads?.[readIndex]?.status === "success"
+        ? Boolean(readyReads[readIndex]?.result)
+        : false;
+      readIndex += 1;
+    }
+    return next;
+  }, [readyReads, players]);
+
   const playerAddresses = useMemo(
     () => players.flatMap((player) => (player ? [player.address] : [])),
     [players],
@@ -591,6 +628,9 @@ export function useGameState(tableAddress: `0x${string}`) {
 	              ? leaveRequestedByAddress[humanPlayerState.address.toLowerCase()] ?? false
 	              : false,
 	            chipTokenBalance: chipTokenBalance ?? 0n,
+            isReady: humanPlayerState
+              ? readyByAddress[humanPlayerState.address.toLowerCase()] ?? false
+              : false,
 	          }
         : null,
     };
@@ -615,6 +655,7 @@ export function useGameState(tableAddress: `0x${string}`) {
 	    tableAddress,
     turnIndexRead,
     viewerKey,
+    readyByAddress,
   ]);
 
   const errorMessage = table.error?.message ?? null;

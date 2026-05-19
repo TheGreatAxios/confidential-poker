@@ -3,8 +3,8 @@
   "rpcUrl": "https://base-sepolia-testnet.skalenodes.com/v1/base-testnet",
   "explorerUrl": "https://base-sepolia-testnet-explorer.skalenodes.com/",
   "contracts": {
-    "mockSkl": "0x5d8331b22604fafc4cc1c42c5203e96dcc82644b",
-    "chipToken": "0x0389277b52231a69f5207dae822eaa1d005182dc",
-    "pokerFactory": "0xd43e49caaf9278d6855bedeeee22506567b639cc"
+    "mockSkl": "0x72d39a1f7a3870961e2fbdfc1ccc1a34bc92e22f",
+    "chipToken": "0x9a796aed889eff4869934966d9621a36b8bd586d",
+    "pokerFactory": "0xdf9837159ffaf47baf86f3cb6e92a430ec1e9929"
   }
 }

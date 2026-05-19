@@ -7,7 +7,6 @@ import { Identicon } from "@/components/ui/identicon";
 import { WalletConnectButton } from "@/components/wallet-connect-button";
 import { PokerTable } from "@/components/PokerTable";
 import { GameControls } from "@/components/GameControls";
-import { FaucetPanel } from "@/components/FaucetPanel";
 import { PlayerHandPanel } from "@/components/PlayerHandPanel";
 import { ShowdownSummary } from "@/components/ShowdownSummary";
 import { TableLobby } from "@/components/TableLobby";
@@ -85,7 +84,7 @@ function ActiveTable({
   tableInfo: TableInfo | null;
 }) {
   const navigate = useNavigate();
-  const { gameState, isConnected, error, joinHumanPlayer, leaveHumanPlayer } = useGameState(tableAddress);
+  const { gameState, isConnected: _isConnected, error, joinHumanPlayer, leaveHumanPlayer } = useGameState(tableAddress);
   const { isConnected: isWalletConnected } = useAccount();
 
   return (
@@ -169,8 +168,6 @@ function ActiveTable({
               <WalletConnectButton />
             </div>
           )}
-
-          {!isConnected && isWalletConnected && <FaucetPanel />}
 
           {/* Last Action */}
           <AnimatePresence mode="wait">

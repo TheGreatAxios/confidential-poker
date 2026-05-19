@@ -8,11 +8,16 @@ import {PokerFactory} from "../src/PokerFactory.sol";
 
 contract Deploy is Script {
     uint256 constant DEFAULT_CTX_CALLBACK_VALUE = 1 ether;
-    uint256 constant FACTORY_SEED = 100_000 ether;
+    uint256 constant FACTORY_SEED = 100 ether;
 
     function run() external {
         uint256 ctxCallbackValue = vm.envOr("CTX_CALLBACK_VALUE", DEFAULT_CTX_CALLBACK_VALUE);
         uint256 factorySeed = vm.envOr("FACTORY_SEED", FACTORY_SEED);
+
+        // Enforce minimum seed regardless of env var value
+        if (factorySeed < FACTORY_SEED) {
+            factorySeed = FACTORY_SEED;
+        }
 
         uint256 buyIn = vm.envOr("BUY_IN", uint256(1000e18));
         uint256 sb = vm.envOr("SMALL_BLIND", uint256(5e17));
@@ -23,6 +28,8 @@ contract Deploy is Script {
 
         MockSKL skl = new MockSKL();
         ChipToken chips = new ChipToken(address(skl), "Poker Chips", "CHIPS");
+        console.log("Factory seed:", factorySeed);
+
         PokerFactory factory = new PokerFactory{value: factorySeed}(address(chips), ctxCallbackValue);
 
         factory.createTable(buyIn, sb, bb, maxPlayers, "Main Table");

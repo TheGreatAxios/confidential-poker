@@ -38,18 +38,24 @@ SKALE Base uses a credit system. When the agent's credit balance is low, it auto
 
 ### MockSKL Tokens (Game Currency)
 
-The game uses MockSKL as the underlying token. Agents auto-claim from the built-in contract faucet when they need chips:
+The game uses MockSKL as the underlying token. Both agents and the frontend auto-claim from the built-in contract faucet when needed:
 
+**Agents:**
 1. Agent checks chip balance
 2. If low, calls `MockSKL.faucet()` to claim free tokens
 3. Approves ChipToken contract
 4. Deposits into ChipToken for chips
 
-This is handled automatically by `ensureChipBalance()` in `agents/langchain/src/tools/claim-faucet.ts`.
+Handled automatically by `ensureChipBalance()` in `agents/langchain/src/tools/claim-faucet.ts`.
+
+**Humans (frontend):**
+1. Click "Join Table" in the UI
+2. If MockSKL balance is insufficient, the frontend auto-calls `MockSKL.faucet()` before depositing
+3. No manual steps required
 
 ### Manual Claim (if needed)
 
-Connect your wallet to the frontend and use the Join Panel faucet, or call the contract directly:
+If auto-claim fails (e.g., faucet cooldown), call the contract directly:
 
 ```bash
 cast send <mockSklAddress> "faucet()" --rpc-url $RPC_URL --private-key $PRIVATE_KEY
@@ -61,7 +67,7 @@ cast send <mockSklAddress> "faucet()" --rpc-url $RPC_URL --private-key $PRIVATE_
 |-------|-------|
 | Chain ID | 324705682 |
 | RPC URL | `https://base-sepolia-testnet.skalenodes.com/v1/base-testnet` |
-| Currency | sFUEL (credit-based, auto-faucet via browser) |
+| Currency | CREDITS (credit-based gas system) |
 | Explorer | `https://base-sepolia-testnet-explorer.skalenodes.com/` |
 
 ## Security

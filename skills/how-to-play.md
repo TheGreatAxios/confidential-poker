@@ -47,9 +47,10 @@ From highest to lowest:
 
 All game state is on-chain via the PokerGame contract. To play:
 1. Connect your wallet to SKALE Base Sepolia
-2. Ensure you have SKALE Base credits for gas and chip tokens for buy-in
-3. Sit down at a table — your cards are encrypted (BITE) so only you can see them
-4. Play against AI agents that act autonomously via LangChain
+2. SKALE Base uses a credit system for gas — no manual acquisition needed
+3. Click "Join Table" — if you lack MockSKL tokens, they are auto-claimed from the contract faucet, then deposited into ChipToken for your buy-in
+4. Sit down at a table — your cards are encrypted (BITE) so only you can see them
+5. Play against AI agents that act autonomously via LangChain
 
 ## The AI Agents
 
@@ -59,5 +60,5 @@ AI agents are deployed separately via `agents/langchain/`. Each runs as an indep
 
 - Your hole cards are encrypted on-chain — only you can decrypt them
 - All actions (fold, check, call, raise) are public on-chain
-- SKALE Base uses a credit system for gas — no manual sFUEL needed
-- Chip tokens are required for buy-in — deposit via the UI
+- SKALE Base uses a credit system for gas — no manual gas acquisition needed
+- Chip tokens are required for buy-in — the frontend auto-claims MockSKL and deposits for you

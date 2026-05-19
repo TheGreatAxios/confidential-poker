@@ -15,6 +15,7 @@ interface IPokerTable {
     function playerCount() external view returns (uint256);
 
     function sitDown(PublicKey calldata viewerKey) external;
+    function updateViewerKey(PublicKey calldata newKey) external;
     function leaveTable() external;
     function requestLeave() external;
     function cancelLeave() external;

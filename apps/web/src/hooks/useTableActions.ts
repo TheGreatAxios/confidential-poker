@@ -12,7 +12,9 @@ type TableAction =
   | "leaveTable"
   | "forfeitAndLeave"
   | "requestLeave"
-  | "cancelLeave";
+  | "cancelLeave"
+  | "readyUp"
+  | "unready";
 
 export function useTableActions(tableAddress: `0x${string}`) {
   const publicClient = usePublicClient();
@@ -58,6 +60,8 @@ export function useTableActions(tableAddress: `0x${string}`) {
       forfeitAndLeave: () => send("forfeitAndLeave"),
       requestLeave: () => send("requestLeave"),
       cancelLeave: () => send("cancelLeave"),
+      readyUp: () => send("readyUp"),
+      unready: () => send("unready"),
     },
   };
 }

@@ -216,7 +216,6 @@ contract PokerGame is IBiteSupplicant, RNG {
     }
 
     function sitDown(PublicKey calldata viewerKey) external {
-        require(phase == GamePhase.Waiting, GameInProgress());
         require(players.length < MAX_PLAYERS, GameIsFull());
         require(_playerIndex(msg.sender) == type(uint256).max, AlreadyJoined());
 
@@ -241,6 +240,11 @@ contract PokerGame is IBiteSupplicant, RNG {
         emit PlayerJoined(msg.sender, players.length - 1);
     }
 
+    function updateViewerKey(PublicKey calldata newKey) external onlyPlayer {
+        uint256 idx = _playerIndex(msg.sender);
+        players[idx].viewerKey = newKey;
+    }
+
     function requestLeave() external onlyPlayer {
         _unready(msg.sender);
         leaveRequested[msg.sender] = true;
@@ -252,7 +256,6 @@ contract PokerGame is IBiteSupplicant, RNG {
     }
 
     function readyUp() external onlyPlayer {
-        require(phase == GamePhase.Waiting, GameInProgress());
         require(!isReady[msg.sender], "Already ready");
         require(!leaveRequested[msg.sender], "Leave requested");
 

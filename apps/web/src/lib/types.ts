@@ -106,6 +106,7 @@ export interface GameState {
     isWinner: boolean;
     leaveRequested: boolean;
     chipTokenBalance: bigint;
+    isReady: boolean;
   } | null;
 }
 
